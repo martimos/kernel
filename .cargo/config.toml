@@ -6,4 +6,4 @@ build-std = ["core", "compiler_builtins", "alloc"]
 target = "x86_64-martim.json"
 
 [target.'cfg(target_os = "none")']
-runner = "bootimage runner"
+runner = "cargo run -Zbuild-std --target=x86_64-apple-darwin --package boot --" # run the boot sub-crate as runner

@@ -17,6 +17,7 @@ use martim::hlt_loop;
 use martim::task::executor::Executor;
 use martim::task::{keyboard, Task};
 use martim::{print, println};
+use x86_64::instructions::hlt;
 
 /// This function is called on panic.
 #[cfg(not(test))]
@@ -34,7 +35,16 @@ fn panic(info: &PanicInfo) -> ! {
 
 entry_point!(kernel_main);
 
-fn kernel_main(boot_info: &'static BootInfo) -> ! {
+fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
+    if let Some(framebuffer) = boot_info.framebuffer.as_mut() {
+        for byte in framebuffer.buffer_mut() {
+            *byte = 0x00;
+            // *byte = 0xf0;
+        }
+    } else {
+        panic!("no framebuffer given");
+    }
+
     println!(
         r#"
 

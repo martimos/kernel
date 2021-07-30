@@ -21,6 +21,7 @@ use x86_64::VirtAddr;
 #[cfg(test)]
 use crate::filesystem::vfs;
 use crate::memory::BootInfoFrameAllocator;
+use bootloader::boot_info::Optional;
 
 pub mod allocator;
 pub mod context;
@@ -102,7 +103,7 @@ entry_point!(test_kernel_main);
 
 /// Entry point for `cargo test`
 #[cfg(test)]
-fn test_kernel_main(boot_info: &'static BootInfo) -> ! {
+fn test_kernel_main(boot_info: &'static mut BootInfo) -> ! {
     serial_print!("init...");
     init();
     init_heap(boot_info);
@@ -115,9 +116,13 @@ fn test_kernel_main(boot_info: &'static BootInfo) -> ! {
 }
 
 pub fn init_heap(boot_info: &'static BootInfo) {
-    let phys_mem_offset = VirtAddr::new(boot_info.physical_memory_offset);
+    let addr = match boot_info.physical_memory_offset {
+        Optional::Some(addr) => addr,
+        Optional::None => panic!("no boot info physical memory offset given"),
+    };
+    let phys_mem_offset = VirtAddr::new(addr);
     let mut mapper = unsafe { memory::init(phys_mem_offset) };
-    let mut frame_allocator = unsafe { BootInfoFrameAllocator::init(&boot_info.memory_map) };
+    let mut frame_allocator = unsafe { BootInfoFrameAllocator::init(&boot_info.memory_regions) };
     allocator::init_heap(&mut mapper, &mut frame_allocator).expect("heap initialization failed");
 }
 
