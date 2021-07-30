@@ -20,6 +20,8 @@ lazy_static! {
         let mut idt = InterruptDescriptorTable::new();
         idt.breakpoint.set_handler_fn(breakpoint_handler);
         idt.page_fault.set_handler_fn(page_fault_handler);
+        idt.general_protection_fault
+            .set_handler_fn(general_protection_fault_handler);
         unsafe {
             idt.double_fault
                 .set_handler_fn(double_fault_handler)
@@ -50,6 +52,21 @@ impl InterruptIndex {
     fn as_usize(self) -> usize {
         usize::from(self.as_u8())
     }
+}
+
+extern "x86-interrupt" fn general_protection_fault_handler(
+    stack_frame: InterruptStackFrame,
+    error_code: u64,
+) {
+    crate::serial_println!(
+        "encountered a general protection fault, error code {} =",
+        error_code
+    );
+    crate::serial_println!("index: {}", (error_code >> 3) & ((1 << 14) - 1));
+    crate::serial_println!("tbl: {}", (error_code >> 1) & 0b11);
+    crate::serial_println!("e: {}", error_code & 1);
+
+    panic!("EXCEPTION: GENERAL PROTECTION FAULT\n{:#?}", stack_frame);
 }
 
 extern "x86-interrupt" fn breakpoint_handler(stack_frame: InterruptStackFrame) {
@@ -96,6 +113,7 @@ extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: InterruptStac
     }
 }
 
+#[inline]
 unsafe fn clear_interrupt(which: InterruptIndex) {
     PICS.lock().notify_end_of_interrupt(which.as_u8());
 }

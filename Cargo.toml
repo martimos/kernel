@@ -19,7 +19,7 @@ members = [
 ]
 
 [dependencies]
-bootloader = { version = "0.10.6" }
+bootloader = { git = "https://github.com/martimos/bootloader" }
 volatile = "0.4.4"
 spin = "0.9.1"
 x86_64 = "0.14.3"
