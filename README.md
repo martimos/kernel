@@ -24,9 +24,3 @@ To run the tests
 ```plain
 cargo test
 ```
-
-To only build the image but not run it
-
-```plain
-cargo bootimage
-```
