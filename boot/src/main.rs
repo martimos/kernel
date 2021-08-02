@@ -66,9 +66,7 @@ fn main() {
 }
 
 fn run_test_command(mut cmd: Command) -> ExitStatus {
-    // runner_utils::run_with_timeout(&mut cmd, Duration::from_secs(TEST_TIMEOUT_SECS)).unwrap()
-
-    cmd.status().unwrap()
+    runner_utils::run_with_timeout(&mut cmd, Duration::from_secs(TEST_TIMEOUT_SECS)).unwrap()
 }
 
 pub fn create_disk_images(kernel_binary_path: &Path) -> PathBuf {
