@@ -16,7 +16,7 @@ use martim::filesystem::vfs;
 use martim::hlt_loop;
 use martim::task::executor::Executor;
 use martim::task::{keyboard, Task};
-use martim::{print, println};
+use martim::{print, println, serial_print, serial_println};
 use x86_64::instructions::hlt;
 
 /// This function is called on panic.
@@ -60,12 +60,12 @@ $$ | \_/ $$ |\$$$$$$$ |$$ |       \$$$$  |$$ |$$ | $$ | $$ |
 "#
     );
 
-    print!("init kernel...");
+    serial_print!("init kernel...");
     martim::init();
     martim::init_heap(boot_info);
     context::init();
     vfs::init();
-    println!("done\n\n");
+    serial_println!("done");
 
     #[cfg(not(test))]
     main();

@@ -4,7 +4,7 @@ use std::{
     time::Duration,
 };
 
-const RUN_ARGS: &[&str] = &["--no-reboot", "-s"];
+const RUN_ARGS: &[&str] = &["--no-reboot", "-s", "-serial", "stdio"];
 const TEST_ARGS: &[&str] = &[
     "-device",
     "isa-debug-exit,iobase=0xf4,iosize=0x04",

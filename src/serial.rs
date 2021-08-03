@@ -11,6 +11,7 @@ lazy_static! {
 }
 
 #[doc(hidden)]
+#[cfg(debug_assertions)]
 pub fn _print(args: ::core::fmt::Arguments) {
     use core::fmt::Write;
     use x86_64::instructions::interrupts;
@@ -24,6 +25,13 @@ pub fn _print(args: ::core::fmt::Arguments) {
             .write_fmt(args)
             .expect("Printing to serial failed");
     });
+}
+
+#[cfg(not(debug_assertions))]
+pub fn _print(args: ::core::fmt::Arguments) {
+    /*
+    serial printing is disabled for non-debug builds
+     */
 }
 
 /// Prints to the host through the serial interface.
