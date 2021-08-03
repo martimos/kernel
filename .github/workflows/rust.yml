@@ -63,11 +63,11 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
       - name: Install gcc (Windows)
-        run: |
-          scoop bucket add dorado https://github.com/chawyehsu/dorado
-          scoop install dorado/llvm-mingw
+        uses: egor-tensin/setup-gcc@v1
+        with:
+          version: latest
+          platform: x64
         if: runner.os == 'Windows'
-        shell: pwsh
       - name: "Print QEMU Version"
         run: qemu-system-x86_64 --version
 
