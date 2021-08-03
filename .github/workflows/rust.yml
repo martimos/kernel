@@ -63,7 +63,9 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
       - name: Install gcc (Windows)
-        run: scoop install dorado/nuwen-mingw-gcc
+        run: |
+          scoop bucket add dorado https://github.com/chawyehsu/dorado
+          scoop install dorado/nuwen-mingw-gcc
         if: runner.os == 'Windows'
         shell: pwsh
       - name: "Print QEMU Version"
