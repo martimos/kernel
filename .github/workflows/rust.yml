@@ -63,7 +63,7 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
       - name: Install gcc (Windows)
-        run: scoop install gcc
+        run: scoop install dorado/nuwen-mingw-gcc
         if: runner.os == 'Windows'
         shell: pwsh
       - name: "Print QEMU Version"
