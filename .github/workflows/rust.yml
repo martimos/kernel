@@ -62,6 +62,10 @@ jobs:
         run: scoop install qemu
         if: runner.os == 'Windows'
         shell: pwsh
+      - name: Install gcc (Windows)
+        run: scoop install gcc
+        if: runner.os == 'Windows'
+        shell: pwsh
       - name: "Print QEMU Version"
         run: qemu-system-x86_64 --version
 
