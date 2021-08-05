@@ -16,8 +16,7 @@ use martim::filesystem::vfs;
 use martim::hlt_loop;
 use martim::task::executor::Executor;
 use martim::task::{keyboard, Task};
-use martim::{serial_print, serial_println, vga_clear, vga_print, vga_println};
-use x86_64::instructions::hlt;
+use martim::{serial_print, serial_println, vga_clear, vga_println};
 
 /// This function is called on panic.
 #[cfg(not(test))]

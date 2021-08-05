@@ -6,7 +6,6 @@ use x86_64::{
 };
 
 use crate::allocator::fixed_size_block::FixedSizeBlockAllocator;
-use crate::allocator::linked_list::LinkedListAllocator;
 
 pub mod bump;
 pub mod fixed_size_block;

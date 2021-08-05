@@ -38,6 +38,7 @@ fn dummy_raw_waker() -> RawWaker {
     }
 
     let vtable = &RawWakerVTable::new(clone, no_op, no_op, no_op);
+    #[allow(clippy::zero_ptr)]
     RawWaker::new(0 as *const (), vtable)
 }
 

@@ -1,72 +1,13 @@
 use core::fmt;
-use core::ops::{Deref, DerefMut};
 
 use bootloader::boot_info::{FrameBuffer, FrameBufferInfo, PixelFormat};
-use core::hint::unreachable_unchecked;
 use font8x8::UnicodeFonts;
-use lazy_static::lazy_static;
 use spin::Mutex;
-use volatile::Volatile;
 
 static WRITER: Mutex<Writer> = Mutex::new(Writer::new());
 
 pub fn init_vga_buffer(buffer: &'static mut FrameBuffer) {
-    unsafe {
-        WRITER.lock().init(buffer);
-    }
-}
-
-#[allow(dead_code)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u8)]
-pub enum Color {
-    Black = 0,
-    Blue = 1,
-    Green = 2,
-    Cyan = 3,
-    Red = 4,
-    Magenta = 5,
-    Brown = 6,
-    LightGray = 7,
-    DarkGray = 8,
-    LightBlue = 9,
-    LightGreen = 10,
-    LightCyan = 11,
-    LightRed = 12,
-    Pink = 13,
-    Yellow = 14,
-    White = 15,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(transparent)]
-struct ColorCode(u8);
-
-impl ColorCode {
-    fn new(foreground: Color, background: Color) -> ColorCode {
-        ColorCode((background as u8) << 4 | (foreground as u8))
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(C)]
-struct ScreenChar {
-    ascii_character: u8,
-    color_code: ColorCode,
-}
-
-impl Deref for ScreenChar {
-    type Target = ScreenChar;
-
-    fn deref(&self) -> &Self::Target {
-        &self
-    }
-}
-
-impl DerefMut for ScreenChar {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        self
-    }
+    WRITER.lock().init(buffer);
 }
 
 #[derive(Default)]
@@ -86,7 +27,6 @@ impl<'a> fmt::Write for Writer<'a> {
 
 impl<'a> Writer<'a> {
     const fn new() -> Self {
-        use alloc::vec;
         Writer {
             x_pos: 0,
             y_pos: 0,
@@ -99,7 +39,7 @@ impl<'a> Writer<'a> {
     /// This writer will write into the framebuffer.
     /// This is unsafe because the caller must ensure that
     /// the frame buffer is valid.
-    pub unsafe fn init(&mut self, buffer: &'static mut FrameBuffer) {
+    pub fn init(&mut self, buffer: &'static mut FrameBuffer) {
         self.info = Some(buffer.info());
         self.buffer = buffer.buffer_mut();
     }
@@ -116,7 +56,7 @@ impl<'a> Writer<'a> {
     }
 
     pub fn write_byte(&mut self, byte: u8) {
-        if self.buffer.len() == 0 {
+        if self.buffer.is_empty() {
             panic!("vga buffer not initialized");
         }
 
@@ -173,7 +113,6 @@ impl<'a> Writer<'a> {
                 * self.info.unwrap().horizontal_resolution;
 
             // clear the first line
-            let len = self.buffer.len();
             self.buffer[1..line_pixel_count].fill(0);
 
             // rotate screen buffer, making the first (cleared) line the last

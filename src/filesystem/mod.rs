@@ -3,7 +3,6 @@ use crate::filesystem::flags::{Mode, OpenFlags};
 use crate::syscall::error::Errno;
 use alloc::boxed::Box;
 
-pub mod ext2;
 pub mod file_descriptor;
 pub mod flags;
 pub mod inode;

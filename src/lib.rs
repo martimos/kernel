@@ -21,7 +21,7 @@ use x86_64::VirtAddr;
 #[cfg(test)]
 use crate::filesystem::vfs;
 use crate::memory::BootInfoFrameAllocator;
-use bootloader::boot_info::{FrameBuffer, Optional};
+use bootloader::boot_info::Optional;
 
 pub mod allocator;
 pub mod context;
