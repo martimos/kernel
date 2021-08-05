@@ -69,7 +69,7 @@ $$ | \_/ $$ |\$$$$$$$ |$$ |       \$$$$  |$$ |$$ | $$ | $$ |
     #[cfg(test)]
     test_main();
 
-    let mut executor = Executor::new();
+    let mut executor = Executor::default();
     executor.spawn(Task::new(example_task()));
     executor.spawn(Task::new(keyboard::print_keypresses()));
     executor.run();

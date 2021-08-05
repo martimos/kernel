@@ -7,6 +7,7 @@ use crate::vga_println;
 
 pub mod error;
 
+#[allow(clippy::module_inception)]
 mod syscall;
 
 pub fn syscall(eax: usize, _ebx: usize, _edx: usize, _esi: usize, _edi: usize) -> usize {

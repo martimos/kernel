@@ -13,7 +13,7 @@ pub struct Upnode {
 impl Upnode {
     pub fn from(parent: Rc<Mutex<Upnode>>, inode: Rc<Mutex<Box<dyn Inode>>>) -> Upnode {
         Upnode {
-            parent: Some(parent.clone()),
+            parent: Some(parent),
             inode: inode.clone(),
         }
     }
