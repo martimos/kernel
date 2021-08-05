@@ -1,16 +1,19 @@
 use core::fmt;
 use core::ops::{Deref, DerefMut};
 
+use bootloader::boot_info::{FrameBuffer, FrameBufferInfo, PixelFormat};
+use core::hint::unreachable_unchecked;
+use font8x8::UnicodeFonts;
 use lazy_static::lazy_static;
 use spin::Mutex;
 use volatile::Volatile;
 
-lazy_static! {
-    pub static ref WRITER: Mutex<Writer> = Mutex::new(Writer {
-        column_position: 0,
-        color_code: ColorCode::new(Color::Yellow, Color::Black),
-        buffer: unsafe { &mut *(0xb8000 as *mut Buffer) },
-    });
+static WRITER: Mutex<Writer> = Mutex::new(Writer::new());
+
+pub fn init_vga_buffer(buffer: &'static mut FrameBuffer) {
+    unsafe {
+        WRITER.lock().init(buffer);
+    }
 }
 
 #[allow(dead_code)]
@@ -66,28 +69,41 @@ impl DerefMut for ScreenChar {
     }
 }
 
-const BUFFER_HEIGHT: usize = 25;
-const BUFFER_WIDTH: usize = 80;
-
-#[repr(transparent)]
-struct Buffer {
-    chars: [[Volatile<ScreenChar>; BUFFER_WIDTH]; BUFFER_HEIGHT],
+#[derive(Default)]
+pub struct Writer<'a> {
+    x_pos: usize,
+    y_pos: usize,
+    buffer: &'a mut [u8],
+    info: Option<FrameBufferInfo>,
 }
 
-pub struct Writer {
-    column_position: usize,
-    color_code: ColorCode,
-    buffer: &'static mut Buffer,
-}
-
-impl fmt::Write for Writer {
+impl<'a> fmt::Write for Writer<'a> {
     fn write_str(&mut self, s: &str) -> fmt::Result {
         self.write_string(s);
         Ok(())
     }
 }
 
-impl Writer {
+impl<'a> Writer<'a> {
+    const fn new() -> Self {
+        use alloc::vec;
+        Writer {
+            x_pos: 0,
+            y_pos: 0,
+            buffer: &mut [],
+            info: None,
+        }
+    }
+
+    /// Initializes this writer with the given framebuffer.
+    /// This writer will write into the framebuffer.
+    /// This is unsafe because the caller must ensure that
+    /// the frame buffer is valid.
+    pub unsafe fn init(&mut self, buffer: &'static mut FrameBuffer) {
+        self.info = Some(buffer.info());
+        self.buffer = buffer.buffer_mut();
+    }
+
     pub fn write_string(&mut self, s: &str) {
         for byte in s.bytes() {
             match byte {
@@ -100,57 +116,88 @@ impl Writer {
     }
 
     pub fn write_byte(&mut self, byte: u8) {
+        if self.buffer.len() == 0 {
+            panic!("vga buffer not initialized");
+        }
+
         match byte {
             b'\n' => self.new_line(),
-            byte => {
-                if self.column_position >= BUFFER_WIDTH {
-                    self.new_line();
+            _ => {
+                let c = font8x8::BASIC_FONTS
+                    .get(byte as char)
+                    .expect("no matching character found");
+                for (y, row_byte) in c.iter().enumerate() {
+                    for (x, col_bit) in (0..8).enumerate() {
+                        let alpha = if *row_byte & (1 << col_bit) == 0 {
+                            0
+                        } else {
+                            255
+                        };
+                        self.write_pixel(self.x_pos + x, self.y_pos + y, alpha);
+                    }
                 }
-
-                let row = BUFFER_HEIGHT - 1;
-                let col = self.column_position;
-
-                let color_code = self.color_code;
-                self.buffer.chars[row][col].write(ScreenChar {
-                    ascii_character: byte,
-                    color_code,
-                });
-                self.column_position += 1;
+                self.x_pos += 8;
             }
         }
+    }
+
+    fn write_pixel(&mut self, x: usize, y: usize, intensity: u8) {
+        let pixel_offset = y * self.info.unwrap().stride + x;
+        let color = match self.info.unwrap().pixel_format {
+            PixelFormat::RGB => [intensity, intensity, intensity / 2, 0],
+            PixelFormat::BGR => [intensity / 2, intensity, intensity, 0],
+            PixelFormat::U8 => [if intensity > 200 { 0xf } else { 0 }, 0, 0, 0],
+            _ => unreachable!(),
+        };
+        let bytes_per_pixel = self.info.unwrap().bytes_per_pixel;
+        let byte_offset = pixel_offset * bytes_per_pixel;
+        self.buffer[byte_offset..(byte_offset + bytes_per_pixel)]
+            .copy_from_slice(&color[..bytes_per_pixel]);
+        let _ = unsafe { core::ptr::read_volatile(&self.buffer[byte_offset]) };
+    }
+
+    pub fn clear_screen(&mut self) {
+        self.buffer.fill(0);
     }
 
     fn new_line(&mut self) {
-        for row in 1..BUFFER_HEIGHT {
-            for col in 0..BUFFER_WIDTH {
-                let character = self.buffer.chars[row][col].read();
-                self.buffer.chars[row - 1][col].write(character);
-            }
-        }
-        self.clear_row(BUFFER_HEIGHT - 1);
-        self.column_position = 0;
-    }
+        let line_height = 8 + 4;
+        self.x_pos = 0;
+        self.y_pos += line_height;
 
-    fn clear_row(&mut self, row: usize) {
-        let blank = ScreenChar {
-            ascii_character: b' ',
-            color_code: self.color_code,
-        };
-        for col in 0..BUFFER_WIDTH {
-            self.buffer.chars[row][col].write(blank);
+        // check if we need to "scroll"
+        if self.y_pos + 8 >= self.info.unwrap().vertical_resolution {
+            self.y_pos -= line_height;
+            let line_pixel_count = line_height
+                * self.info.unwrap().bytes_per_pixel
+                * self.info.unwrap().horizontal_resolution;
+
+            // clear the first line
+            let len = self.buffer.len();
+            self.buffer[1..line_pixel_count].fill(0);
+
+            // rotate screen buffer, making the first (cleared) line the last
+            self.buffer.rotate_left(line_pixel_count);
         }
     }
 }
 
 #[macro_export]
-macro_rules! print {
+macro_rules! vga_print {
     ($($arg:tt)*) => ($crate::vga_buffer::_print(format_args!($($arg)*)));
 }
 
 #[macro_export]
-macro_rules! println {
-    () => ($crate::print!("\n"));
-    ($($arg:tt)*) => ($crate::print!("{}\n", format_args!($($arg)*)));
+macro_rules! vga_println {
+    () => ($crate::vga_print!("\n"));
+    ($($arg:tt)*) => ($crate::vga_print!("{}\n", format_args!($($arg)*)));
+}
+
+#[macro_export]
+macro_rules! vga_clear {
+    () => {
+        $crate::vga_buffer::_clear()
+    };
 }
 
 #[doc(hidden)]
@@ -166,35 +213,14 @@ pub fn _print(args: fmt::Arguments) {
     });
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+#[doc(hidden)]
+pub fn _clear() {
+    use x86_64::instructions::interrupts;
 
-    #[test_case]
-    fn test_println_not_panic_simple() {
-        println!("this must not panic")
-    }
-
-    #[test_case]
-    fn test_println_not_panic_many() {
-        for _ in 0..200 {
-            println!("this must not panic");
-        }
-    }
-
-    #[test_case]
-    fn test_println_output() {
-        use core::fmt::Write;
-        use x86_64::instructions::interrupts;
-
-        let s = "this must appear in the VGA buffer";
-        interrupts::without_interrupts(|| {
-            let mut writer = WRITER.lock();
-            writeln!(writer, "\n{}", s).expect("writeln failed");
-            for (i, c) in s.chars().enumerate() {
-                let screen_char = writer.buffer.chars[BUFFER_HEIGHT - 2][i].read();
-                assert_eq!(char::from(screen_char.ascii_character), c);
-            }
-        });
-    }
+    // disable interrupts while holding a lock on the WRITER
+    // so that no deadlock can occur when we want to print
+    // something in an interrupt handler
+    interrupts::without_interrupts(|| {
+        WRITER.lock().clear_screen();
+    });
 }

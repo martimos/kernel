@@ -6,7 +6,7 @@ use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame};
 
 use crate::gdt;
 use crate::hlt_loop;
-use crate::println;
+use crate::vga_println;
 
 // "Remapped" PICS chosen as 32 to 47
 pub const PIC_1_OFFSET: u8 = 32;
@@ -70,7 +70,7 @@ extern "x86-interrupt" fn general_protection_fault_handler(
 }
 
 extern "x86-interrupt" fn breakpoint_handler(stack_frame: InterruptStackFrame) {
-    println!("EXCEPTION: BREAKPOINT\n{:#?}", stack_frame);
+    vga_println!("EXCEPTION: BREAKPOINT\n{:#?}", stack_frame);
 }
 
 extern "x86-interrupt" fn double_fault_handler(
@@ -94,10 +94,10 @@ extern "x86-interrupt" fn page_fault_handler(
 ) {
     use x86_64::registers::control::Cr2;
 
-    println!("EXCEPTION: PAGE FAULT");
-    println!("Accessed Address: {:?}", Cr2::read());
-    println!("Error Code: {:?}", error_code);
-    println!("{:#?}", stack_frame);
+    vga_println!("EXCEPTION: PAGE FAULT");
+    vga_println!("Accessed Address: {:?}", Cr2::read());
+    vga_println!("Error Code: {:?}", error_code);
+    vga_println!("{:#?}", stack_frame);
     hlt_loop();
 }
 

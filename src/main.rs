@@ -16,14 +16,14 @@ use martim::filesystem::vfs;
 use martim::hlt_loop;
 use martim::task::executor::Executor;
 use martim::task::{keyboard, Task};
-use martim::{print, println, serial_print, serial_println};
+use martim::{serial_print, serial_println, vga_clear, vga_print, vga_println};
 use x86_64::instructions::hlt;
 
 /// This function is called on panic.
 #[cfg(not(test))]
 #[panic_handler]
-fn panic(_info: &PanicInfo) -> ! {
-    println!("{}", _info);
+fn panic(info: &PanicInfo) -> ! {
+    serial_println!("{}, halting", info);
     hlt_loop()
 }
 
@@ -36,16 +36,15 @@ fn panic(info: &PanicInfo) -> ! {
 entry_point!(kernel_main);
 
 fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
-    if let Some(framebuffer) = boot_info.framebuffer.as_mut() {
-        for byte in framebuffer.buffer_mut() {
-            *byte = 0x00;
-            // *byte = 0xf0;
-        }
-    } else {
-        panic!("no framebuffer given");
-    }
+    serial_print!("init kernel...");
+    martim::init();
+    martim::init_heap(boot_info);
+    context::init();
+    vfs::init();
+    serial_println!("done");
 
-    println!(
+    vga_clear!();
+    vga_println!(
         r#"
 
 $$\      $$\                      $$\     $$\
@@ -60,12 +59,10 @@ $$ | \_/ $$ |\$$$$$$$ |$$ |       \$$$$  |$$ |$$ | $$ | $$ |
 "#
     );
 
-    serial_print!("init kernel...");
-    martim::init();
-    martim::init_heap(boot_info);
-    context::init();
-    vfs::init();
-    serial_println!("done");
+    // for i in 1.. {
+    //     vga_println!("{}", i);
+    //     hlt();
+    // }
 
     #[cfg(not(test))]
     main();
@@ -80,7 +77,7 @@ $$ | \_/ $$ |\$$$$$$$ |$$ |       \$$$$  |$$ |$$ | $$ | $$ |
 }
 
 fn main() {
-    println!("Hello, {}!", "World");
+    vga_println!("Hello, {}!", "World");
 }
 
 async fn async_number() -> u32 {
@@ -89,7 +86,7 @@ async fn async_number() -> u32 {
 
 async fn example_task() {
     let number = async_number().await;
-    println!("async number: {}", number);
+    vga_println!("async number: {}", number);
 }
 
 #[cfg(test)]

@@ -2,8 +2,8 @@ use core::convert::TryInto;
 
 use error::Result;
 
-use crate::println;
 use crate::syscall::error::Errno;
+use crate::vga_println;
 
 pub mod error;
 
@@ -14,7 +14,7 @@ pub fn syscall(eax: usize, _ebx: usize, _edx: usize, _esi: usize, _edi: usize) -
         Ok(Syscall::Getpid) => getpid(),
         Ok(_) => Errno::ENOSYS.into(), // syscall recognized but not implemented
         Err(_) => {
-            println!("unrecognized syscall {}", eax);
+            vga_println!("unrecognized syscall {}", eax);
             Errno::ENOSYS.into()
         }
     }

@@ -21,7 +21,7 @@ use x86_64::VirtAddr;
 #[cfg(test)]
 use crate::filesystem::vfs;
 use crate::memory::BootInfoFrameAllocator;
-use bootloader::boot_info::Optional;
+use bootloader::boot_info::{FrameBuffer, Optional};
 
 pub mod allocator;
 pub mod context;
@@ -115,7 +115,16 @@ fn test_kernel_main(boot_info: &'static mut BootInfo) -> ! {
     hlt_loop();
 }
 
-pub fn init_heap(boot_info: &'static BootInfo) {
+pub fn init_heap(boot_info: &'static mut BootInfo) {
+    if let Some(framebuffer) = boot_info.framebuffer.as_mut() {
+        vga_buffer::init_vga_buffer(framebuffer);
+    } else {
+        #[cfg(test)]
+        serial_println!("no vga buffer given, skipping initialization");
+        #[cfg(not(test))]
+        panic!("no vga buffer given");
+    }
+
     let addr = match boot_info.physical_memory_offset {
         Optional::Some(addr) => addr,
         Optional::None => panic!("no boot info physical memory offset given"),
