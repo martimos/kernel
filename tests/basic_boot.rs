@@ -6,7 +6,7 @@
 
 use core::panic::PanicInfo;
 
-use martim::vga_println;
+use martim::serial_println;
 
 #[no_mangle] // don't mangle the name of this function
 pub extern "C" fn _start() -> ! {
@@ -21,5 +21,5 @@ fn panic(info: &PanicInfo) -> ! {
 
 #[test_case]
 fn test_println_no_panic() {
-    vga_println!("this must not panic");
+    serial_println!("this must not panic");
 }
