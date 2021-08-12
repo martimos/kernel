@@ -23,7 +23,7 @@ pub fn syscall(eax: usize, _ebx: usize, _edx: usize, _esi: usize, _edi: usize) -
 
 pub fn getpid() -> usize {
     match syscall::getpid() {
-        Ok(res) => res.into(),
+        Ok(res) => res,
         Err(errno) => errno as usize,
     }
 }

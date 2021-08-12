@@ -1,10 +1,13 @@
 #![no_std]
 #![cfg_attr(test, no_main)]
-#![feature(custom_test_frameworks)]
 #![feature(abi_x86_interrupt)]
 #![feature(alloc_error_handler)]
+#![feature(asm)]
+#![feature(box_syntax)]
 #![feature(const_mut_refs)]
+#![feature(custom_test_frameworks)]
 #![feature(async_stream)]
+#![feature(naked_functions)]
 #![feature(thread_local)]
 #![test_runner(crate::test_runner)]
 #![reexport_test_harness_main = "test_main"]
@@ -13,18 +16,17 @@ extern crate alloc;
 
 use core::panic::PanicInfo;
 
+use bootloader::boot_info::Optional;
+use bootloader::BootInfo;
 #[cfg(test)]
 use bootloader::entry_point;
-use bootloader::BootInfo;
 use x86_64::VirtAddr;
 
 #[cfg(test)]
 use crate::filesystem::vfs;
 use crate::memory::BootInfoFrameAllocator;
-use bootloader::boot_info::Optional;
 
 pub mod allocator;
-pub mod context;
 pub mod filesystem;
 pub mod gdt;
 pub mod interrupts;
@@ -33,6 +35,8 @@ pub mod serial;
 pub mod syscall;
 pub mod task;
 pub mod vga_buffer;
+
+pub mod multitasking;
 
 pub fn init() {
     gdt::init(); // init global descriptor table
@@ -62,6 +66,7 @@ pub fn exit_qemu(exit_code: QemuExitCode) {
     }
 }
 
+#[inline]
 pub fn hlt_loop() -> ! {
     loop {
         x86_64::instructions::hlt();
@@ -73,8 +78,8 @@ pub trait Testable {
 }
 
 impl<T> Testable for T
-where
-    T: Fn(),
+    where
+        T: Fn(),
 {
     fn run(&self) {
         serial_print!("test {}...\t", core::any::type_name::<T>());
@@ -107,7 +112,7 @@ fn test_kernel_main(boot_info: &'static mut BootInfo) -> ! {
     serial_print!("init...");
     init();
     init_heap(boot_info);
-    context::init();
+    multitasking::init();
     vfs::init();
     serial_println!("done");
 

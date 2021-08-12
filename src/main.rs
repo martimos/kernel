@@ -8,15 +8,14 @@ extern crate alloc;
 
 use core::panic::PanicInfo;
 
-use bootloader::{entry_point, BootInfo};
+use bootloader::{BootInfo, entry_point};
 
-use martim::context;
+use martim::{serial_print, serial_println, vga_clear, vga_println};
 use martim::filesystem::vfs;
 #[cfg(not(test))]
 use martim::hlt_loop;
-use martim::task::executor::Executor;
 use martim::task::{keyboard, Task};
-use martim::{serial_print, serial_println, vga_clear, vga_println};
+use martim::task::executor::Executor;
 
 /// This function is called on panic.
 #[cfg(not(test))]
@@ -38,7 +37,7 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     serial_print!("init kernel...");
     martim::init();
     martim::init_heap(boot_info);
-    context::init();
+    martim::multitasking::init();
     vfs::init();
     serial_println!("done");
 
@@ -64,14 +63,14 @@ $$ | \_/ $$ |\$$$$$$$ |$$ |       \$$$$  |$$ |$$ | $$ | $$ |
     // }
 
     #[cfg(not(test))]
-    main();
+        main();
 
     #[cfg(test)]
-    test_main();
+        test_main();
 
     let mut executor = Executor::default();
-    executor.spawn(Task::new(example_task()));
     executor.spawn(Task::new(keyboard::print_keypresses()));
+    executor.spawn(Task::new(example_task()));
     executor.run();
 }
 
