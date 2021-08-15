@@ -8,14 +8,14 @@ extern crate alloc;
 
 use core::panic::PanicInfo;
 
-use bootloader::{BootInfo, entry_point};
+use bootloader::{entry_point, BootInfo};
 
-use martim::{serial_print, serial_println, vga_clear, vga_println};
 use martim::filesystem::vfs;
 #[cfg(not(test))]
 use martim::hlt_loop;
-use martim::task::{keyboard, Task};
 use martim::task::executor::Executor;
+use martim::task::{keyboard, Task};
+use martim::{serial_print, serial_println, vga_clear, vga_println};
 
 /// This function is called on panic.
 #[cfg(not(test))]
@@ -63,10 +63,10 @@ $$ | \_/ $$ |\$$$$$$$ |$$ |       \$$$$  |$$ |$$ | $$ | $$ |
     // }
 
     #[cfg(not(test))]
-        main();
+    main();
 
     #[cfg(test)]
-        test_main();
+    test_main();
 
     let mut executor = Executor::default();
     executor.spawn(Task::new(keyboard::print_keypresses()));
