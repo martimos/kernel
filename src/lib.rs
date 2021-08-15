@@ -2,8 +2,10 @@
 #![cfg_attr(test, no_main)]
 #![feature(abi_x86_interrupt)]
 #![feature(alloc_error_handler)]
+#![feature(array_methods)]
 #![feature(asm)]
 #![feature(box_syntax)]
+#![feature(const_fn_trait_bound)]
 #![feature(const_mut_refs)]
 #![feature(custom_test_frameworks)]
 #![feature(async_stream)]
@@ -17,9 +19,9 @@ extern crate alloc;
 use core::panic::PanicInfo;
 
 use bootloader::boot_info::Optional;
-use bootloader::BootInfo;
 #[cfg(test)]
 use bootloader::entry_point;
+use bootloader::BootInfo;
 use x86_64::VirtAddr;
 
 #[cfg(test)]
@@ -78,8 +80,8 @@ pub trait Testable {
 }
 
 impl<T> Testable for T
-    where
-        T: Fn(),
+where
+    T: Fn(),
 {
     fn run(&self) {
         serial_print!("test {}...\t", core::any::type_name::<T>());
