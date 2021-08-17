@@ -1,32 +1,31 @@
 use core::sync::atomic::{AtomicUsize, Ordering};
 
 pub struct ProcessControlBlock {
-    pid: Id,
+    pid: ProcessId,
 }
 
 impl ProcessControlBlock {
-    pub fn pid(&self) -> Id {
+    pub fn pid(&self) -> ProcessId {
         self.pid
     }
 }
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
-pub struct Id(usize);
+pub struct ProcessId(usize);
 
-static ID_COUNTER: AtomicUsize = AtomicUsize::new(0);
-
-impl Id {
+impl ProcessId {
     pub fn new() -> Self {
-        Id(ID_COUNTER.fetch_add(1, Ordering::SeqCst))
+        static ID_COUNTER: AtomicUsize = AtomicUsize::new(0);
+        ProcessId(ID_COUNTER.fetch_add(1, Ordering::SeqCst))
     }
 
     pub(crate) fn from(id: usize) -> Self {
-        Id(id)
+        ProcessId(id)
     }
 }
 
-impl Default for Id {
+impl Default for ProcessId {
     fn default() -> Self {
-        Id::new()
+        ProcessId::new()
     }
 }

@@ -35,11 +35,11 @@ fn panic(info: &PanicInfo) -> ! {
 
 #[cfg(test)]
 mod tests {
-    use martim::allocator::HEAP_SIZE;
     use alloc::boxed::Box;
     use alloc::collections::LinkedList;
     use alloc::vec;
     use alloc::vec::Vec;
+    use martim::allocator::HEAP_SIZE;
 
     #[test_case]
     fn simple_allocation_box_syntax() {
@@ -47,7 +47,6 @@ mod tests {
         let heap_value_2 = box 13;
         assert_eq!(*heap_value_1, 41);
         assert_eq!(*heap_value_2, 13);
-
     }
     #[test_case]
     fn simple_allocation() {

@@ -95,6 +95,7 @@ pub fn test_runner(tests: &[&dyn Testable]) {
     for test in tests {
         test.run();
     }
+    serial_println!("{} tests finished successfully", tests.len());
     exit_qemu(QemuExitCode::Success);
 }
 
