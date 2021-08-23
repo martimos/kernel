@@ -6,11 +6,11 @@ use crate::multitasking::thread::stack::Stack;
 mod stack;
 
 pub struct Thread {
-    id: ThreadId,
-    priority: Priority,
-    state: State,
+    pub id: ThreadId,
+    pub priority: Priority,
+    pub state: State,
     stack: Stack,
-    stack_pointer: usize,
+    pub stack_pointer: usize,
 }
 
 impl Thread {
@@ -22,10 +22,6 @@ impl Thread {
             stack: Stack::allocate(),
             stack_pointer: 0,
         }
-    }
-
-    pub fn id(&self) -> ThreadId {
-        self.id
     }
 
     pub fn set_state(&mut self, new: State) {

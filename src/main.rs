@@ -1,4 +1,5 @@
 #![feature(custom_test_frameworks)]
+#![feature(box_syntax)]
 #![test_runner(martim::test_runner)]
 #![reexport_test_harness_main = "test_main"]
 #![no_std]
@@ -13,6 +14,7 @@ use bootloader::{entry_point, BootInfo};
 use martim::filesystem::vfs;
 #[cfg(not(test))]
 use martim::hlt_loop;
+use martim::multitasking::thread::Priority;
 use martim::task::executor::Executor;
 use martim::task::{keyboard, Task};
 use martim::{serial_print, serial_println, vga_clear, vga_println};
@@ -62,20 +64,32 @@ $$ | \_/ $$ |\$$$$$$$ |$$ |       \$$$$  |$$ |$$ | $$ | $$ |
     //     hlt();
     // }
 
-    #[cfg(not(test))]
-    main();
+    martim::multitasking::spawn_thread(
+        box move || {
+            serial_println!("starting executor");
+            let mut executor = Executor::default();
+            executor.spawn(Task::new(keyboard::print_keypresses()));
+            executor.spawn(Task::new(example_task()));
+            executor.run();
+        },
+        Priority::Normal,
+    )
+    .expect("unable to spawn thread for executor");
 
     #[cfg(test)]
     test_main();
 
-    let mut executor = Executor::default();
-    executor.spawn(Task::new(keyboard::print_keypresses()));
-    executor.spawn(Task::new(example_task()));
-    executor.run();
+    #[cfg(not(test))]
+    main();
+
+    serial_println!("shutting down...");
+    hlt_loop()
 }
 
 fn main() {
-    vga_println!("Hello, {}!", "World");
+    serial_println!("starting multitasking");
+
+    martim::multitasking::schedule()
 }
 
 async fn async_number() -> u32 {

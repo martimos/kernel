@@ -16,11 +16,13 @@ pub struct ProcessId(usize);
 impl ProcessId {
     pub fn new() -> Self {
         static ID_COUNTER: AtomicUsize = AtomicUsize::new(0);
-        ProcessId(ID_COUNTER.fetch_add(1, Ordering::SeqCst))
+        ID_COUNTER.fetch_add(1, Ordering::SeqCst).into()
     }
+}
 
-    pub(crate) fn from(id: usize) -> Self {
-        ProcessId(id)
+impl From<usize> for ProcessId {
+    fn from(v: usize) -> Self {
+        Self(v)
     }
 }
 
