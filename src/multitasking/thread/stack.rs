@@ -1,5 +1,6 @@
 use alloc::boxed::Box;
-use core::ops::{Index, IndexMut};
+use core::fmt::{Debug, Formatter};
+use core::ops::{Index, IndexMut, Range, RangeFrom, RangeInclusive, RangeTo, RangeToInclusive};
 
 const STACK_SIZE: usize = 4096;
 
@@ -33,9 +34,13 @@ impl Stack {
     }
 }
 
-impl IndexMut<usize> for Stack {
-    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
-        &mut self.data[index]
+impl Debug for Stack {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("Stack")
+            .field("bottom", &self.bottom())
+            .field("top", &self.top())
+            .field("len", &self.len())
+            .finish()
     }
 }
 
@@ -43,7 +48,83 @@ impl Index<usize> for Stack {
     type Output = u8;
 
     fn index(&self, index: usize) -> &Self::Output {
-        &self.data[index]
+        &self.data.index(index)
+    }
+}
+
+impl IndexMut<usize> for Stack {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        self.data.index_mut(index)
+    }
+}
+
+impl Index<Range<usize>> for Stack {
+    type Output = [u8];
+
+    fn index(&self, index: Range<usize>) -> &Self::Output {
+        &self.data.index(index)
+    }
+}
+
+impl IndexMut<Range<usize>> for Stack {
+    fn index_mut(&mut self, index: Range<usize>) -> &mut Self::Output {
+        self.data.index_mut(index)
+    }
+}
+
+impl Index<RangeFrom<usize>> for Stack {
+    type Output = [u8];
+
+    fn index(&self, index: RangeFrom<usize>) -> &Self::Output {
+        &self.data.index(index)
+    }
+}
+
+impl IndexMut<RangeFrom<usize>> for Stack {
+    fn index_mut(&mut self, index: RangeFrom<usize>) -> &mut Self::Output {
+        self.data.index_mut(index)
+    }
+}
+
+impl Index<RangeTo<usize>> for Stack {
+    type Output = [u8];
+
+    fn index(&self, index: RangeTo<usize>) -> &Self::Output {
+        &self.data.index(index)
+    }
+}
+
+impl IndexMut<RangeTo<usize>> for Stack {
+    fn index_mut(&mut self, index: RangeTo<usize>) -> &mut Self::Output {
+        self.data.index_mut(index)
+    }
+}
+
+impl Index<RangeToInclusive<usize>> for Stack {
+    type Output = [u8];
+
+    fn index(&self, index: RangeToInclusive<usize>) -> &Self::Output {
+        &self.data.index(index)
+    }
+}
+
+impl IndexMut<RangeToInclusive<usize>> for Stack {
+    fn index_mut(&mut self, index: RangeToInclusive<usize>) -> &mut Self::Output {
+        self.data.index_mut(index)
+    }
+}
+
+impl Index<RangeInclusive<usize>> for Stack {
+    type Output = [u8];
+
+    fn index(&self, index: RangeInclusive<usize>) -> &Self::Output {
+        &self.data.index(index)
+    }
+}
+
+impl IndexMut<RangeInclusive<usize>> for Stack {
+    fn index_mut(&mut self, index: RangeInclusive<usize>) -> &mut Self::Output {
+        self.data.index_mut(index)
     }
 }
 

@@ -5,8 +5,6 @@ use spin::Mutex;
 
 use scheduler::Scheduler;
 
-use crate::hlt_loop;
-use crate::multitasking::thread::Priority;
 use crate::syscall::error::Errno;
 
 pub mod process;
@@ -21,15 +19,7 @@ lazy_static! {
     static ref SCHEDULER: Mutex<Scheduler> = Mutex::new(Scheduler::new());
 }
 
-pub fn init() {
-    let idle_thread = SCHEDULER.lock().spawn_thread(
-        box move || {
-            hlt_loop();
-        },
-        Priority::Low,
-    );
-    SCHEDULER.lock().set_current(idle_thread);
-}
+pub fn init() {}
 
 pub fn spawn_thread(task: Box<Task>, prio: thread::Priority) -> Result<thread::ThreadId, Errno> {
     Ok(SCHEDULER.lock().spawn_thread(task, prio).lock().id)
@@ -37,4 +27,5 @@ pub fn spawn_thread(task: Box<Task>, prio: thread::Priority) -> Result<thread::T
 
 pub fn schedule() -> ! {
     SCHEDULER.lock().schedule()
+    // FIXME: this is bad, mutex is not released
 }

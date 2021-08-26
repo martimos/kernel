@@ -82,8 +82,7 @@ $$ | \_/ $$ |\$$$$$$$ |$$ |       \$$$$  |$$ |$$ | $$ | $$ |
     #[cfg(not(test))]
     main();
 
-    serial_println!("shutting down...");
-    hlt_loop()
+    panic!("kmain returned")
 }
 
 fn main() {

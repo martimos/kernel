@@ -1,3 +1,4 @@
+use core::fmt::Debug;
 use core::sync::atomic::AtomicUsize;
 use core::sync::atomic::Ordering;
 
@@ -5,6 +6,7 @@ use crate::multitasking::thread::stack::Stack;
 
 mod stack;
 
+#[derive(Debug)]
 pub struct Thread {
     pub id: ThreadId,
     pub priority: Priority,
