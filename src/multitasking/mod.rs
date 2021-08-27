@@ -13,7 +13,7 @@ pub mod thread;
 
 mod switch;
 
-pub type Task = dyn 'static + FnOnce() + Send + Sync;
+pub type Work = dyn 'static + FnOnce() + Send + Sync;
 
 lazy_static! {
     static ref SCHEDULER: Mutex<Scheduler> = Mutex::new(Scheduler::new());
@@ -21,8 +21,8 @@ lazy_static! {
 
 pub fn init() {}
 
-pub fn spawn_thread(task: Box<Task>, prio: thread::Priority) -> Result<thread::ThreadId, Errno> {
-    Ok(SCHEDULER.lock().spawn_thread(task, prio).lock().id)
+pub fn spawn_thread(work: Box<Work>, prio: thread::Priority) -> Result<thread::ThreadId, Errno> {
+    Ok(SCHEDULER.lock().spawn_thread(work, prio).lock().id)
 }
 
 pub fn schedule() -> ! {

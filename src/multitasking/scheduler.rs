@@ -10,7 +10,7 @@ use x86_64::instructions::interrupts;
 use crate::hlt_loop;
 use crate::multitasking::switch::switch;
 use crate::multitasking::thread::{Priority, State, Thread, ThreadId};
-use crate::multitasking::Task;
+use crate::multitasking::Work;
 use crate::serial_println;
 
 pub struct Scheduler {
@@ -46,8 +46,8 @@ impl Scheduler {
         }
     }
 
-    pub(crate) fn spawn_thread(&self, task: Box<Task>, prio: Priority) -> Arc<Mutex<Thread>> {
-        let thread = Arc::new(Mutex::new(Scheduler::prepare_thread(task, prio)));
+    pub(crate) fn spawn_thread(&self, work: Box<Work>, prio: Priority) -> Arc<Mutex<Thread>> {
+        let thread = Arc::new(Mutex::new(Scheduler::prepare_thread(work, prio)));
         let thread_id = thread.lock().id;
 
         let irq_disabled = interrupts::are_enabled();
@@ -63,7 +63,7 @@ impl Scheduler {
         thread.clone()
     }
 
-    fn prepare_thread(task: Box<Task>, prio: Priority) -> Thread {
+    fn prepare_thread(_task: Box<Work>, prio: Priority) -> Thread {
         const U64_WIDTH: usize = size_of::<u64>();
         const REGISTERS_WIDTH: usize = size_of::<ThreadRegisters>();
 
@@ -80,9 +80,7 @@ impl Scheduler {
         stack.write_at(index, [0_u8; REGISTERS_WIDTH].as_slice());
         unsafe {
             let registers: *mut ThreadRegisters = (stack.bottom() + index) as *mut ThreadRegisters;
-            // (*registers).rip = task.as_ref() as *const _ as *const () as u64;
             (*registers).rip = thread_start as *const () as u64;
-            crate::serial_println!("set rip to {:?}", thread_start as *const ());
             (*registers).rbx = 0xDEADBEEFDEADBEEF;
             (*registers).rflags = 0x1202u64;
         }
@@ -97,8 +95,6 @@ impl Scheduler {
             None => panic!("no next thread"),
             Some(task) => task,
         };
-
-        serial_println!("switch to {:?}", next_thread);
 
         let next_stack_pointer;
         {
@@ -155,10 +151,11 @@ struct ThreadRegisters {
 }
 
 extern "C" fn thread_start() {
-    serial_println!("starting new thread");
+    serial_println!("thread_start");
 }
 
 extern "C" fn thread_die() -> ! {
+    serial_println!("thread_die");
     hlt_loop();
 }
 
@@ -188,7 +185,7 @@ mod tests {
 
     #[test_case]
     fn test_ugly_box_deref_works() {
-        let foo: Box<Task> = Box::new(move || {});
+        let foo: Box<Work> = Box::new(move || {});
         let addr_value = foo.as_ref() as *const _ as *const () as u64;
         let box_raw_addr = Box::into_raw(foo) as *const () as u64;
         assert_eq!(addr_value, box_raw_addr);
