@@ -77,6 +77,9 @@ impl<'a> Writer<'a> {
                     }
                 }
                 self.x_pos += 8;
+                if self.x_pos >= self.info.unwrap().horizontal_resolution {
+                    self.new_line();
+                }
             }
         }
     }

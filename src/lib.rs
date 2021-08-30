@@ -1,10 +1,15 @@
 #![no_std]
 #![cfg_attr(test, no_main)]
-#![feature(custom_test_frameworks)]
 #![feature(abi_x86_interrupt)]
 #![feature(alloc_error_handler)]
+#![feature(array_methods)]
+#![feature(asm)]
+#![feature(box_syntax)]
+#![feature(const_fn_trait_bound)]
 #![feature(const_mut_refs)]
+#![feature(custom_test_frameworks)]
 #![feature(async_stream)]
+#![feature(naked_functions)]
 #![feature(thread_local)]
 #![test_runner(crate::test_runner)]
 #![reexport_test_harness_main = "test_main"]
@@ -13,6 +18,7 @@ extern crate alloc;
 
 use core::panic::PanicInfo;
 
+use bootloader::boot_info::Optional;
 #[cfg(test)]
 use bootloader::entry_point;
 use bootloader::BootInfo;
@@ -21,14 +27,14 @@ use x86_64::VirtAddr;
 #[cfg(test)]
 use crate::filesystem::vfs;
 use crate::memory::BootInfoFrameAllocator;
-use bootloader::boot_info::Optional;
 
 pub mod allocator;
-pub mod context;
 pub mod filesystem;
 pub mod gdt;
 pub mod interrupts;
+pub mod kresult;
 pub mod memory;
+pub mod multitasking;
 pub mod serial;
 pub mod syscall;
 pub mod task;
@@ -62,6 +68,7 @@ pub fn exit_qemu(exit_code: QemuExitCode) {
     }
 }
 
+#[inline]
 pub fn hlt_loop() -> ! {
     loop {
         x86_64::instructions::hlt();
@@ -88,6 +95,7 @@ pub fn test_runner(tests: &[&dyn Testable]) {
     for test in tests {
         test.run();
     }
+    serial_println!("{} tests finished successfully", tests.len());
     exit_qemu(QemuExitCode::Success);
 }
 
@@ -107,7 +115,7 @@ fn test_kernel_main(boot_info: &'static mut BootInfo) -> ! {
     serial_print!("init...");
     init();
     init_heap(boot_info);
-    context::init();
+    multitasking::init();
     vfs::init();
     serial_println!("done");
 

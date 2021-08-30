@@ -6,6 +6,7 @@ use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame};
 
 use crate::gdt;
 use crate::hlt_loop;
+use crate::multitasking::schedule;
 use crate::vga_println;
 
 // "Remapped" PICS chosen as 32 to 47
@@ -86,6 +87,8 @@ extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: InterruptStackFr
     unsafe {
         clear_interrupt(InterruptIndex::Timer);
     }
+
+    // crate::multitasking::schedule();
 }
 
 extern "x86-interrupt" fn page_fault_handler(

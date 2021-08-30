@@ -28,21 +28,25 @@ pub fn _print(args: ::core::fmt::Arguments) {
 }
 
 #[cfg(not(debug_assertions))]
-pub fn _print(args: ::core::fmt::Arguments) {
+pub fn _print(_: ::core::fmt::Arguments) {
     /*
     serial printing is disabled for non-debug builds
      */
 }
 
 /// Prints to the host through the serial interface.
+/// Only enabled in debug builds.
 #[macro_export]
 macro_rules! serial_print {
+    () => ();
+    ("") => ();
     ($($arg:tt)*) => {
         $crate::serial::_print(format_args!($($arg)*));
     };
 }
 
 /// Prints to the host through the serial interface, appending a newline.
+/// Only enabled in debug builds.
 #[macro_export]
 macro_rules! serial_println {
     () => ($crate::serial_print!("\n"));
