@@ -2,6 +2,7 @@ use core::sync::atomic::AtomicUsize;
 use core::sync::atomic::Ordering;
 
 use crate::multitasking::thread::stack::Stack;
+use crate::multitasking::Work;
 
 mod stack;
 
@@ -11,16 +12,18 @@ pub struct Thread {
     pub state: State,
     stack: Stack,
     pub stack_pointer: usize,
+    pub work: Option<Work>,
 }
 
 impl Thread {
-    pub fn new(priority: Priority) -> Self {
+    pub fn new(work: Work, priority: Priority) -> Self {
         Self {
             id: ThreadId::new(),
             priority,
             state: State::Ready,
             stack: Stack::allocate(),
             stack_pointer: 0,
+            work: Some(work),
         }
     }
 

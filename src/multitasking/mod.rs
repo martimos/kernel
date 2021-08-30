@@ -13,19 +13,28 @@ pub mod thread;
 
 mod switch;
 
-pub type Work = dyn 'static + FnOnce() + Send + Sync;
+pub type Work = Box<dyn FnOnce() + Send + Sync>;
 
-lazy_static! {
-    static ref SCHEDULER: Mutex<Scheduler> = Mutex::new(Scheduler::new());
+static mut SCHEDULER: Option<Scheduler> = None;
+
+pub fn init() {
+    unsafe {
+        SCHEDULER = Some(Scheduler::new());
+    }
 }
 
-pub fn init() {}
-
-pub fn spawn_thread(work: Box<Work>, prio: thread::Priority) -> Result<thread::ThreadId, Errno> {
-    Ok(SCHEDULER.lock().spawn_thread(work, prio).lock().id)
+pub fn spawn_thread(work: Work, prio: thread::Priority) -> Result<thread::ThreadId, Errno> {
+    unsafe { SCHEDULER.as_mut().unwrap().spawn_thread(work, prio) }
 }
 
 pub fn schedule() -> ! {
-    SCHEDULER.lock().schedule()
-    // FIXME: this is bad, mutex is not released
+    unsafe { SCHEDULER.as_mut().unwrap().schedule() }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test_case]
+    fn test_atomic_counter() {}
 }

@@ -8,27 +8,21 @@ use spin::Mutex;
 use x86_64::instructions::interrupts;
 
 use crate::hlt_loop;
+use crate::kresult::KResult;
 use crate::multitasking::switch::switch;
 use crate::multitasking::thread::{Priority, State, Thread, ThreadId};
-use crate::multitasking::Work;
+use crate::multitasking::{Work, SCHEDULER};
 use crate::serial_println;
 
 pub struct Scheduler {
     current_thread: Arc<Mutex<Thread>>,
     ready_queue: Mutex<VecDeque<Arc<Mutex<Thread>>>>,
     finish_queue: Mutex<VecDeque<Arc<Mutex<Thread>>>>,
-
-    threads: Mutex<BTreeMap<ThreadId, Arc<Mutex<Thread>>>>,
 }
 
 lazy_static! {
     static ref IDLE_THREAD: Arc<Mutex<Thread>> = {
-        let thread = Scheduler::prepare_thread(
-            box move || {
-                hlt_loop();
-            },
-            Priority::Low,
-        );
+        let thread = Scheduler::prepare_thread(box move || hlt_loop(), Priority::Low);
         Arc::new(Mutex::new(thread))
     };
 }
@@ -37,37 +31,41 @@ impl Scheduler {
     pub fn new() -> Self {
         Scheduler {
             current_thread: {
-                IDLE_THREAD.lock().state = State::Running;
-                IDLE_THREAD.clone()
+                let thread = IDLE_THREAD.clone();
+                {
+                    let mut thread_guard = thread.lock();
+                    thread_guard.state = State::Running;
+                }
+                thread
             },
             ready_queue: Mutex::new(VecDeque::new()),
             finish_queue: Mutex::new(VecDeque::new()),
-            threads: Mutex::new(BTreeMap::new()),
         }
     }
 
-    pub(crate) fn spawn_thread(&self, work: Box<Work>, prio: Priority) -> Arc<Mutex<Thread>> {
-        let thread = Arc::new(Mutex::new(Scheduler::prepare_thread(work, prio)));
-        let thread_id = thread.lock().id;
+    pub(crate) fn spawn_thread(&mut self, work: Work, prio: Priority) -> KResult<ThreadId> {
+        let thread = Scheduler::prepare_thread(work, prio);
+        let thread_id = thread.id;
+        let thread_mutex = Mutex::new(thread);
+        let thread_arc = Arc::new(thread_mutex);
 
         let irq_disabled = interrupts::are_enabled();
         interrupts::disable();
         // without interrupts
-        self.ready_queue.lock().push_back(thread.clone());
-        self.threads.lock().insert(thread_id, thread.clone());
+        self.ready_queue.lock().push_back(thread_arc.clone());
 
         if irq_disabled {
             interrupts::enable()
         }
 
-        thread.clone()
+        Ok(thread_id)
     }
 
-    fn prepare_thread(_task: Box<Work>, prio: Priority) -> Thread {
+    fn prepare_thread(work: Work, prio: Priority) -> Thread {
         const U64_WIDTH: usize = size_of::<u64>();
         const REGISTERS_WIDTH: usize = size_of::<ThreadRegisters>();
 
-        let mut thread = Thread::new(prio);
+        let mut thread = Thread::new(work, prio);
         let stack = thread.stack_mut();
         let mut index = stack.len();
 
@@ -80,6 +78,7 @@ impl Scheduler {
         stack.write_at(index, [0_u8; REGISTERS_WIDTH].as_slice());
         unsafe {
             let registers: *mut ThreadRegisters = (stack.bottom() + index) as *mut ThreadRegisters;
+            // (*registers).rip = work as *const () as u64;
             (*registers).rip = thread_start as *const () as u64;
             (*registers).rbx = 0xDEADBEEFDEADBEEF;
             (*registers).rflags = 0x1202u64;
@@ -88,6 +87,16 @@ impl Scheduler {
         let stack_bottom = stack.bottom();
         thread.set_stack_pointer(stack_bottom + index);
         thread
+    }
+
+    fn take_current_work(&mut self) -> Work {
+        let mut work = None;
+        unsafe {
+            let mut guard = SCHEDULER.as_mut().unwrap().current_thread.lock();
+            swap(&mut guard.work, &mut work);
+        }
+
+        work.expect("no current work in scheduler")
     }
 
     pub fn schedule(&mut self) -> ! {
@@ -106,6 +115,7 @@ impl Scheduler {
         swap(&mut self.current_thread, &mut next_thread);
         let old_thread = next_thread; // rename to avoid confusion in the code
         let mut old_thread_guard = old_thread.lock();
+        let old_thread_id = old_thread_guard.id;
         let old_state = old_thread_guard.state;
         let old_stack_pointer = &mut old_thread_guard.stack_pointer as *mut usize;
 
@@ -118,7 +128,10 @@ impl Scheduler {
                 // do not deallocate - stack is reqiured for context switch
                 self.finish_queue.lock().push_back(old_thread.clone());
             }
-            _ => unreachable!("old state was not running or finished, but {:?}", old_state),
+            _ => unreachable!(
+                "state of old thread with id {:?} was not running or finished, but {:?}",
+                old_thread_id, old_state
+            ),
         }
         drop(old_thread_guard); // release lock
 
@@ -150,8 +163,13 @@ struct ThreadRegisters {
     rip: u64,
 }
 
-extern "C" fn thread_start() {
+unsafe extern "C" fn thread_start() {
     serial_println!("thread_start");
+    let work = crate::multitasking::SCHEDULER
+        .as_mut()
+        .unwrap()
+        .take_current_work();
+    work();
 }
 
 extern "C" fn thread_die() -> ! {
@@ -165,13 +183,12 @@ mod tests {
 
     #[test_case]
     fn test_spawn_creates_thread() {
-        let sched = Scheduler::new();
+        let mut sched = Scheduler::new();
         assert_eq!(0, sched.ready_queue.lock().len());
-        assert_eq!(0, sched.threads.lock().len());
         let result = sched.spawn_thread(box move || {}, Priority::High);
-        let thread_id = result.lock().id;
+        assert!(result.is_ok());
+        let thread_id = result.unwrap();
         assert_eq!(1, sched.ready_queue.lock().len());
-        assert_eq!(1, sched.threads.lock().len());
 
         let thread = sched
             .ready_queue
@@ -181,13 +198,5 @@ mod tests {
         assert_eq!(thread_id, thread.lock().id);
         assert_eq!(Priority::High, thread.lock().priority);
         assert_eq!(State::Ready, thread.lock().state);
-    }
-
-    #[test_case]
-    fn test_ugly_box_deref_works() {
-        let foo: Box<Work> = Box::new(move || {});
-        let addr_value = foo.as_ref() as *const _ as *const () as u64;
-        let box_raw_addr = Box::into_raw(foo) as *const () as u64;
-        assert_eq!(addr_value, box_raw_addr);
     }
 }

@@ -32,13 +32,13 @@ pub mod allocator;
 pub mod filesystem;
 pub mod gdt;
 pub mod interrupts;
+pub mod kresult;
 pub mod memory;
+pub mod multitasking;
 pub mod serial;
 pub mod syscall;
 pub mod task;
 pub mod vga_buffer;
-
-pub mod multitasking;
 
 pub fn init() {
     gdt::init(); // init global descriptor table
