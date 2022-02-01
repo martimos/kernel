@@ -1,6 +1,6 @@
 use crate::scheduler::priority::Priority;
 use crate::scheduler::task::Task;
-use crate::scheduler::NO_PRIORITIES;
+use crate::scheduler::NUM_PRIORITIES;
 use alloc::rc::Rc;
 use core::arch::asm;
 use core::cell::RefCell;
@@ -27,7 +27,7 @@ impl Default for QueueHead {
 
 /// Realize a priority queue for tasks
 pub struct PriorityTaskQueue {
-    queues: [QueueHead; NO_PRIORITIES],
+    queues: [QueueHead; NUM_PRIORITIES],
     prio_bitmap: u64,
 }
 

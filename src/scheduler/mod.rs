@@ -12,12 +12,12 @@ pub mod scheduler;
 pub mod switch;
 pub mod task;
 
-pub const NO_PRIORITIES: usize = 32;
+pub const NUM_PRIORITIES: usize = 32;
 pub const STACK_SIZE: usize = 0x2000;
 
 static mut SCHEDULER: Option<scheduler::Scheduler> = None;
 
-/// Initialite module, must be called once, and only once
+/// Initialise module, must be called once, and only once
 pub fn init() {
     unsafe {
         SCHEDULER = Some(scheduler::Scheduler::new());
@@ -73,7 +73,7 @@ pub fn wakeup_task(task: Rc<RefCell<Task>>) {
     unsafe { SCHEDULER.as_mut().unwrap().wakeup_task(task) }
 }
 
-/// Get the TaskID of the current running task
-pub fn get_current_taskid() -> Pid {
+/// Get the PID of the current running task
+pub fn get_current_pid() -> Pid {
     unsafe { SCHEDULER.as_ref().unwrap().get_current_pid() }
 }

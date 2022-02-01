@@ -1,4 +1,4 @@
-use crate::scheduler::NO_PRIORITIES;
+use crate::scheduler::NUM_PRIORITIES;
 use core::fmt::{Display, Formatter};
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Clone, Copy)]
@@ -29,7 +29,7 @@ impl Display for Priority {
     }
 }
 
-pub const REALTIME_PRIORITY: Priority = Priority::from(NO_PRIORITIES as u8 - 1);
+pub const REALTIME_PRIORITY: Priority = Priority::from(NUM_PRIORITIES as u8 - 1);
 pub const HIGH_PRIORITY: Priority = Priority::from(24);
 pub const NORMAL_PRIORITY: Priority = Priority::from(16);
 pub const LOW_PRIORITY: Priority = Priority::from(0);

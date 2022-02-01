@@ -108,7 +108,7 @@ extern "C" fn greet() {
     for _ in 0..5 {
         serial_println!(
             "hello from task {} with greeting {}",
-            scheduler::get_current_taskid(),
+            scheduler::get_current_pid(),
             cnt
         );
         cnt += 1;

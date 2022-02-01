@@ -1,7 +1,7 @@
+use crate::hlt_loop;
 use crate::scheduler::pid::Pid;
 use crate::scheduler::priority::{Priority, LOW_PRIORITY};
 use crate::scheduler::{do_exit, STACK_SIZE};
-use crate::{hlt_loop, serial_println};
 use alloc::alloc::{alloc, dealloc};
 use alloc::rc::Rc;
 use core::alloc::Layout;
@@ -85,12 +85,6 @@ impl Task {
             );
         }
 
-        serial_println!(
-            "allocate stack for task {} (*stack: 0x{:X})",
-            id,
-            stack as usize
-        );
-
         Task {
             pid: id,
             prio,
@@ -106,12 +100,6 @@ impl Task {
 impl Drop for Task {
     fn drop(&mut self) {
         if unsafe { self.stack != &mut BOOT_STACK } {
-            serial_println!(
-                "deallocate stack of task {} (*stack: 0x{:X})",
-                self.pid,
-                self.stack as usize
-            );
-
             // deallocate stack
             unsafe {
                 dealloc(self.stack as *mut u8, Layout::new::<Stack>());
