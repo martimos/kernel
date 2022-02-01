@@ -1,5 +1,6 @@
 use core::fmt;
 
+use crate::serial_println;
 use bootloader::boot_info::{FrameBuffer, FrameBufferInfo, PixelFormat};
 use font8x8::UnicodeFonts;
 use spin::Mutex;
@@ -62,6 +63,9 @@ impl<'a> Writer<'a> {
 
         match byte {
             b'\n' => self.new_line(),
+            b'\xFE' => {
+                // for some reason, this is a backspace
+            }
             _ => {
                 let c = font8x8::BASIC_FONTS
                     .get(byte as char)

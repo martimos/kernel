@@ -4,7 +4,7 @@ use crate::filesystem::stat::Stat;
 use crate::filesystem::{FileSystem, FsId};
 use crate::syscall::error::Errno;
 use alloc::boxed::Box;
-use alloc::prelude::v1::Vec;
+use alloc::vec::Vec;
 
 /// A file system that has all files and will
 /// fail any write operation with ENOSPC.
