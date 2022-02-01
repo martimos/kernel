@@ -1,6 +1,5 @@
 use core::fmt;
 
-use crate::serial_println;
 use bootloader::boot_info::{FrameBuffer, FrameBufferInfo, PixelFormat};
 use font8x8::UnicodeFonts;
 use spin::Mutex;

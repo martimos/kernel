@@ -4,9 +4,9 @@ use spin;
 use x86_64::structures::idt::PageFaultErrorCode;
 use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame};
 
-use crate::gdt;
 use crate::hlt_loop;
 use crate::vga_println;
+use crate::{gdt, scheduler};
 
 // "Remapped" PICS chosen as 32 to 47
 pub const PIC_1_OFFSET: u8 = 32;
@@ -86,6 +86,8 @@ extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: InterruptStackFr
     unsafe {
         clear_interrupt(InterruptIndex::Timer);
     }
+
+    scheduler::schedule();
 }
 
 extern "x86-interrupt" fn page_fault_handler(

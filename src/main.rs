@@ -9,11 +9,13 @@ extern crate alloc;
 use core::panic::PanicInfo;
 
 use bootloader::{entry_point, BootInfo};
+use x86_64::instructions::hlt;
 
-use martim::context;
 use martim::filesystem::vfs;
 #[cfg(not(test))]
 use martim::hlt_loop;
+use martim::scheduler;
+use martim::scheduler::priority::NORMAL_PRIORITY;
 use martim::task::executor::Executor;
 use martim::task::{keyboard, Task};
 use martim::{serial_print, serial_println, vga_clear, vga_println};
@@ -38,7 +40,7 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     serial_print!("init kernel...");
     martim::init();
     martim::init_heap(boot_info);
-    context::init();
+    scheduler::init();
     vfs::init();
     serial_println!("done");
 
@@ -69,10 +71,16 @@ $$ | \_/ $$ |\$$$$$$$ |$$ |       \$$$$  |$$ |$$ | $$ | $$ |
     #[cfg(test)]
     test_main();
 
-    let mut executor = Executor::default();
-    executor.spawn(Task::new(example_task()));
-    executor.spawn(Task::new(keyboard::print_keypresses()));
-    executor.run();
+    for _i in 0..2 {
+        scheduler::spawn(greet, NORMAL_PRIORITY).unwrap();
+    }
+
+    scheduler::spawn(example_tasks, NORMAL_PRIORITY).unwrap();
+
+    scheduler::reschedule();
+
+    serial_println!("scheduler done");
+    martim::hlt_loop()
 }
 
 fn main() {
@@ -86,6 +94,26 @@ async fn async_number() -> u32 {
 async fn example_task() {
     let number = async_number().await;
     vga_println!("async number: {}", number);
+}
+
+extern "C" fn example_tasks() {
+    let mut executor = Executor::default();
+    executor.spawn(Task::new(example_task()));
+    executor.spawn(Task::new(keyboard::print_keypresses()));
+    executor.run();
+}
+
+extern "C" fn greet() {
+    let mut cnt: usize = 0;
+    for _ in 0..5 {
+        serial_println!(
+            "hello from task {} with greeting {}",
+            scheduler::get_current_taskid(),
+            cnt
+        );
+        cnt += 1;
+        hlt();
+    }
 }
 
 #[cfg(test)]

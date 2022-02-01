@@ -1,10 +1,11 @@
 #![no_std]
 #![cfg_attr(test, no_main)]
-#![feature(custom_test_frameworks)]
 #![feature(abi_x86_interrupt)]
 #![feature(alloc_error_handler)]
-#![feature(const_mut_refs)]
 #![feature(async_stream)]
+#![feature(const_mut_refs)]
+#![feature(custom_test_frameworks)]
+#![feature(naked_functions)]
 #![feature(thread_local)]
 #![test_runner(crate::test_runner)]
 #![reexport_test_harness_main = "test_main"]
@@ -24,11 +25,11 @@ use crate::memory::BootInfoFrameAllocator;
 use bootloader::boot_info::Optional;
 
 pub mod allocator;
-pub mod context;
 pub mod filesystem;
 pub mod gdt;
 pub mod interrupts;
 pub mod memory;
+pub mod scheduler;
 pub mod serial;
 pub mod syscall;
 pub mod task;
@@ -107,7 +108,6 @@ fn test_kernel_main(boot_info: &'static mut BootInfo) -> ! {
     serial_print!("init...");
     init();
     init_heap(boot_info);
-    context::init();
     vfs::init();
     serial_println!("done");
 

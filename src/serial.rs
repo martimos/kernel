@@ -28,7 +28,7 @@ pub fn _print(args: ::core::fmt::Arguments) {
 }
 
 #[cfg(not(debug_assertions))]
-pub fn _print(args: ::core::fmt::Arguments) {
+pub fn _print(_args: ::core::fmt::Arguments) {
     /*
     serial printing is disabled for non-debug builds
      */
