@@ -11,7 +11,6 @@ use core::panic::PanicInfo;
 use bootloader::{entry_point, BootInfo};
 use x86_64::instructions::hlt;
 
-use martim::filesystem::vfs;
 #[cfg(not(test))]
 use martim::hlt_loop;
 use martim::scheduler;
@@ -41,7 +40,6 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     martim::init();
     martim::init_heap(boot_info);
     scheduler::init();
-    vfs::init();
     serial_println!("done");
 
     vga_clear!();

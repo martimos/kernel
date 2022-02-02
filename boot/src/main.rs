@@ -23,6 +23,7 @@ fn main() {
         let path = PathBuf::from(args.next().unwrap());
         path.canonicalize().unwrap()
     };
+
     let no_boot = if let Some(arg) = args.next() {
         match arg.as_str() {
             "--no-run" => true,

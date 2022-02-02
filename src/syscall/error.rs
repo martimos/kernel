@@ -1,6 +1,4 @@
-use core::result;
-
-pub type Result<T, E = Errno> = result::Result<T, E>;
+pub type Result<T, E = Errno> = core::result::Result<T, E>;
 
 impl From<Errno> for usize {
     fn from(e: Errno) -> Self {

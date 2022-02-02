@@ -6,6 +6,7 @@ use crate::scheduler::task::{ProcessStatus, Task};
 use crate::scheduler::NUM_PRIORITIES;
 use crate::serial_println;
 use crate::syscall::error::Errno;
+use crate::Result;
 use alloc::collections::{BTreeMap, VecDeque};
 use alloc::rc::Rc;
 use core::cell::RefCell;
@@ -47,7 +48,7 @@ impl Scheduler {
         }
     }
 
-    pub fn spawn(&mut self, func: extern "C" fn(), prio: Priority) -> Result<Pid, Errno> {
+    pub fn spawn(&mut self, func: extern "C" fn(), prio: Priority) -> Result<Pid> {
         without_interrupts(|| {
             let prio_number = prio.as_u8() as usize;
             if prio_number >= NUM_PRIORITIES {

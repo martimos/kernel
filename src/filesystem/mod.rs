@@ -1,14 +1,15 @@
 use crate::filesystem::file_descriptor::FileDescriptor;
 use crate::filesystem::flags::{Mode, OpenFlags};
-use crate::syscall::error::Errno;
+use crate::filesystem::path::Path;
+use crate::Result;
 use alloc::boxed::Box;
 
 pub mod file_descriptor;
 pub mod flags;
 pub mod inode;
+pub mod path;
 pub mod stat;
 pub mod upnode;
-pub mod vfs;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct FsId(u32);
@@ -22,20 +23,20 @@ impl From<u32> for FsId {
 pub trait FileSystem {
     fn fsid(&self) -> FsId;
 
-    fn initialize(&self) -> bool;
+    fn initialize(&mut self) -> bool;
 
     fn is_read_only(&self) -> bool;
 
     fn open(
-        &self,
-        path: &'static str,
+        &mut self,
+        path: &dyn AsRef<Path>,
         mode: Mode,
         flags: OpenFlags,
-    ) -> Result<Box<dyn FileDescriptor>, Errno>;
+    ) -> Result<Box<dyn FileDescriptor>>;
 
-    fn mkdir(&self, path: &str, mode: Mode) -> Result<(), Errno>;
+    fn mkdir(&self, path: &dyn AsRef<Path>, mode: Mode) -> Result<()>;
 
-    fn rmdir(&self, path: &str) -> Result<(), Errno>;
+    fn rmdir(&self, path: &dyn AsRef<Path>) -> Result<()>;
 
     fn flush(&self);
 }

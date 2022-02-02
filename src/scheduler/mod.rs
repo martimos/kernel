@@ -1,7 +1,7 @@
 use crate::scheduler::pid::Pid;
 use crate::scheduler::priority::Priority;
 use crate::scheduler::task::Task;
-use crate::syscall::error::Errno;
+use crate::Result;
 use alloc::rc::Rc;
 use core::cell::RefCell;
 
@@ -25,7 +25,7 @@ pub fn init() {
 }
 
 /// Create a new kernel task
-pub fn spawn(func: extern "C" fn(), prio: Priority) -> Result<Pid, Errno> {
+pub fn spawn(func: extern "C" fn(), prio: Priority) -> Result<Pid> {
     unsafe { SCHEDULER.as_mut().unwrap().spawn(func, prio) }
 }
 

@@ -19,8 +19,6 @@ use bootloader::entry_point;
 use bootloader::BootInfo;
 use x86_64::VirtAddr;
 
-#[cfg(test)]
-use crate::filesystem::vfs;
 use crate::memory::BootInfoFrameAllocator;
 use bootloader::boot_info::Optional;
 
@@ -34,6 +32,8 @@ pub mod serial;
 pub mod syscall;
 pub mod task;
 pub mod vga_buffer;
+
+pub use syscall::error::Result; // re-export Result<T, E = syscall::error::Errno>
 
 pub fn init() {
     gdt::init(); // init global descriptor table
@@ -108,7 +108,6 @@ fn test_kernel_main(boot_info: &'static mut BootInfo) -> ! {
     serial_print!("init...");
     init();
     init_heap(boot_info);
-    vfs::init();
     serial_println!("done");
 
     test_main();

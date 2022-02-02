@@ -1,9 +1,8 @@
-use crate::syscall::error::Errno;
-use alloc::vec::Vec;
+use crate::Result;
 
 pub trait Inode {
-    fn read_bytes(&self, _offset: usize, _buffer: Vec<u8>) -> Result<usize, Errno>;
-    fn write_bytes(&self, _offset: usize, _buffer: Vec<u8>) -> Result<usize, Errno>;
+    fn read_at(&self, off: u64, buf: &mut dyn AsMut<[u8]>) -> Result<u64>;
+    fn write_at(&mut self, off: u64, buf: &dyn AsRef<[u8]>) -> Result<u64>;
 
     fn size(&self) -> usize;
 }
