@@ -90,21 +90,22 @@ fn main() {
 }
 
 extern "C" fn pci_stuff() {
-    // for dev in PCI::devices() {
-    //     serial_println!(
-    //         "pci device on bus {}, slot {}, function {}: {:X}:{:X}\n\theader type: {:?} (mf: {})\n\tclass/prog: {:?}/{:#X}\n\tstatus: {:?}",
-    //         dev.bus(),
-    //         dev.slot(),
-    //         dev.function(),
-    //         dev.vendor(),
-    //         dev.device(),
-    //         dev.header_type(),
-    //         dev.is_multi_function(),
-    //         dev.class(),
-    //         dev.prog_if(),
-    //         dev.status(),
-    //     );
-    // }
+    for dev in PCI::devices() {
+        serial_println!(
+            "pci device on bus {}, slot {}, function {}: {:X}:{:X}\n\theader type: {:?} (mf: {})\n\tclass/prog: {:?}/{:#X}\n\tstatus: {:?}",
+            dev.bus(),
+            dev.slot(),
+            dev.function(),
+            dev.vendor(),
+            dev.device(),
+            dev.header_type(),
+            dev.is_multi_function(),
+            dev.class(),
+            dev.prog_if(),
+            dev.status(),
+        );
+    }
+
     let pci_device = PCI::devices()
         .filter(|dev| {
             dev.class() == PCIDeviceClass::MassStorageController(MassStorageSubClass::IDEController)
@@ -120,6 +121,7 @@ extern "C" fn pci_stuff() {
         ide_controller.supported_udma_modes()
     );
     serial_println!("active UDMA mode: {:?}", ide_controller.active_udma_mode());
+    ide_controller.foo();
 }
 
 async fn async_number() -> u32 {

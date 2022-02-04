@@ -1,11 +1,13 @@
 use crate::driver::pci::device::{MassStorageSubClass, PCIDevice, PCIDeviceClass};
 use crate::driver::pci::header::PCIStandardHeaderDevice;
 use crate::{serial_print, serial_println};
+use alloc::vec::Vec;
 use bitflags::bitflags;
 use core::alloc::Layout;
 use core::arch::asm;
 use core::ops::Deref;
 use core::ptr::read_volatile;
+use x86_64::instructions::hlt;
 use x86_64::instructions::interrupts::without_interrupts;
 use x86_64::instructions::port::{Port, PortReadOnly, PortWriteOnly};
 
@@ -196,7 +198,7 @@ impl IDEController {
     }
 
     pub unsafe fn wait_for_not_busy(&mut self) {
-        for _ in 0..4 {
+        for _ in 0..16 {
             let _ = self.status();
         }
         while self.status().contains(Status::BUSY) {} // wait for !BUSY
@@ -212,6 +214,50 @@ impl IDEController {
 
     pub fn error(&mut self) -> Error {
         unsafe { Error::from_bits_truncate(self.primary.error.read()) }
+    }
+
+    pub fn foo(&mut self) {
+        /*
+        This is reading from the boot drive (unfortunately), but it's reading the full drive
+        and prints it to serial output.
+        Also, this doesn't terminate. If probably gets stuck in some of the polling loops.
+         */
+        unsafe {
+            for lba in 0_u32.. {
+                self.primary
+                    .drive_select
+                    .write(0xE0 | (((lba >> 24) & 0x0F) as u8) as u8);
+                self.primary.features.write(0);
+                self.primary.sector_count.write(1); // sector count
+                self.primary.lba_lo.write(lba as u8);
+                self.primary.lba_mid.write((lba >> 8) as u8);
+                self.primary.lba_hi.write((lba >> 16) as u8);
+                self.primary.command.write(Command::ReadSectors.into()); // TODO: disable the interrupt with iNIEN
+                self.wait_for_not_busy();
+                let mut data = [0_u16; 256];
+                without_interrupts(|| {
+                    self.wait_for_ready();
+                    while !self.status().contains(Status::DATA_READY) {}
+                    for i in 0..256 {
+                        data[i] = self.primary.data.read();
+                    }
+                });
+                data.as_slice()
+                    .align_to::<u8>()
+                    .1
+                    .iter()
+                    .map(|&b| b as char)
+                    .map(|c| {
+                        return if c.is_ascii() && !c.is_control() {
+                            c
+                        } else {
+                            '_'
+                        };
+                    })
+                    .for_each(|c| serial_print!("{}", c));
+                while !self.status().contains(Status::READY) {}
+            }
+        }
     }
 }
 
