@@ -2,8 +2,7 @@ use core::convert::TryInto;
 
 use error::Result;
 
-use crate::syscall::error::Errno;
-use crate::vga_println;
+use crate::{syscall::error::Errno, vga_println};
 
 pub mod error;
 

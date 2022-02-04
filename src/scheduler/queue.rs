@@ -1,9 +1,6 @@
-use crate::scheduler::priority::Priority;
-use crate::scheduler::task::Task;
-use crate::scheduler::NUM_PRIORITIES;
+use crate::scheduler::{priority::Priority, task::Task, NUM_PRIORITIES};
 use alloc::rc::Rc;
-use core::arch::asm;
-use core::cell::RefCell;
+use core::{arch::asm, cell::RefCell};
 
 struct QueueHead {
     head: Option<Rc<RefCell<Task>>>,

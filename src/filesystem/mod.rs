@@ -1,9 +1,14 @@
-use crate::filesystem::file_descriptor::FileDescriptor;
-use crate::filesystem::flags::{Mode, OpenFlags};
-use crate::filesystem::path::Path;
-use crate::Result;
+use crate::{
+    filesystem::{
+        file_descriptor::FileDescriptor,
+        flags::{Mode, OpenFlags},
+        path::Path,
+    },
+    Result,
+};
 use alloc::boxed::Box;
 
+pub mod fat32;
 pub mod file_descriptor;
 pub mod flags;
 pub mod inode;
@@ -23,10 +28,6 @@ impl From<u32> for FsId {
 pub trait FileSystem {
     fn fsid(&self) -> FsId;
 
-    fn initialize(&mut self) -> bool;
-
-    fn is_read_only(&self) -> bool;
-
     fn open(
         &mut self,
         path: &dyn AsRef<Path>,
@@ -37,6 +38,4 @@ pub trait FileSystem {
     fn mkdir(&self, path: &dyn AsRef<Path>, mode: Mode) -> Result<()>;
 
     fn rmdir(&self, path: &dyn AsRef<Path>) -> Result<()>;
-
-    fn flush(&self);
 }

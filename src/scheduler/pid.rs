@@ -1,5 +1,7 @@
-use core::fmt::{Display, Formatter};
-use core::sync::atomic::{AtomicU32, Ordering};
+use core::{
+    fmt::{Display, Formatter},
+    sync::atomic::{AtomicU32, Ordering},
+};
 
 static PID_COUNTER: AtomicU32 = AtomicU32::new(0);
 

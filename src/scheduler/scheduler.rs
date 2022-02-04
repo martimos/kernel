@@ -1,16 +1,24 @@
-use crate::scheduler::pid::Pid;
-use crate::scheduler::priority::Priority;
-use crate::scheduler::queue::PriorityTaskQueue;
-use crate::scheduler::switch::switch;
-use crate::scheduler::task::{ProcessStatus, Task};
-use crate::scheduler::NUM_PRIORITIES;
-use crate::serial_println;
-use crate::syscall::error::Errno;
-use crate::Result;
-use alloc::collections::{BTreeMap, VecDeque};
-use alloc::rc::Rc;
-use core::cell::RefCell;
-use core::sync::atomic::{AtomicU32, Ordering};
+use crate::{
+    scheduler::{
+        pid::Pid,
+        priority::Priority,
+        queue::PriorityTaskQueue,
+        switch::switch,
+        task::{ProcessStatus, Task},
+        NUM_PRIORITIES,
+    },
+    serial_println,
+    syscall::error::Errno,
+    Result,
+};
+use alloc::{
+    collections::{BTreeMap, VecDeque},
+    rc::Rc,
+};
+use core::{
+    cell::RefCell,
+    sync::atomic::{AtomicU32, Ordering},
+};
 use spin::Mutex;
 use x86_64::instructions::interrupts::without_interrupts;
 
@@ -73,10 +81,10 @@ impl Scheduler {
     pub fn exit(&mut self) -> ! {
         without_interrupts(|| {
             if self.current_task.borrow().status != ProcessStatus::Idle {
-                serial_println!(
-                    "marking task {} to be finished",
-                    self.current_task.borrow().pid
-                );
+                // serial_println!(
+                //     "marking task {} to be finished",
+                //     self.current_task.borrow().pid
+                // );
                 self.current_task.borrow_mut().status = ProcessStatus::Finished;
                 self.task_count.fetch_sub(1, Ordering::SeqCst);
             } else {
@@ -174,31 +182,31 @@ impl Scheduler {
         }
 
         if let Some(task) = next_task {
-            let (new_id, new_stack_pointer) = {
+            let (_new_id, new_stack_pointer) = {
                 let mut borrowed = task.borrow_mut();
                 borrowed.status = ProcessStatus::Running;
                 (borrowed.pid, borrowed.last_stack_pointer)
             };
 
             if current_status == ProcessStatus::Running {
-                serial_println!("task {} is ready", current_pid);
+                // serial_println!("task {} is ready", current_pid);
                 self.current_task.borrow_mut().status = ProcessStatus::Ready;
                 self.ready_queue.lock().push(self.current_task.clone());
             } else if current_status == ProcessStatus::Finished {
-                serial_println!("task {} is finished", current_pid);
+                // serial_println!("task {} is finished", current_pid);
                 self.current_task.borrow_mut().status = ProcessStatus::Invalid;
                 // release the task later, because the stack is required
                 // to call the function "switch"
                 self.finished_tasks.lock().push_back(current_pid);
             }
 
-            serial_println!(
-                "switch from pid:{} to pid:{} (*stack: {:#X}, {:#X})",
-                current_pid,
-                new_id,
-                unsafe { *current_stack_pointer },
-                new_stack_pointer,
-            );
+            // serial_println!(
+            //     "switch from pid:{} to pid:{} (*stack: {:#X}, {:#X})",
+            //     current_pid,
+            //     new_id,
+            //     unsafe { *current_stack_pointer },
+            //     new_stack_pointer,
+            // );
 
             self.current_task = task;
 

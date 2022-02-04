@@ -4,7 +4,16 @@ use std::{
     time::Duration,
 };
 
-const RUN_ARGS: &[&str] = &["--no-reboot", "-s", "-serial", "stdio"];
+const RUN_ARGS: &[&str] = &[
+    "--no-reboot",
+    "-s",
+    "-serial",
+    "stdio",
+    "-drive",
+    "file=fat:rw:./disk,format=raw,if=ide",
+    "-monitor",
+    "telnet::45454,server,nowait",
+];
 const TEST_ARGS: &[&str] = &[
     "-device",
     "isa-debug-exit,iobase=0xf4,iosize=0x04",
@@ -13,6 +22,8 @@ const TEST_ARGS: &[&str] = &[
     "-display",
     "none",
     "--no-reboot",
+    "-drive",
+    "file=fat:rw:./disk,format=raw,if=ide",
 ];
 const TEST_TIMEOUT_SECS: u64 = 30;
 
@@ -50,14 +61,17 @@ fn main() {
     let binary_kind = runner_utils::binary_kind(&kernel_binary_path);
     if binary_kind.is_test() {
         run_cmd.args(TEST_ARGS);
+        println!("Boot command:\n{:?}\n", run_cmd);
 
         let exit_status = run_test_command(run_cmd);
         match exit_status.code() {
             Some(33) => {} // success
-            other => panic!("Test failed (exit code: {:?})", other),
+            Some(other) => panic!("Test failed (exit code: {:?})", other),
+            None => panic!("Test failed (no exit code)"),
         }
     } else {
         run_cmd.args(RUN_ARGS);
+        println!("Boot command:\n{:?}\n", run_cmd);
 
         let exit_status = run_cmd.status().unwrap();
         if !exit_status.success() {

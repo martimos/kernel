@@ -1,12 +1,9 @@
 use lazy_static::lazy_static;
 use pic8259::ChainedPics;
 use spin;
-use x86_64::structures::idt::PageFaultErrorCode;
-use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame};
+use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame, PageFaultErrorCode};
 
-use crate::hlt_loop;
-use crate::vga_println;
-use crate::{gdt, scheduler};
+use crate::{gdt, hlt_loop, scheduler, vga_println};
 
 // "Remapped" PICS chosen as 32 to 47
 pub const PIC_1_OFFSET: u8 = 32;
@@ -20,13 +17,19 @@ lazy_static! {
         let mut idt = InterruptDescriptorTable::new();
         idt.breakpoint.set_handler_fn(breakpoint_handler);
         idt.page_fault.set_handler_fn(page_fault_handler);
+        idt.overflow.set_handler_fn(overflow_handler);
         idt.general_protection_fault
             .set_handler_fn(general_protection_fault_handler);
+        idt.stack_segment_fault
+            .set_handler_fn(stack_segment_fault_handler);
+        idt.segment_not_present
+            .set_handler_fn(segment_not_present_fault_handler);
         unsafe {
             idt.double_fault
                 .set_handler_fn(double_fault_handler)
                 .set_stack_index(gdt::DOUBLE_FAULT_IST_INDEX);
         }
+        idt[46].set_handler_fn(ignore_handler);
         idt[InterruptIndex::Timer.as_usize()].set_handler_fn(timer_interrupt_handler);
         idt[InterruptIndex::Keyboard.as_usize()].set_handler_fn(keyboard_interrupt_handler);
         idt
@@ -54,6 +57,12 @@ impl InterruptIndex {
     }
 }
 
+extern "x86-interrupt" fn ignore_handler(_stack_frame: InterruptStackFrame) {
+    unsafe {
+        PICS.lock().notify_end_of_interrupt(46);
+    }
+}
+
 extern "x86-interrupt" fn general_protection_fault_handler(
     stack_frame: InterruptStackFrame,
     error_code: u64,
@@ -73,11 +82,50 @@ extern "x86-interrupt" fn breakpoint_handler(stack_frame: InterruptStackFrame) {
     vga_println!("EXCEPTION: BREAKPOINT\n{:#?}", stack_frame);
 }
 
+extern "x86-interrupt" fn overflow_handler(stack_frame: InterruptStackFrame) {
+    panic!("EXCEPTION: OVERFLOW\n{:#?}", stack_frame);
+}
+
 extern "x86-interrupt" fn double_fault_handler(
     stack_frame: InterruptStackFrame,
     _error_code: u64,
 ) -> ! {
-    panic!("EXCEPTION: DOUBLE_FAULT\n{:#?}", stack_frame);
+    panic!("EXCEPTION: DOUBLE FAULT\n{:#?}", stack_frame);
+}
+
+extern "x86-interrupt" fn stack_segment_fault_handler(
+    stack_frame: InterruptStackFrame,
+    error_code: u64,
+) {
+    panic!(
+        "EXCEPTION: STACK SEGMENT FAULT\nerror code: {}\n{:#?}",
+        error_code, stack_frame
+    );
+}
+
+extern "x86-interrupt" fn segment_not_present_fault_handler(
+    stack_frame: InterruptStackFrame,
+    error_code: u64,
+) {
+    panic!(
+        r#"EXCEPTION: SEGMENT NOT PRESENT FAULT
+error code: {} ({:#b})
+external: {}
+table[index]: {}[{}]
+{:#?}"#,
+        error_code,
+        error_code,
+        (error_code & 1) == 1,
+        match (error_code & 0b110) >> 1 {
+            0b00 => "GDT",
+            0b01 => "IDT",
+            0b10 => "LDT",
+            0b11 => "IDT",
+            _ => "unknown",
+        },
+        ((error_code & ((1 << 14) - 1)) >> 3),
+        stack_frame
+    );
 }
 
 extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: InterruptStackFrame) {

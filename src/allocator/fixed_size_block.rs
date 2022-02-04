@@ -1,7 +1,5 @@
 use alloc::alloc::GlobalAlloc;
-use core::alloc::Layout;
-use core::ptr::NonNull;
-use core::{mem, ptr};
+use core::{alloc::Layout, mem, ptr, ptr::NonNull};
 
 use super::Locked;
 

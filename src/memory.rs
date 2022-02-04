@@ -1,6 +1,34 @@
-use bootloader::boot_info::{MemoryRegionKind, MemoryRegions};
-use x86_64::structures::paging::{FrameAllocator, OffsetPageTable, PhysFrame, Size4KiB};
-use x86_64::{structures::paging::PageTable, PhysAddr, VirtAddr};
+use core::mem::swap;
+
+use bootloader::{
+    boot_info::{MemoryRegionKind, MemoryRegions, Optional},
+    BootInfo,
+};
+use spin::Mutex;
+use x86_64::{
+    structures::paging::{
+        mapper::TranslateResult, FrameAllocator, OffsetPageTable, PageTable, PhysFrame, Size4KiB,
+        Translate,
+    },
+    PhysAddr, VirtAddr,
+};
+
+#[cfg(test)]
+use crate::serial_println;
+
+use crate::{allocator, vga_buffer};
+
+static mut OFFSET_PAGE_TABLE: Option<Mutex<OffsetPageTable>> = None;
+
+pub fn translate(virt_addr: VirtAddr) -> TranslateResult {
+    unsafe {
+        OFFSET_PAGE_TABLE
+            .as_ref()
+            .expect("offset page table must be initialized")
+            .lock()
+            .translate(virt_addr)
+    }
+}
 
 /// Initialize a new OffsetPageTable.
 ///
@@ -82,5 +110,28 @@ unsafe impl FrameAllocator<Size4KiB> for BootInfoFrameAllocator {
         let frame = self.usable_frames().nth(self.next);
         self.next += 1;
         frame
+    }
+}
+
+pub fn init_heap(boot_info: &'static mut BootInfo) {
+    if let Some(framebuffer) = boot_info.framebuffer.as_mut() {
+        vga_buffer::init_vga_buffer(framebuffer);
+    } else {
+        #[cfg(test)]
+        serial_println!("no vga buffer given, skipping initialization");
+        #[cfg(not(test))]
+        panic!("no vga buffer given");
+    }
+
+    let addr = match boot_info.physical_memory_offset {
+        Optional::Some(addr) => addr,
+        Optional::None => panic!("no boot info physical memory offset given"),
+    };
+    let phys_mem_offset = VirtAddr::new(addr);
+    let mut mapper = unsafe { init(phys_mem_offset) };
+    let mut frame_allocator = unsafe { BootInfoFrameAllocator::init(&boot_info.memory_regions) };
+    allocator::init_heap(&mut mapper, &mut frame_allocator).expect("heap initialization failed");
+    unsafe {
+        swap(&mut OFFSET_PAGE_TABLE, &mut Some(Mutex::new(mapper)));
     }
 }

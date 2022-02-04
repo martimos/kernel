@@ -1,6 +1,5 @@
 use alloc::alloc::{GlobalAlloc, Layout};
-use core::mem;
-use core::ptr;
+use core::{mem, ptr};
 
 use crate::allocator::align_up;
 

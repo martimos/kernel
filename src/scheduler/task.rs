@@ -1,13 +1,14 @@
-use crate::hlt_loop;
-use crate::scheduler::pid::Pid;
-use crate::scheduler::priority::{Priority, LOW_PRIORITY};
-use crate::scheduler::{do_exit, STACK_SIZE};
-use alloc::alloc::{alloc, dealloc};
-use alloc::rc::Rc;
-use core::alloc::Layout;
-use core::cell::RefCell;
-use core::mem::size_of;
-use core::ptr::write_bytes;
+use crate::scheduler::{
+    do_exit,
+    pid::Pid,
+    priority::{Priority, LOW_PRIORITY},
+    STACK_SIZE,
+};
+use alloc::{
+    alloc::{alloc, dealloc},
+    rc::Rc,
+};
+use core::{alloc::Layout, cell::RefCell, mem::size_of, ptr::write_bytes};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum ProcessStatus {
@@ -80,7 +81,7 @@ impl Task {
         let stack = unsafe { alloc(layout) as *mut Stack };
         if stack as usize == 0 {
             panic!(
-                "unable to allocate another kernel stack of size {} (out of kernel memory)",
+                "unable to allocate another kernel stack of size {} (allocation failure)",
                 layout.size()
             );
         }
@@ -131,8 +132,7 @@ struct State {
 }
 
 extern "C" fn leave_task() -> ! {
-    do_exit();
-    hlt_loop()
+    do_exit()
 }
 
 impl Task {

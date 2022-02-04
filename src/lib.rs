@@ -15,14 +15,12 @@ extern crate alloc;
 use core::panic::PanicInfo;
 
 #[cfg(test)]
-use bootloader::entry_point;
-use bootloader::BootInfo;
-use x86_64::VirtAddr;
+use bootloader::{entry_point, BootInfo};
 
-use crate::memory::BootInfoFrameAllocator;
-use bootloader::boot_info::Optional;
+pub use syscall::error::Result;
 
 pub mod allocator;
+pub mod driver;
 pub mod filesystem;
 pub mod gdt;
 pub mod interrupts;
@@ -33,7 +31,7 @@ pub mod syscall;
 pub mod task;
 pub mod vga_buffer;
 
-pub use syscall::error::Result; // re-export Result<T, E = syscall::error::Errno>
+// re-export Result<T, E = syscall::error::Errno>
 
 pub fn init() {
     gdt::init(); // init global descriptor table
@@ -107,31 +105,11 @@ entry_point!(test_kernel_main);
 fn test_kernel_main(boot_info: &'static mut BootInfo) -> ! {
     serial_print!("init...");
     init();
-    init_heap(boot_info);
+    memory::init_heap(boot_info);
     serial_println!("done");
 
     test_main();
     hlt_loop();
-}
-
-pub fn init_heap(boot_info: &'static mut BootInfo) {
-    if let Some(framebuffer) = boot_info.framebuffer.as_mut() {
-        vga_buffer::init_vga_buffer(framebuffer);
-    } else {
-        #[cfg(test)]
-        serial_println!("no vga buffer given, skipping initialization");
-        #[cfg(not(test))]
-        panic!("no vga buffer given");
-    }
-
-    let addr = match boot_info.physical_memory_offset {
-        Optional::Some(addr) => addr,
-        Optional::None => panic!("no boot info physical memory offset given"),
-    };
-    let phys_mem_offset = VirtAddr::new(addr);
-    let mut mapper = unsafe { memory::init(phys_mem_offset) };
-    let mut frame_allocator = unsafe { BootInfoFrameAllocator::init(&boot_info.memory_regions) };
-    allocator::init_heap(&mut mapper, &mut frame_allocator).expect("heap initialization failed");
 }
 
 #[cfg(test)]

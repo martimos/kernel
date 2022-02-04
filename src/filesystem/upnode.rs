@@ -1,6 +1,5 @@
 use crate::filesystem::inode::Inode;
-use alloc::boxed::Box;
-use alloc::rc::Rc;
+use alloc::{boxed::Box, rc::Rc};
 use spin::Mutex;
 
 /// A node containing an Inode and its parent.

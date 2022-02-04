@@ -7,19 +7,20 @@
 
 extern crate alloc;
 
-use core::panic::PanicInfo;
-use core::sync::atomic::{AtomicU32, Ordering};
+use core::{
+    panic::PanicInfo,
+    sync::atomic::{AtomicU32, Ordering},
+};
 
 use bootloader::{entry_point, BootInfo};
-use martim::scheduler;
-use martim::scheduler::priority::NORMAL_PRIORITY;
+use martim::{scheduler, scheduler::priority::NORMAL_PRIORITY};
 use x86_64::instructions::hlt;
 
 entry_point!(main);
 
 fn main(boot_info: &'static mut BootInfo) -> ! {
     martim::init();
-    martim::init_heap(boot_info);
+    martim::memory::init_heap(boot_info);
     scheduler::init();
 
     test_main();

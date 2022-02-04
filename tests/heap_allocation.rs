@@ -14,8 +14,10 @@ use bootloader::{entry_point, BootInfo};
 entry_point!(main);
 
 fn main(boot_info: &'static mut BootInfo) -> ! {
-    use martim::allocator;
-    use martim::memory::{self, BootInfoFrameAllocator};
+    use martim::{
+        allocator,
+        memory::{self, BootInfoFrameAllocator},
+    };
     use x86_64::VirtAddr;
 
     martim::init();
@@ -35,11 +37,8 @@ fn panic(info: &PanicInfo) -> ! {
 
 #[cfg(test)]
 mod tests {
+    use alloc::{boxed::Box, collections::LinkedList, vec, vec::Vec};
     use martim::allocator::HEAP_SIZE;
-    use alloc::boxed::Box;
-    use alloc::collections::LinkedList;
-    use alloc::vec;
-    use alloc::vec::Vec;
 
     #[test_case]
     fn simple_allocation_box_syntax() {
@@ -47,7 +46,6 @@ mod tests {
         let heap_value_2 = box 13;
         assert_eq!(*heap_value_1, 41);
         assert_eq!(*heap_value_2, 13);
-
     }
     #[test_case]
     fn simple_allocation() {

@@ -1,6 +1,7 @@
 use alloc::string::String;
 use core::fmt::{Display, Formatter};
 
+#[derive(Ord, PartialOrd, Eq, PartialEq, Debug, Clone)]
 pub struct Path {
     inner: String,
 }

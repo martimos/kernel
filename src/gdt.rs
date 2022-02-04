@@ -1,10 +1,15 @@
 use lazy_static::lazy_static;
-use x86_64::instructions::segmentation::{DS, Segment};
-use x86_64::structures::gdt::{Descriptor, GlobalDescriptorTable, SegmentSelector};
-use x86_64::structures::tss::TaskStateSegment;
-use x86_64::VirtAddr;
-use x86_64::instructions::segmentation::CS;
-use x86_64::instructions::tables::load_tss;
+use x86_64::{
+    instructions::{
+        segmentation::{Segment, CS, DS},
+        tables::load_tss,
+    },
+    structures::{
+        gdt::{Descriptor, GlobalDescriptorTable, SegmentSelector},
+        tss::TaskStateSegment,
+    },
+    VirtAddr,
+};
 
 pub const DOUBLE_FAULT_IST_INDEX: u16 = 0;
 

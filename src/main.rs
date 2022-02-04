@@ -9,22 +9,34 @@ extern crate alloc;
 use core::panic::PanicInfo;
 
 use bootloader::{entry_point, BootInfo};
-use x86_64::instructions::hlt;
 
-#[cfg(not(test))]
-use martim::hlt_loop;
-use martim::scheduler;
-use martim::scheduler::priority::NORMAL_PRIORITY;
-use martim::task::executor::Executor;
-use martim::task::{keyboard, Task};
-use martim::{serial_print, serial_println, vga_clear, vga_println};
+use martim::driver::ide::IDEController;
+use martim::driver::pci::device::{MassStorageSubClass, PCIDeviceClass};
+use martim::driver::pci::header::PCIStandardHeaderDevice;
+use martim::{
+    driver::pci::PCI,
+    hlt_loop, scheduler,
+    scheduler::priority::NORMAL_PRIORITY,
+    serial_print, serial_println,
+    task::{executor::Executor, keyboard, Task},
+    vga_clear, vga_println,
+};
 
 /// This function is called on panic.
 #[cfg(not(test))]
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
-    serial_println!("{}, halting", info);
-    hlt_loop()
+    serial_println!(
+        "terminating task {}: {}",
+        scheduler::get_current_pid(),
+        info
+    );
+
+    if scheduler::get_current_pid().as_usize() == 0 {
+        hlt_loop()
+    } else {
+        scheduler::do_exit()
+    }
 }
 
 #[cfg(test)]
@@ -38,7 +50,7 @@ entry_point!(kernel_main);
 fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     serial_print!("init kernel...");
     martim::init();
-    martim::init_heap(boot_info);
+    martim::memory::init_heap(boot_info);
     scheduler::init();
     serial_println!("done");
 
@@ -58,31 +70,51 @@ $$ | \_/ $$ |\$$$$$$$ |$$ |       \$$$$  |$$ |$$ | $$ | $$ |
 "#
     );
 
-    // for i in 1.. {
-    //     vga_println!("{}", i);
-    //     hlt();
-    // }
-
     #[cfg(not(test))]
     main();
 
     #[cfg(test)]
     test_main();
 
-    for _i in 0..2 {
-        scheduler::spawn(greet, NORMAL_PRIORITY).unwrap();
-    }
-
-    scheduler::spawn(example_tasks, NORMAL_PRIORITY).unwrap();
-
-    scheduler::reschedule();
-
-    serial_println!("scheduler done");
-    martim::hlt_loop()
+    panic!("main returned")
 }
 
 fn main() {
     vga_println!("Hello, {}!", "World");
+
+    scheduler::spawn(just_panic, NORMAL_PRIORITY).unwrap();
+    scheduler::spawn(pci_stuff, NORMAL_PRIORITY).unwrap();
+    scheduler::spawn(example_tasks, NORMAL_PRIORITY).unwrap();
+
+    scheduler::reschedule();
+}
+
+extern "C" fn pci_stuff() {
+    // for dev in PCI::devices() {
+    //     vga_println!(
+    //         "pci device on bus {}, slot {}, function {}: {:X}:{:X}\n\theader type: {:?} (mf: {})\n\tclass/prog: {:?}/{:#X}\n\tstatus: {:?}",
+    //         dev.bus(),
+    //         dev.slot(),
+    //         dev.function(),
+    //         dev.vendor(),
+    //         dev.device(),
+    //         dev.header_type(),
+    //         dev.is_multi_function(),
+    //         dev.class(),
+    //         dev.prog_if(),
+    //         dev.status(),
+    //     );
+    // }
+    let pci_device = PCI::devices()
+        .filter(|dev| {
+            dev.class() == PCIDeviceClass::MassStorageController(MassStorageSubClass::IDEController)
+        })
+        .next()
+        .map(PCIStandardHeaderDevice::new)
+        .expect("need an IDE controller for this to work");
+    let mut ide_controller = IDEController::new(pci_device);
+    serial_println!("ide status: {:?}", ide_controller.status());
+    serial_println!("ide error: {:?}", ide_controller.error());
 }
 
 async fn async_number() -> u32 {
@@ -94,24 +126,16 @@ async fn example_task() {
     vga_println!("async number: {}", number);
 }
 
+extern "C" fn just_panic() {
+    serial_println!("Hi, my name is Pid {} and", scheduler::get_current_pid());
+    panic!("Welcome to MartimOS");
+}
+
 extern "C" fn example_tasks() {
     let mut executor = Executor::default();
     executor.spawn(Task::new(example_task()));
     executor.spawn(Task::new(keyboard::print_keypresses()));
     executor.run();
-}
-
-extern "C" fn greet() {
-    let mut cnt: usize = 0;
-    for _ in 0..5 {
-        serial_println!(
-            "hello from task {} with greeting {}",
-            scheduler::get_current_pid(),
-            cnt
-        );
-        cnt += 1;
-        hlt();
-    }
 }
 
 #[cfg(test)]

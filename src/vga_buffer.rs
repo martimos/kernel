@@ -48,7 +48,7 @@ impl<'a> Writer<'a> {
         for byte in s.bytes() {
             match byte {
                 // printable ASCII byte or newline
-                0x20..=0x7e | b'\n' => self.write_byte(byte),
+                0x20..=0x7e | b'\n' | b'\t' => self.write_byte(byte),
                 // not part of printable ASCII range
                 _ => self.write_byte(0xfe),
             }
@@ -64,6 +64,11 @@ impl<'a> Writer<'a> {
             b'\n' => self.new_line(),
             b'\xFE' => {
                 // for some reason, this is a backspace
+            }
+            b'\t' => {
+                for _ in 0..4 {
+                    self.write_byte(b' ');
+                }
             }
             _ => {
                 let c = font8x8::BASIC_FONTS

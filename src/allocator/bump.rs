@@ -1,5 +1,7 @@
-use core::alloc::{GlobalAlloc, Layout};
-use core::ptr;
+use core::{
+    alloc::{GlobalAlloc, Layout},
+    ptr,
+};
 
 use super::{align_up, Locked};
 

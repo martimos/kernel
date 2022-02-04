@@ -1,7 +1,7 @@
-use crate::scheduler::pid::Pid;
-use crate::scheduler::priority::Priority;
-use crate::scheduler::task::Task;
-use crate::Result;
+use crate::{
+    scheduler::{pid::Pid, priority::Priority, task::Task},
+    Result,
+};
 use alloc::rc::Rc;
 use core::cell::RefCell;
 
@@ -50,7 +50,7 @@ pub fn schedule() {
 }
 
 /// Terminate the current running task
-pub fn do_exit() {
+pub fn do_exit() -> ! {
     unsafe {
         SCHEDULER.as_mut().unwrap().exit();
     }
