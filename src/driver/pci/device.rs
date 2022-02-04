@@ -46,13 +46,13 @@ pub enum PCIDeviceClass {
     DisplayController,
     MultimediaController,
     MemoryController,
-    Bridge(BridgeSubclass),
+    Bridge(BridgeSubClass),
     SimpleCommunicationController,
     BaseSystemPeripheral,
     InputDeviceController,
     DockingStation,
     Processor,
-    // SerialBusController,
+    SerialBusController(SerialBusSubClass),
     // WirelessController,
     // IntelligentController,
     // SatelliteCommunicationController,
@@ -75,13 +75,48 @@ impl From<u16> for PCIDeviceClass {
             0x03 => Self::DisplayController,
             0x04 => Self::MultimediaController,
             0x05 => Self::MemoryController,
-            0x06 => Self::Bridge(BridgeSubclass::from(sub)),
+            0x06 => Self::Bridge(BridgeSubClass::from(sub)),
             0x07 => Self::SimpleCommunicationController,
             0x08 => Self::BaseSystemPeripheral,
             0x09 => Self::InputDeviceController,
             0x0A => Self::DockingStation,
             0x0B => Self::Processor,
+            0x0C => Self::SerialBusController(SerialBusSubClass::from(sub)),
             _ => panic!("unknown pci device class: {:#X}", v),
+        }
+    }
+}
+
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+pub enum SerialBusSubClass {
+    FireWireController,
+    ACCESSBusController,
+    SSA,
+    USBController,
+    FibreChannel,
+    SMBusController,
+    InfiniBandController,
+    IPMIInterface,
+    SERCOSInterface,
+    CANbusController,
+    Other,
+}
+
+impl From<u8> for SerialBusSubClass {
+    fn from(v: u8) -> Self {
+        match v {
+            0x0 => Self::FireWireController,
+            0x1 => Self::ACCESSBusController,
+            0x2 => Self::SSA,
+            0x3 => Self::USBController,
+            0x4 => Self::FibreChannel,
+            0x5 => Self::SMBusController,
+            0x6 => Self::InfiniBandController,
+            0x7 => Self::IPMIInterface,
+            0x8 => Self::SERCOSInterface,
+            0x9 => Self::CANbusController,
+            0x80 => Self::Other,
+            _ => panic!("unknown serial bus sub class"),
         }
     }
 }
@@ -112,7 +147,8 @@ impl From<u8> for MassStorageSubClass {
             0x06 => Self::SerialATAController,
             0x07 => Self::SerialAttachedSCSIController,
             0x08 => Self::NonVolatileMemoryController,
-            _ => Self::Other,
+            0x80 => Self::Other,
+            _ => panic!("unknown mass storage sub class"),
         }
     }
 }
@@ -143,13 +179,14 @@ impl From<u8> for NetworkSubClass {
             0x06 => Self::PICMG214MultiComputingController,
             0x07 => Self::InfinibandController,
             0x08 => Self::FabricController,
-            _ => Self::Other,
+            0x80 => Self::Other,
+            _ => panic!("unknown network sub class"),
         }
     }
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
-pub enum BridgeSubclass {
+pub enum BridgeSubClass {
     HostBridge,
     ISABridge,
     EISABridge,
@@ -163,7 +200,7 @@ pub enum BridgeSubclass {
     Other,
 }
 
-impl From<u8> for BridgeSubclass {
+impl From<u8> for BridgeSubClass {
     fn from(v: u8) -> Self {
         match v {
             0x00 => Self::HostBridge,
@@ -176,7 +213,8 @@ impl From<u8> for BridgeSubclass {
             0x07 => Self::CardBusBridge,
             0x08 => Self::RACEwayBridge,
             0x0A => Self::InfiniBand2PCIBridge,
-            _ => Self::Other,
+            0x80 => Self::Other,
+            _ => panic!("unknown bridge sub class"),
         }
     }
 }

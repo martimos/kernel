@@ -100,6 +100,16 @@ pub struct IDEController {
 }
 
 impl IDEController {
+    pub fn supported_udma_modes(&self) -> UDMAMode {
+        self.supported_udma_modes
+    }
+
+    pub fn active_udma_mode(&self) -> UDMAMode {
+        self.active_udma_mode
+    }
+}
+
+impl IDEController {
     pub fn new(device: PCIStandardHeaderDevice) -> Self {
         let class = device.class();
         match class {

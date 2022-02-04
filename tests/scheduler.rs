@@ -7,13 +7,14 @@
 
 extern crate alloc;
 
+use core::sync::atomic::AtomicBool;
 use core::{
     panic::PanicInfo,
     sync::atomic::{AtomicU32, Ordering},
 };
 
 use bootloader::{entry_point, BootInfo};
-use martim::{scheduler, scheduler::priority::NORMAL_PRIORITY};
+use martim::{scheduler, scheduler::priority::NORMAL_PRIORITY, serial_println};
 use x86_64::instructions::hlt;
 
 entry_point!(main);
@@ -76,4 +77,41 @@ extern "C" fn counter_two_tasks_fn() {
         COUNTER.fetch_add(1, Ordering::SeqCst);
         hlt();
     }
+}
+
+static FINISHED: AtomicBool = AtomicBool::new(false);
+
+/// If stacks don't get deallocated, we will run into an allocation failure
+/// way before we've reached 10000 tasks (at least with the current stack model).
+#[test_case]
+fn task_stack_is_deallocated() {
+    scheduler::spawn(task_stack_is_deallocated_spawner, NORMAL_PRIORITY).unwrap();
+
+    scheduler::reschedule();
+}
+
+const MAX_CONCURRENT: u32 = 10;
+
+extern "C" fn task_stack_is_deallocated_spawner() {
+    COUNTER.store(0, Ordering::SeqCst);
+    FINISHED.store(false, Ordering::SeqCst);
+
+    for _ in 0..10000 {
+        let i = COUNTER.load(Ordering::SeqCst);
+        if i > MAX_CONCURRENT {
+            scheduler::reschedule();
+        } else {
+            COUNTER.fetch_add(1, Ordering::SeqCst);
+            scheduler::spawn(task_stack_is_deallocated_fn, NORMAL_PRIORITY).unwrap();
+        }
+    }
+    FINISHED.store(true, Ordering::SeqCst);
+}
+
+extern "C" fn task_stack_is_deallocated_fn() {
+    let mut total = COUNTER.load(Ordering::SeqCst);
+    while COUNTER.load(Ordering::SeqCst) < MAX_CONCURRENT && !FINISHED.load(Ordering::SeqCst) {
+        scheduler::reschedule();
+    }
+    COUNTER.fetch_sub(1, Ordering::SeqCst);
 }
