@@ -1,13 +1,7 @@
-use crate::driver::pci::device::{MassStorageSubClass, PCIDevice, PCIDeviceClass};
+use crate::driver::pci::device::{MassStorageSubClass, PCIDeviceClass};
 use crate::driver::pci::header::PCIStandardHeaderDevice;
-use crate::{serial_print, serial_println};
-use alloc::vec::Vec;
+use crate::serial_println;
 use bitflags::bitflags;
-use core::alloc::Layout;
-use core::arch::asm;
-use core::ops::Deref;
-use core::ptr::read_volatile;
-use x86_64::instructions::hlt;
 use x86_64::instructions::interrupts::without_interrupts;
 use x86_64::instructions::port::{Port, PortReadOnly, PortWriteOnly};
 
@@ -52,48 +46,7 @@ impl Into<u8> for Command {
     }
 }
 
-pub struct ChannelsLBA28 {
-    ctrlbase: u16,
-    alternate_status: PortReadOnly<u8>,
-    device_control: PortWriteOnly<u8>,
-    drive_address: PortReadOnly<u8>,
-    iobase: u16,
-    data: Port<u16>,
-    error: PortReadOnly<u8>,
-    features: PortWriteOnly<u8>,
-    sector_count: Port<u8>,
-    lba_lo: Port<u8>,
-    lba_mid: Port<u8>,
-    lba_hi: Port<u8>,
-    drive_select: Port<u8>,
-    status: PortReadOnly<u8>,
-    command: PortWriteOnly<u8>,
-}
-
-impl ChannelsLBA28 {
-    pub fn new(ctrlbase: u16, iobase: u16) -> Self {
-        ChannelsLBA28 {
-            ctrlbase,
-            alternate_status: PortReadOnly::new(ctrlbase + 0),
-            device_control: PortWriteOnly::new(ctrlbase + 0),
-            drive_address: PortReadOnly::new(ctrlbase + 1),
-            iobase,
-            data: Port::new(iobase),
-            error: PortReadOnly::new(iobase + 1),
-            features: PortWriteOnly::new(iobase + 1),
-            sector_count: Port::new(iobase + 2),
-            lba_lo: Port::new(iobase + 3),
-            lba_mid: Port::new(iobase + 4),
-            lba_hi: Port::new(iobase + 5),
-            drive_select: Port::new(iobase + 6),
-            status: PortReadOnly::new(iobase + 7),
-            command: PortWriteOnly::new(iobase + 7),
-        }
-    }
-}
-
 pub struct IDEController {
-    inner: PCIStandardHeaderDevice,
     primary: ChannelsLBA28,
     secondary: ChannelsLBA28,
     initial_read: [u16; 256],
@@ -101,18 +54,8 @@ pub struct IDEController {
     active_udma_mode: UDMAMode,
 }
 
-impl IDEController {
-    pub fn supported_udma_modes(&self) -> UDMAMode {
-        self.supported_udma_modes
-    }
-
-    pub fn active_udma_mode(&self) -> UDMAMode {
-        self.active_udma_mode
-    }
-}
-
-impl IDEController {
-    pub fn new(device: PCIStandardHeaderDevice) -> Self {
+impl From<PCIStandardHeaderDevice> for IDEController {
+    fn from(device: PCIStandardHeaderDevice) -> Self {
         let class = device.class();
         match class {
             PCIDeviceClass::MassStorageController(sub) => match sub {
@@ -121,6 +64,14 @@ impl IDEController {
             },
             _ => panic!("pci device is not a mass storage controller"),
         }
+
+        /*
+        TODO: the following two TODOs refer to
+        https://wiki.osdev.org/IDE
+        where it is stated that
+        "Note that BAR1 and BAR3 specify 4 ports, but only the port at
+        offset 2 is used. Offsets 0, 1, and 3 should not be accessed."
+         */
 
         let prog_if = device.prog_if();
         let (primary_ctrlbase, primary_iobase) = match is_bit_set(prog_if as u64, 0) {
@@ -131,31 +82,43 @@ impl IDEController {
             true => (device.bar3() as u16, device.bar2() as u16), // TODO: this might not be correct
             false => (0x376, 0x170),
         };
+        let bus_master_ide = device.bar4();
+        let primary_master_base = bus_master_ide as u16;
+        let secondary_master_base = (bus_master_ide >> 16) as u16;
+
+        let mut primary_channels =
+            ChannelsLBA28::new(primary_ctrlbase, primary_iobase, primary_master_base);
+        let mut secondary_channels =
+            ChannelsLBA28::new(secondary_ctrlbase, secondary_iobase, secondary_master_base);
+        unsafe {
+            // disable interrupts
+            primary_channels.device_control.write(2);
+            secondary_channels.device_control.write(2);
+        }
 
         let mut controller = IDEController {
-            inner: device,
-            primary: ChannelsLBA28::new(primary_ctrlbase, primary_iobase),
-            secondary: ChannelsLBA28::new(secondary_ctrlbase, secondary_iobase),
+            primary: primary_channels,
+            secondary: secondary_channels,
             initial_read: [0; 256],
-            active_udma_mode: UDMAMode::empty(),
             supported_udma_modes: UDMAMode::empty(),
+            active_udma_mode: UDMAMode::empty(),
         };
-
         controller.identify();
-
         controller
     }
+}
 
+impl IDEController {
     fn identify(&mut self) {
         unsafe {
-            self.primary.drive_select.write(0xA0);
-            self.secondary.drive_select.write(0xB0);
+            self.primary.ports.drive_select.write(0xA0);
+            self.secondary.ports.drive_select.write(0xB0);
 
-            self.primary.lba_lo.write(0);
-            self.primary.lba_mid.write(0);
-            self.primary.lba_hi.write(0);
+            self.primary.ports.lba_lo.write(0);
+            self.primary.ports.lba_mid.write(0);
+            self.primary.ports.lba_hi.write(0);
 
-            self.primary.command.write(Command::Identify.into());
+            self.primary.ports.command.write(Command::Identify.into());
             let status = self.status();
             if status.bits == 0 {
                 panic!("drive does not exist");
@@ -164,7 +127,7 @@ impl IDEController {
             while self.status().contains(Status::BUSY) {
                 // hope that this doesn't become optimized
             }
-            if self.primary.lba_mid.read() != 0 || self.primary.lba_hi.read() != 0 {
+            if self.primary.ports.lba_mid.read() != 0 || self.primary.ports.lba_hi.read() != 0 {
                 panic!("drive is not ATA");
             }
             loop {
@@ -180,10 +143,13 @@ impl IDEController {
             self.wait_for_not_busy();
             without_interrupts(|| {
                 self.wait_for_ready();
-                self.primary.command.write(Command::ReadSectors.into());
+                self.primary
+                    .ports
+                    .command
+                    .write(Command::ReadSectors.into());
 
                 for i in 0..self.initial_read.len() {
-                    self.initial_read[i] = self.primary.data.read();
+                    self.initial_read[i] = self.primary.ports.data.read();
                 }
             });
 
@@ -204,16 +170,24 @@ impl IDEController {
         while self.status().contains(Status::BUSY) {} // wait for !BUSY
     }
 
+    pub fn supported_udma_modes(&self) -> UDMAMode {
+        self.supported_udma_modes
+    }
+
+    pub fn active_udma_mode(&self) -> UDMAMode {
+        self.active_udma_mode
+    }
+
     pub unsafe fn wait_for_ready(&mut self) {
         while !self.status().contains(Status::READY) {}
     }
 
     pub fn status(&mut self) -> Status {
-        unsafe { Status::from_bits_truncate(self.primary.status.read()) }
+        unsafe { Status::from_bits_truncate(self.primary.ports.status.read()) }
     }
 
     pub fn error(&mut self) -> Error {
-        unsafe { Error::from_bits_truncate(self.primary.error.read()) }
+        unsafe { Error::from_bits_truncate(self.primary.ports.error.read()) }
     }
 
     pub fn foo(&mut self) {
@@ -223,38 +197,44 @@ impl IDEController {
         Also, this doesn't terminate. If probably gets stuck in some of the polling loops.
          */
         unsafe {
+            let mut count = 0_u64;
             for lba in 0_u32.. {
                 self.primary
+                    .ports
                     .drive_select
                     .write(0xE0 | (((lba >> 24) & 0x0F) as u8) as u8);
-                self.primary.features.write(0);
-                self.primary.sector_count.write(1); // sector count
-                self.primary.lba_lo.write(lba as u8);
-                self.primary.lba_mid.write((lba >> 8) as u8);
-                self.primary.lba_hi.write((lba >> 16) as u8);
-                self.primary.command.write(Command::ReadSectors.into()); // TODO: disable the interrupt with iNIEN
+                self.primary.ports.features.write(0);
+                self.primary.ports.sector_count.write(1); // sector count
+                self.primary.ports.lba_lo.write(lba as u8);
+                self.primary.ports.lba_mid.write((lba >> 8) as u8);
+                self.primary.ports.lba_hi.write((lba >> 16) as u8);
+                self.primary
+                    .ports
+                    .command
+                    .write(Command::ReadSectors.into()); // TODO: disable the interrupt with iNIEN
                 self.wait_for_not_busy();
                 let mut data = [0_u16; 256];
                 without_interrupts(|| {
                     self.wait_for_ready();
                     while !self.status().contains(Status::DATA_READY) {}
                     for i in 0..256 {
-                        data[i] = self.primary.data.read();
+                        data[i] = self.primary.ports.data.read();
                     }
                 });
-                data.as_slice()
-                    .align_to::<u8>()
-                    .1
-                    .iter()
-                    .map(|&b| b as char)
-                    .map(|c| {
-                        return if c.is_ascii() && !c.is_control() {
-                            c
-                        } else {
-                            '_'
-                        };
-                    })
-                    .for_each(|c| serial_print!("{}", c));
+                count += data.as_slice().align_to::<u8>().1.len() as u64;
+                // data.as_slice()
+                //     .align_to::<u8>()
+                //     .1
+                //     .iter()
+                //     .map(|&b| b as char)
+                //     .map(|c| {
+                //         return if c.is_ascii() && !c.is_control() {
+                //             c
+                //         } else {
+                //             '_'
+                //         };
+                //     })
+                //     .for_each(|c| serial_print!("{}", c));
                 while !self.status().contains(Status::READY) {}
             }
         }
@@ -288,5 +268,60 @@ bitflags! {
         const MEDIA_CHANGED = 1 << 5;
         const UNCORRECTABLE_DATA_ERROR = 1 << 6;
         const BAD_BLOCK_DETECTED = 1 << 7;
+    }
+}
+
+#[allow(dead_code)] // a lot of fields are unused, but they exist according to spec, so we keep them
+pub struct ChannelsLBA28 {
+    ctrlbase: u16,
+    alternate_status: PortReadOnly<u8>,
+    device_control: PortWriteOnly<u8>,
+    drive_address: PortReadOnly<u8>,
+    iobase: u16,
+    ports: ChannelsLBA28DataPorts,
+    master_ports: ChannelsLBA28DataPorts,
+}
+
+impl ChannelsLBA28 {
+    pub fn new(ctrlbase: u16, iobase: u16, bus_master_ide: u16) -> Self {
+        ChannelsLBA28 {
+            ctrlbase,
+            alternate_status: PortReadOnly::new(ctrlbase + 0),
+            device_control: PortWriteOnly::new(ctrlbase + 0),
+            drive_address: PortReadOnly::new(ctrlbase + 1),
+            iobase,
+            ports: ChannelsLBA28DataPorts::new(iobase),
+            master_ports: ChannelsLBA28DataPorts::new(bus_master_ide),
+        }
+    }
+}
+
+pub struct ChannelsLBA28DataPorts {
+    data: Port<u16>,
+    error: PortReadOnly<u8>,
+    features: PortWriteOnly<u8>,
+    sector_count: Port<u8>,
+    lba_lo: Port<u8>,
+    lba_mid: Port<u8>,
+    lba_hi: Port<u8>,
+    drive_select: Port<u8>,
+    status: PortReadOnly<u8>,
+    command: PortWriteOnly<u8>,
+}
+
+impl ChannelsLBA28DataPorts {
+    pub fn new(iobase: u16) -> Self {
+        Self {
+            data: Port::new(iobase),
+            error: PortReadOnly::new(iobase + 1),
+            features: PortWriteOnly::new(iobase + 1),
+            sector_count: Port::new(iobase + 2),
+            lba_lo: Port::new(iobase + 3),
+            lba_mid: Port::new(iobase + 4),
+            lba_hi: Port::new(iobase + 5),
+            drive_select: Port::new(iobase + 6),
+            status: PortReadOnly::new(iobase + 7),
+            command: PortWriteOnly::new(iobase + 7),
+        }
     }
 }

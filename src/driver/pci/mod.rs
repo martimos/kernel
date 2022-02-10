@@ -12,6 +12,7 @@ const OFFSET_STATUS: u8 = 0x06;
 const OFFSET_HEADER_TYPE: u8 = 0x0E;
 const OFFSET_PROG_IF_REVISION_ID: u8 = 0x08;
 const OFFSET_CLASS_SUBCLASS: u8 = 0x0A;
+const OFFSET_BIST: u8 = 0x0F;
 
 pub mod device;
 pub mod header;
@@ -32,6 +33,9 @@ impl PCI {
 
 unsafe fn iterate_bus(bus: u8, devices: &mut Vec<PCIDevice>) {
     for slot in 0..32 {
+        // function 0 must be implemented by all devices, so if we don't get
+        // a device with function 0, there will not be any devices on other
+        // functions for the same bus and slot
         if let Some(dev) = check_device(bus, slot, 0) {
             if dev.is_multi_function() {
                 iterate_functions(bus, slot, devices);
@@ -54,7 +58,7 @@ unsafe fn check_device(bus: u8, slot: u8, function: u8) -> Option<PCIDevice> {
     if let Some((vendor, device)) = pci_check_vendor(bus, slot, function) {
         let header_type_raw = read_config_word(bus, slot, function, OFFSET_HEADER_TYPE) as u8;
         let header_type = PCIHeaderType::from(header_type_raw & ((1 << 7) - 1));
-        let multi_function = header_type_raw & (1 << 7) == (1 << 7);
+        let multi_function = header_type_raw & (1 << 7) > 0;
         let dev = PCIDevice::new(
             bus,
             slot,
@@ -80,12 +84,12 @@ unsafe fn pci_check_vendor(bus: u8, slot: u8, function: u8) -> Option<(u16, u16)
     Some((vendor, device))
 }
 
-unsafe fn read_config_double_word(bus: u8, slot: u8, func: u8, offset: u8) -> u32 {
-    read_config_word(bus, slot, func, offset) as u32
-        | ((read_config_word(bus, slot, func, offset + 2) as u32) << 16)
+unsafe fn read_config_double_word(bus: u8, slot: u8, function: u8, offset: u8) -> u32 {
+    read_config_word(bus, slot, function, offset) as u32
+        | ((read_config_word(bus, slot, function, offset + 2) as u32) << 16)
 }
 
-unsafe fn read_config_word(bus: u8, slot: u8, func: u8, offset: u8) -> u16 {
+unsafe fn read_config_word(bus: u8, slot: u8, function: u8, offset: u8) -> u16 {
     let mut config_address = Port::<u32>::new(CONFIG_ADDRESS);
     let mut config_data = Port::<u32>::new(CONFIG_DATA);
 
@@ -93,7 +97,7 @@ unsafe fn read_config_word(bus: u8, slot: u8, func: u8, offset: u8) -> u16 {
     address |= 1 << 31; // enable bit
     address |= (bus as u32) << 16;
     address |= (slot as u32) << 11;
-    address |= (func as u32) << 8;
+    address |= (function as u32) << 8;
     address |= (offset as u32) & 0xFC;
     config_address.write(address);
 

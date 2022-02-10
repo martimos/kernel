@@ -106,14 +106,15 @@ extern "C" fn pci_stuff() {
         );
     }
 
-    let pci_device = PCI::devices()
+    let mut ide_controller = PCI::devices()
         .filter(|dev| {
             dev.class() == PCIDeviceClass::MassStorageController(MassStorageSubClass::IDEController)
         })
         .next()
         .map(PCIStandardHeaderDevice::new)
+        .map(Into::<IDEController>::into)
         .expect("need an IDE controller for this to work");
-    let mut ide_controller = IDEController::new(pci_device);
+
     serial_println!("ide status: {:?}", ide_controller.status());
     serial_println!("ide error: {:?}", ide_controller.error());
     serial_println!(

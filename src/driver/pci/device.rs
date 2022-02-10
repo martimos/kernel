@@ -1,5 +1,5 @@
 use crate::driver::pci::{
-    read_config_word, OFFSET_CLASS_SUBCLASS, OFFSET_PROG_IF_REVISION_ID, OFFSET_STATUS,
+    read_config_word, OFFSET_BIST, OFFSET_CLASS_SUBCLASS, OFFSET_PROG_IF_REVISION_ID, OFFSET_STATUS,
 };
 use bitflags::bitflags;
 
@@ -16,6 +16,14 @@ bitflags! {
         const MHZ66_CAPABLE = 1 << 5;
         const CAPABILITIES_LIST = 1 << 4;
         const INTERRUPT = 1 << 3;
+    }
+}
+
+bitflags! {
+    pub struct BIST: u8 {
+        const BIST_CAPABLE = 1 << 7;
+        const START_BIST = 1 << 6;
+        const COMPLETION_CODE = (1 << 4) - 1;
     }
 }
 
@@ -43,7 +51,7 @@ pub enum PCIDeviceClass {
     Unclassified,
     MassStorageController(MassStorageSubClass),
     NetworkController(NetworkSubClass),
-    DisplayController,
+    DisplayController(DisplaySubClass),
     MultimediaController,
     MemoryController,
     Bridge(BridgeSubClass),
@@ -72,7 +80,7 @@ impl From<u16> for PCIDeviceClass {
             0x00 => Self::Unclassified,
             0x01 => Self::MassStorageController(MassStorageSubClass::from(sub)),
             0x02 => Self::NetworkController(NetworkSubClass::from(sub)),
-            0x03 => Self::DisplayController,
+            0x03 => Self::DisplayController(DisplaySubClass::from(sub)),
             0x04 => Self::MultimediaController,
             0x05 => Self::MemoryController,
             0x06 => Self::Bridge(BridgeSubClass::from(sub)),
@@ -83,6 +91,26 @@ impl From<u16> for PCIDeviceClass {
             0x0B => Self::Processor,
             0x0C => Self::SerialBusController(SerialBusSubClass::from(sub)),
             _ => panic!("unknown pci device class: {:#X}", v),
+        }
+    }
+}
+
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+pub enum DisplaySubClass {
+    VGACompatibleController,
+    XGAController,
+    NoVGA3DController,
+    Other,
+}
+
+impl From<u8> for DisplaySubClass {
+    fn from(v: u8) -> Self {
+        match v {
+            0x00 => Self::VGACompatibleController,
+            0x01 => Self::XGAController,
+            0x02 => Self::NoVGA3DController,
+            0x80 => Self::Other,
+            _ => panic!("unknown display sub class"),
         }
     }
 }
@@ -281,6 +309,11 @@ impl PCIDevice {
     pub fn status(&self) -> Status {
         let status = unsafe { read_config_word(self.bus, self.slot, self.function, OFFSET_STATUS) };
         Status::from_bits_truncate(status)
+    }
+
+    pub fn bist(&self) -> BIST {
+        let bist = unsafe { read_config_word(self.bus, self.slot, self.function, OFFSET_BIST) };
+        BIST::from_bits_truncate(bist as u8)
     }
 }
 
