@@ -1,14 +1,19 @@
 use crate::driver::ide::channel::IDEChannel;
+use crate::driver::ide::drive::IDEDrive;
 use crate::driver::pci::device::{InterruptPin, MassStorageSubClass, PCIDeviceClass};
 use crate::driver::pci::header::PCIStandardHeaderDevice;
 use crate::{serial_print, serial_println};
-use alloc::format;
+use alloc::sync::Arc;
+use alloc::vec::Vec;
+use alloc::{format, vec};
 use bitflags::bitflags;
 use core::fmt::{Debug, Formatter};
+use spin::Mutex;
 use x86_64::instructions::interrupts::without_interrupts;
 use x86_64::instructions::port::{Port, PortReadOnly, PortWriteOnly};
 
 pub mod channel;
+pub mod drive;
 
 bitflags! {
     pub struct UDMAMode: u8 {
@@ -52,10 +57,21 @@ impl Into<u8> for Command {
 }
 
 pub struct IDEController {
-    primary: Option<IDEChannel>,
-    secondary: Option<IDEChannel>,
+    primary: Arc<Mutex<IDEChannel>>,
+    secondary: Arc<Mutex<IDEChannel>>,
     interrupt_pin: InterruptPin,
     interrupt_line: Option<u8>,
+}
+
+impl IDEController {
+    pub fn drives(&self) -> Vec<IDEDrive> {
+        vec![
+            IDEDrive::new(self.primary.clone(), 0xA0),
+            IDEDrive::new(self.primary.clone(), 0xB0),
+            IDEDrive::new(self.secondary.clone(), 0xA0),
+            IDEDrive::new(self.secondary.clone(), 0xB0),
+        ]
+    }
 }
 
 impl From<PCIStandardHeaderDevice> for IDEController {
@@ -103,19 +119,11 @@ impl From<PCIStandardHeaderDevice> for IDEController {
         }
 
         let mut controller = IDEController {
-            primary: None,
-            secondary: None,
+            primary: Arc::new(Mutex::new(primary_channels)),
+            secondary: Arc::new(Mutex::new(secondary_channels)),
             interrupt_pin: device.interrupt_pin(),
             interrupt_line: device.interrupt_line(),
         };
-        serial_println!("identify primary channel");
-        if primary_channels.identify() {
-            controller.primary = Some(primary_channels);
-        }
-        serial_println!("identify secondary channel");
-        if secondary_channels.identify() {
-            controller.secondary = Some(secondary_channels);
-        }
         controller
     }
 }
@@ -128,16 +136,6 @@ impl Debug for IDEController {
             .field("interrupt pin", &self.interrupt_pin)
             .field("interrupt line", &self.interrupt_line)
             .finish()
-    }
-}
-
-impl IDEController {
-    pub fn primary(&mut self) -> Option<&mut IDEChannel> {
-        self.primary.as_mut()
-    }
-
-    pub fn secondary(&mut self) -> Option<&mut IDEChannel> {
-        self.secondary.as_mut()
     }
 }
 

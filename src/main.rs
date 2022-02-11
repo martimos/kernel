@@ -116,8 +116,10 @@ extern "C" fn pci_stuff() {
         .map(Into::<IDEController>::into)
         .expect("need an IDE controller for this to work");
 
-    serial_println!("ide controller: {:#?}", ide_controller);
-    ide_controller.primary().unwrap().foo();
+    serial_println!("listing ATA drives:");
+    for drive in ide_controller.drives().iter().filter(|d| d.exists()) {
+        serial_println!("{:#?}", drive);
+    }
 }
 
 async fn async_number() -> u32 {
