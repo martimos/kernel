@@ -13,9 +13,14 @@ pub struct IDEDrive {
     drive: u8,
 
     exists: bool,
-    initial_read: [u16; 256],
+
+    // The following block consists of the identify_sector and then values
+    // that were read from it.
+    identify_sector: [u16; 256],
+    block_size: usize,
     supported_udma_modes: UDMAMode,
     active_udma_mode: UDMAMode,
+    sector_count: u64,
 }
 
 impl Debug for IDEDrive {
@@ -24,6 +29,9 @@ impl Debug for IDEDrive {
             .field("channel", &self.channel.lock())
             .field("drive", &format!("{:#X}", self.drive))
             .field("exists", &self.exists)
+            .field("sector count", &self.sector_count)
+            .field("udma support", &self.supported_udma_modes)
+            .field("active udma", &self.active_udma_mode)
             .finish()
     }
 }
@@ -34,9 +42,11 @@ impl IDEDrive {
             channel,
             drive,
             exists: false,
-            initial_read: [0; 256],
+            identify_sector: [0; 256],
+            block_size: 0,
             supported_udma_modes: UDMAMode::empty(),
             active_udma_mode: UDMAMode::empty(),
+            sector_count: 0,
         };
         drive.exists = drive.identify();
         drive
@@ -94,26 +104,40 @@ impl IDEDrive {
             }
 
             channel.wait_for_not_busy();
+            // Drop the channel lock so that it can be used again in the following closure.
+            // FIXME: This is not correct, as another thread reading the other drive on this
+            // channel could lock the channel right here, and the drive select on the channel could
+            // make this behave incorrectly.
             drop(channel);
             without_interrupts(|| {
                 let mut channel = self.channel.lock();
                 channel.wait_for_ready();
                 channel.ports.command.write(Command::ReadSectors.into());
 
-                for i in 0..self.initial_read.len() {
-                    self.initial_read[i] = channel.ports.data.read();
+                for i in 0..self.identify_sector.len() {
+                    self.identify_sector[i] = channel.ports.data.read();
                 }
             });
 
-            let udma_indicator = self.initial_read[88];
+            let udma_indicator = self.identify_sector[88];
             self.active_udma_mode = UDMAMode::from_bits_truncate((udma_indicator >> 8) as u8);
             self.supported_udma_modes = UDMAMode::from_bits_truncate(udma_indicator as u8);
+
+            if self.is_lba48_supported() {
+                self.sector_count = self.identify_sector[100] as u64
+                    | ((self.identify_sector[101] as u64) << 16)
+                    | ((self.identify_sector[102] as u64) << 32)
+                    | ((self.identify_sector[103] as u64) << 48)
+            } else {
+                self.sector_count =
+                    self.identify_sector[60] as u64 | ((self.identify_sector[61] as u64) << 16)
+            }
         }
         true
     }
 
     pub fn is_lba48_supported(&self) -> bool {
-        is_bit_set(self.initial_read[83] as u64, 10)
+        is_bit_set(self.identify_sector[83] as u64, 10)
     }
 
     pub fn supported_udma_modes(&self) -> UDMAMode {
@@ -122,5 +146,9 @@ impl IDEDrive {
 
     pub fn active_udma_mode(&self) -> UDMAMode {
         self.active_udma_mode
+    }
+
+    pub fn block_size(&self) -> usize {
+        self.block_size
     }
 }
