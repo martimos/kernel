@@ -23,6 +23,7 @@ pub struct PCI {}
 
 impl PCI {
     pub fn devices() -> impl Iterator<Item = PCIDevice> {
+        // FIXME: don't create new devices, instead store them and hand them out refcounted
         let mut devices = Vec::new();
         for bus in 0..=255 {
             unsafe {
@@ -51,6 +52,7 @@ unsafe fn iterate_bus(bus: u8, devices: &mut Vec<PCIDevice>) {
 unsafe fn iterate_functions(bus: u8, slot: u8, devices: &mut Vec<PCIDevice>) {
     for function in 0..8 {
         if let Some(dev) = check_device(bus, slot, function) {
+            // TODO: if the device is a PCI2PCI bridge, iterate that as bus as well
             devices.push(dev);
         }
     }

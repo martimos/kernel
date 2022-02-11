@@ -65,6 +65,7 @@ pub struct IDEController {
 
 impl IDEController {
     pub fn drives(&self) -> Vec<IDEDrive> {
+        // FIXME: don't create new devices, instead store them and hand them out refcounted
         vec![
             IDEDrive::new(self.primary.clone(), 0xA0),
             IDEDrive::new(self.primary.clone(), 0xB0),
