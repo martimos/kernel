@@ -115,14 +115,8 @@ extern "C" fn pci_stuff() {
         .map(Into::<IDEController>::into)
         .expect("need an IDE controller for this to work");
 
-    serial_println!("ide status: {:?}", ide_controller.status());
-    serial_println!("ide error: {:?}", ide_controller.error());
-    serial_println!(
-        "supported UDMA modes: {:?}",
-        ide_controller.supported_udma_modes()
-    );
-    serial_println!("active UDMA mode: {:?}", ide_controller.active_udma_mode());
-    ide_controller.foo();
+    serial_println!("ide controller: {:#?}", ide_controller);
+    ide_controller.primary().unwrap().foo();
 }
 
 async fn async_number() -> u32 {

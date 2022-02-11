@@ -13,6 +13,8 @@ const OFFSET_HEADER_TYPE: u8 = 0x0E;
 const OFFSET_PROG_IF_REVISION_ID: u8 = 0x08;
 const OFFSET_CLASS_SUBCLASS: u8 = 0x0A;
 const OFFSET_BIST: u8 = 0x0F;
+const OFFSET_INTERRUPT_LINE: u8 = 0x3C;
+const OFFSET_INTERRUPT_PIN: u8 = 0x3D;
 
 pub mod device;
 pub mod header;

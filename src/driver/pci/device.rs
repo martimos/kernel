@@ -1,5 +1,6 @@
 use crate::driver::pci::{
-    read_config_word, OFFSET_BIST, OFFSET_CLASS_SUBCLASS, OFFSET_PROG_IF_REVISION_ID, OFFSET_STATUS,
+    read_config_word, OFFSET_BIST, OFFSET_CLASS_SUBCLASS, OFFSET_INTERRUPT_LINE,
+    OFFSET_INTERRUPT_PIN, OFFSET_PROG_IF_REVISION_ID, OFFSET_STATUS,
 };
 use bitflags::bitflags;
 
@@ -247,6 +248,28 @@ impl From<u8> for BridgeSubClass {
     }
 }
 
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+pub enum InterruptPin {
+    None,
+    INTA,
+    INTB,
+    INTC,
+    INTD,
+}
+
+impl From<u8> for InterruptPin {
+    fn from(v: u8) -> Self {
+        match v {
+            0 => Self::None,
+            1 => Self::INTA,
+            2 => Self::INTB,
+            3 => Self::INTC,
+            4 => Self::INTD,
+            _ => panic!("unknown interrupt pin: {:#X}", v),
+        }
+    }
+}
+
 pub struct PCIDevice {
     bus: u8,
     slot: u8,
@@ -314,6 +337,24 @@ impl PCIDevice {
     pub fn bist(&self) -> BIST {
         let bist = unsafe { read_config_word(self.bus, self.slot, self.function, OFFSET_BIST) };
         BIST::from_bits_truncate(bist as u8)
+    }
+
+    pub fn interrupt_line(&self) -> Option<u8> {
+        let line = unsafe {
+            read_config_word(self.bus, self.slot, self.function, OFFSET_INTERRUPT_LINE) as u8
+        };
+        match line {
+            0..=15 => Some(line),
+            0xFF => None,
+            _ => panic!("unknown interrupt line: {:#X}", line),
+        }
+    }
+
+    pub fn interrupt_pin(&self) -> InterruptPin {
+        (unsafe {
+            read_config_word(self.bus, self.slot, self.function, OFFSET_INTERRUPT_PIN) as u8
+        })
+        .into()
     }
 }
 

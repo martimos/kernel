@@ -64,3 +64,24 @@ impl PCIStandardHeaderDevice {
         }
     }
 }
+
+pub struct PCI2PCIBridge {
+    inner: PCIDevice,
+}
+
+impl Deref for PCI2PCIBridge {
+    type Target = PCIDevice;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
+impl PCI2PCIBridge {
+    pub fn new(inner: PCIDevice) -> Self {
+        if inner.header_type() != PCIHeaderType::PCI2PCIBridge {
+            panic!("pci device is not a PCI-to-PCI bridge");
+        }
+        PCI2PCIBridge { inner }
+    }
+}

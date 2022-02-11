@@ -101,7 +101,7 @@ fn base_args() -> Vec<&'static str> {
     vec.push("-serial");
     vec.push("stdio");
     vec.push("-drive");
-    vec.push("file=fat:rw:./disk,if=ide,format=raw");
+    vec.push("file=disk.img,if=ide,format=raw");
     vec
 }
 
