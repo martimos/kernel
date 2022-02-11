@@ -30,7 +30,8 @@ fn main(boot_info: &'static mut BootInfo) -> ! {
 
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
-    martim::test_panic_handler(info)
+    // martim::test_panic_handler(info)
+    scheduler::do_exit()
 }
 
 static COUNTER: AtomicU32 = AtomicU32::new(0);
@@ -109,9 +110,9 @@ extern "C" fn task_stack_is_deallocated_spawner() {
 }
 
 extern "C" fn task_stack_is_deallocated_fn() {
-    let mut total = COUNTER.load(Ordering::SeqCst);
     while COUNTER.load(Ordering::SeqCst) < MAX_CONCURRENT && !FINISHED.load(Ordering::SeqCst) {
         scheduler::reschedule();
     }
     COUNTER.fetch_sub(1, Ordering::SeqCst);
+    panic!("I terminate now"); // scheduler must be able to handle panicking tasks
 }

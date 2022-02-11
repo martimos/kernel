@@ -33,6 +33,7 @@ fn panic(info: &PanicInfo) -> ! {
     );
 
     if scheduler::get_current_pid().as_usize() == 0 {
+        serial_println!("kernel task panicked, halting...");
         hlt_loop()
     } else {
         scheduler::do_exit()
