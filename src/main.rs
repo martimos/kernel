@@ -13,9 +13,11 @@ use bootloader::{entry_point, BootInfo};
 use martim::driver::ide::IDEController;
 use martim::driver::pci::device::{MassStorageSubClass, PCIDeviceClass};
 use martim::driver::pci::header::PCIStandardHeaderDevice;
+#[cfg(not(test))]
+use martim::hlt_loop;
 use martim::{
     driver::pci::PCI,
-    hlt_loop, scheduler,
+    scheduler,
     scheduler::priority::NORMAL_PRIORITY,
     serial_print, serial_println,
     task::{executor::Executor, keyboard, Task},

@@ -14,7 +14,7 @@ use core::{
 };
 
 use bootloader::{entry_point, BootInfo};
-use martim::{scheduler, scheduler::priority::NORMAL_PRIORITY, serial_println};
+use martim::{scheduler, scheduler::priority::NORMAL_PRIORITY};
 use x86_64::instructions::hlt;
 
 entry_point!(main);
@@ -29,7 +29,7 @@ fn main(boot_info: &'static mut BootInfo) -> ! {
 }
 
 #[panic_handler]
-fn panic(info: &PanicInfo) -> ! {
+fn panic(_info: &PanicInfo) -> ! {
     // martim::test_panic_handler(info)
     scheduler::do_exit()
 }

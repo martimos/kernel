@@ -36,9 +36,6 @@ pub mod syscall;
 pub mod task;
 pub mod vga_buffer;
 
-pub type RcMut<T> = Rc<Mutex<T>>;
-pub type ArcMut<T> = Arc<Mutex<T>>;
-
 pub fn init() {
     gdt::init(); // init global descriptor table
     interrupts::init_idt(); // init interrupt handlers

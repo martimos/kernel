@@ -1,3 +1,4 @@
+use crate::filesystem::path::owned::OwnedPath;
 use crate::{filesystem::stat::Stat, Result};
 use alloc::string::String;
 
@@ -14,5 +15,5 @@ pub trait FileDescriptor {
     fn write(&mut self, _buffer: &dyn AsRef<[u8]>) -> Result<usize>;
     fn stat(&self) -> Result<Stat>;
 
-    fn absolute_path(&self) -> String;
+    fn absolute_path(&self) -> OwnedPath;
 }
