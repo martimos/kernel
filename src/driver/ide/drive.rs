@@ -1,6 +1,5 @@
 use crate::driver::ide::channel::IDEChannel;
 use crate::driver::ide::{is_bit_set, Command, Status, UDMAMode};
-use crate::serial_println;
 use alloc::format;
 use alloc::sync::Arc;
 use core::fmt::{Debug, Formatter};
@@ -59,13 +58,6 @@ impl IDEDrive {
     /// will panic.
     pub fn exists(&self) -> bool {
         self.exists
-    }
-
-    /// Panics if this drive doesn't exist.
-    fn ensure_exists(&self) {
-        if !self.exists() {
-            panic!("drive does not exist, check with IDEDrive::exists() before proceeding");
-        }
     }
 }
 

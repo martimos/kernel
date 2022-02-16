@@ -107,7 +107,7 @@ extern "C" fn pci_stuff() {
         );
     }
 
-    let mut ide_controller = PCI::devices()
+    let ide_controller = PCI::devices()
         .filter(|dev| {
             dev.class() == PCIDeviceClass::MassStorageController(MassStorageSubClass::IDEController)
         })

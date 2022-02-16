@@ -1,9 +1,6 @@
-use crate::driver::ide::{is_bit_set, Command, Error, Status, UDMAMode};
-use crate::{hlt_loop, serial_print, serial_println};
+use crate::driver::ide::{Command, Error, Status};
 use alloc::format;
 use core::fmt::{Debug, Formatter};
-use x86_64::instructions::hlt;
-use x86_64::instructions::interrupts::without_interrupts;
 use x86_64::instructions::port::{Port, PortReadOnly, PortWriteOnly};
 
 #[allow(dead_code)] // a lot of fields are unused, but they exist according to spec, so we keep them

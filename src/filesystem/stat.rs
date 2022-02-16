@@ -1,9 +1,10 @@
-use crate::filesystem::flags::Mode;
+use crate::filesystem::perm::Permission;
 
+#[derive(Copy, Clone, Default)]
 pub struct Stat {
     pub device_id: usize,
     pub inode_number: usize,
-    pub access_mode: Mode,
+    pub access_mode: Permission,
     pub num_hard_links: usize,
     pub owner_uid: usize,
     pub owner_gid: usize,

@@ -12,11 +12,15 @@
 
 extern crate alloc;
 
+use alloc::rc::Rc;
+use alloc::sync::Arc;
 use core::panic::PanicInfo;
 
 #[cfg(test)]
 use bootloader::{entry_point, BootInfo};
+use spin::Mutex;
 
+// re-export Result<T, E = syscall::error::Errno>
 pub use syscall::error::Result;
 
 pub mod allocator;
@@ -32,7 +36,8 @@ pub mod syscall;
 pub mod task;
 pub mod vga_buffer;
 
-// re-export Result<T, E = syscall::error::Errno>
+pub type RcMut<T> = Rc<Mutex<T>>;
+pub type ArcMut<T> = Arc<Mutex<T>>;
 
 pub fn init() {
     gdt::init(); // init global descriptor table

@@ -8,9 +8,6 @@ pub enum Seek {
 }
 
 pub trait FileDescriptor {
-    fn is_readable(&self) -> bool;
-    fn is_writable(&self) -> bool;
-
     fn seek(&mut self, _seek: Seek) -> Result<usize>;
 
     fn read(&mut self, _buffer: &mut dyn AsMut<[u8]>) -> Result<usize>;

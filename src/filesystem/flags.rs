@@ -25,13 +25,3 @@ bitflags! {
         const O_TRUNC = 1 << 11;
     }
 }
-
-#[derive(Ord, PartialOrd, Eq, PartialEq)]
-#[repr(C)]
-pub struct Mode(u32);
-
-impl Mode {
-    pub fn from(mode: u32) -> Self {
-        Mode(mode)
-    }
-}

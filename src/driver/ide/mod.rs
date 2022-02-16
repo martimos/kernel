@@ -2,15 +2,12 @@ use crate::driver::ide::channel::IDEChannel;
 use crate::driver::ide::drive::IDEDrive;
 use crate::driver::pci::device::{InterruptPin, MassStorageSubClass, PCIDeviceClass};
 use crate::driver::pci::header::PCIStandardHeaderDevice;
-use crate::{serial_print, serial_println};
 use alloc::sync::Arc;
+use alloc::vec;
 use alloc::vec::Vec;
-use alloc::{format, vec};
 use bitflags::bitflags;
 use core::fmt::{Debug, Formatter};
 use spin::Mutex;
-use x86_64::instructions::interrupts::without_interrupts;
-use x86_64::instructions::port::{Port, PortReadOnly, PortWriteOnly};
 
 pub mod channel;
 pub mod drive;
@@ -119,7 +116,7 @@ impl From<PCIStandardHeaderDevice> for IDEController {
             secondary_channels.disable_irq();
         }
 
-        let mut controller = IDEController {
+        let controller = IDEController {
             primary: Arc::new(Mutex::new(primary_channels)),
             secondary: Arc::new(Mutex::new(secondary_channels)),
             interrupt_pin: device.interrupt_pin(),
