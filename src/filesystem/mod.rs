@@ -30,7 +30,7 @@ pub trait FileSystem {
     fn open(
         &mut self,
         path: &dyn AsRef<Path>,
-        mode: Permission,
+        perm: Permission,
         flags: OpenFlags,
     ) -> Result<Box<dyn FileDescriptor>>;
 
