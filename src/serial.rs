@@ -11,7 +11,6 @@ lazy_static! {
 }
 
 #[doc(hidden)]
-#[cfg(debug_assertions)]
 pub fn _print(args: ::core::fmt::Arguments) {
     use core::fmt::Write;
     use x86_64::instructions::interrupts;
@@ -27,13 +26,6 @@ pub fn _print(args: ::core::fmt::Arguments) {
     });
 }
 
-#[cfg(not(debug_assertions))]
-pub fn _print(_args: ::core::fmt::Arguments) {
-    /*
-    serial printing is disabled for non-debug builds
-     */
-}
-
 /// Prints to the host through the serial interface.
 #[macro_export]
 macro_rules! serial_print {
@@ -47,4 +39,11 @@ macro_rules! serial_println {
     ($fmt:expr) => ($crate::serial_print!(concat!($fmt, "\n")));
     ($fmt:expr, $($arg:tt)*) => ($crate::serial_print!(
         concat!($fmt, "\n"), $($arg)*));
+}
+
+#[macro_export]
+macro_rules! info {
+    ($fmt:expr) => ($crate::serial_print!(concat!("[{}] ", $fmt, "\n"), module_path!()));
+    ($fmt:expr, $($arg:tt)*) => ($crate::serial_print!(
+        concat!("[{}] ", $fmt, "\n"), module_path!(), $($arg)*));
 }
