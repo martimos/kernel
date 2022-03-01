@@ -1,4 +1,6 @@
-use core::mem::replace;
+use alloc::sync::Arc;
+
+use spin::Mutex;
 
 use crate::driver::cmos::CMOS;
 
@@ -6,19 +8,25 @@ pub mod cmos;
 pub mod ide;
 pub mod pci;
 
-static mut PERIPHERALS: Peripherals = Peripherals {
-    cmos: Some(CMOS::new()),
-};
+static mut PERIPHERALS: Peripherals = Peripherals { cmos: None };
 
 pub struct Peripherals {
-    cmos: Option<CMOS>,
+    cmos: Option<Arc<Mutex<CMOS>>>,
 }
 
 impl Peripherals {
-    pub fn take_cmos() -> CMOS {
+    pub fn cmos() -> Arc<Mutex<CMOS>> {
         unsafe {
-            let cmos = replace(&mut PERIPHERALS.cmos, None);
-            cmos.unwrap()
+            PERIPHERALS.init_cmos();
+            PERIPHERALS.cmos.as_ref().unwrap().clone()
         }
+    }
+
+    fn init_cmos(&mut self) {
+        if self.cmos.is_some() {
+            return;
+        }
+
+        self.cmos = Some(Arc::new(Mutex::new(CMOS::new())));
     }
 }

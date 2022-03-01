@@ -102,8 +102,9 @@ fn main() {
 }
 
 extern "C" fn cmos_stuff() {
-    let mut cmos = Peripherals::take_cmos();
-    let time = cmos.read_time();
+    let mut cmos = Peripherals::cmos();
+    let mut guard = cmos.lock();
+    let time = guard.read_time();
     vga_println!(
         "CMOS time: {:02}{:02}-{:02}-{:02}, {:02}:{:02}:{:02}",
         time.century.unwrap(),
