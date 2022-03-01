@@ -4,14 +4,17 @@ use alloc::vec::Vec;
 pub struct Components<'a> {
     fragments: Vec<&'a str>,
     seen_root: bool,
+    absolute: bool,
     index: usize,
 }
 
 impl<'a> Components<'a> {
     pub fn new(path: &'a Path) -> Self {
+        let absolute = path.starts_with(SEPARATOR);
         Components {
             fragments: path.split(SEPARATOR).collect(),
             seen_root: false,
+            absolute,
             index: 0,
         }
     }
@@ -29,7 +32,7 @@ impl<'a> Iterator for Components<'a> {
     type Item = Component<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if !self.seen_root {
+        if self.absolute && !self.seen_root {
             self.seen_root = true;
             return Some(Component::RootDir);
         }
@@ -61,6 +64,15 @@ mod tests {
     fn test_components() {
         let p = Path::new("hello/world");
         let mut c = p.components();
+        assert_eq!(Some(Component::Normal("hello")), c.next());
+        assert_eq!(Some(Component::Normal("world")), c.next());
+        assert_eq!(None, c.next());
+    }
+
+    #[test_case]
+    fn test_components_absolute() {
+        let p = Path::new("/hello/world");
+        let mut c = p.components();
         assert_eq!(Some(Component::RootDir), c.next());
         assert_eq!(Some(Component::Normal("hello")), c.next());
         assert_eq!(Some(Component::Normal("world")), c.next());
@@ -71,7 +83,6 @@ mod tests {
     fn test_empty_fragments() {
         let p = Path::new("hello///world");
         let mut c = p.components();
-        assert_eq!(Some(Component::RootDir), c.next());
         assert_eq!(Some(Component::Normal("hello")), c.next());
         assert_eq!(Some(Component::Normal("world")), c.next());
         assert_eq!(None, c.next());

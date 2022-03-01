@@ -1,6 +1,5 @@
 use crate::filesystem::path::owned::OwnedPath;
 use crate::{filesystem::stat::Stat, Result};
-use alloc::string::String;
 
 pub enum Seek {
     Set(usize),

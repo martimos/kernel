@@ -3,9 +3,7 @@ use crate::filesystem::memfs::memfile::RefcountMemFile;
 use crate::filesystem::path::owned::OwnedPath;
 use crate::filesystem::stat::Stat;
 use crate::syscall::error::Errno;
-use crate::{serial_println, Result};
-use alloc::string::String;
-use core::cmp::min;
+use crate::Result;
 
 pub struct MemFd {
     file: RefcountMemFile,
@@ -49,7 +47,7 @@ impl FileDescriptor for MemFd {
     }
 
     fn read(&mut self, buffer: &mut dyn AsMut<[u8]>) -> Result<usize> {
-        let mut buf = buffer.as_mut();
+        let buf = buffer.as_mut();
         let guard = self.file.lock();
         let slice = &guard[self.ptr..];
         let min_len = if buf.len() < slice.len() {
@@ -78,7 +76,7 @@ impl FileDescriptor for MemFd {
             guard.resize(max_index); // ensure we can index up to max_index
         }
 
-        let mut slice = &mut guard[self.ptr..];
+        let slice = &mut guard[self.ptr..];
 
         for i in 0..buf.len() {
             slice[i] = buf[i];

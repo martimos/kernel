@@ -5,7 +5,6 @@ use crate::filesystem::memfs::memfile::{MemFile, RefcountMemFile};
 use crate::filesystem::path::owned::OwnedPath;
 use crate::filesystem::path::Path;
 use crate::filesystem::perm::Permission;
-use crate::filesystem::stat::Stat;
 use crate::filesystem::{FileSystem, FsId};
 use crate::syscall::error::Errno;
 use crate::Result;

@@ -1,6 +1,8 @@
 use crate::filesystem::path::components::{Component, Components};
 use crate::filesystem::path::{Path, SEPARATOR};
+use alloc::borrow::ToOwned;
 use alloc::string::String;
+use alloc::vec::Vec;
 use core::borrow::Borrow;
 use core::fmt::{Display, Formatter};
 
@@ -33,20 +35,56 @@ impl OwnedPath {
     pub fn push<P: AsRef<Path>>(&mut self, segment: P) {
         let path = segment.as_ref();
 
-        if self.len() == 0 || self.inner.chars().last().unwrap() != SEPARATOR {
-            // we need to push a separator if the path is empty or
-            // if the rightmost char is not a separator
-            self.inner.push(SEPARATOR)
-        }
-
         path.components().for_each(|c| {
+            if self.len() > 0 && self.inner.chars().last().unwrap() != SEPARATOR {
+                // we need to push a separator if the rightmost char is not a separator
+                self.inner.push(SEPARATOR);
+            }
+
             match c {
                 Component::CurrentDir => { /* do nothing here */ }
-                Component::ParentDir => todo!("remove last"),
+                Component::ParentDir => {
+                    if let Some(index) = self
+                        .inner
+                        .trim_end_matches(SEPARATOR) // we may already have pushed a SEPARATOR
+                        .rfind(SEPARATOR)
+                    {
+                        let (left, _) = self.inner.split_at(index);
+                        self.inner = left.to_owned();
+                    }
+                }
                 Component::Normal(s) => self.inner.push_str(s),
-                Component::RootDir => { /* do nothing here */ }
+                Component::RootDir => {
+                    if self.len() == 0 {
+                        self.inner.push(SEPARATOR);
+                    }
+                }
             }
         });
+    }
+
+    pub fn into_components(self) -> Vec<OwnedPath> {
+        let mut data: Vec<OwnedPath> = Vec::new();
+
+        self.components().for_each(|c| {
+            match c {
+                Component::ParentDir => {
+                    while let Some(last) = data.last() {
+                        if last.inner == "." {
+                            data.pop();
+                        } else {
+                            break;
+                        }
+                    }
+                    data.pop();
+                }
+                Component::CurrentDir => {}
+                Component::RootDir => {}
+                Component::Normal(p) => data.push(p.into()),
+            };
+        });
+
+        data
     }
 
     pub fn len(&self) -> usize {
@@ -67,14 +105,16 @@ impl Display for OwnedPath {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::serial_println;
     use alloc::string::ToString;
+    use alloc::vec;
 
     #[test_case]
     fn test_push_trivial() {
         let mut p = OwnedPath::new();
         p.push("hello");
         p.push("world");
-        assert_eq!("/hello/world", p.to_string());
+        assert_eq!("hello/world", p.to_string());
     }
 
     #[test_case]
@@ -82,6 +122,55 @@ mod tests {
         let mut p = OwnedPath::new();
         p.push("hello");
         p.push("world/");
+        assert_eq!("hello/world", p.to_string());
+    }
+
+    #[test_case]
+    fn test_push_absolute() {
+        let mut p = OwnedPath::new();
+        p.push("/hello");
+        p.push("world/");
         assert_eq!("/hello/world", p.to_string());
+    }
+
+    #[test_case]
+    fn test_into_components() {
+        let mut p = OwnedPath::new();
+        p.push("segment1");
+        p.push("segment2");
+        p.push("segment3");
+        p.push("segment4");
+
+        assert_eq!(
+            vec![
+                OwnedPath::from("segment1"),
+                OwnedPath::from("segment2"),
+                OwnedPath::from("segment3"),
+                OwnedPath::from("segment4"),
+            ],
+            p.into_components()
+        );
+    }
+
+    #[test_case]
+    fn test_into_components_with_specials() {
+        let mut p = OwnedPath::new();
+        p.push("segment1");
+        p.push("segment2");
+        p.push("..");
+        p.push("segment3");
+        p.push("segment4");
+        p.push(".");
+        p.push("..");
+        p.push("segment5");
+
+        assert_eq!(
+            vec![
+                OwnedPath::from("segment1"),
+                OwnedPath::from("segment3"),
+                OwnedPath::from("segment5"),
+            ],
+            p.into_components()
+        );
     }
 }

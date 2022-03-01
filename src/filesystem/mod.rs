@@ -14,6 +14,7 @@ pub mod path;
 pub mod perm;
 pub mod stat;
 pub mod upnode;
+pub mod vfs;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct FsId(u32);

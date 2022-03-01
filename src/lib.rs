@@ -2,7 +2,6 @@
 #![cfg_attr(test, no_main)]
 #![feature(abi_x86_interrupt)]
 #![feature(alloc_error_handler)]
-#![feature(async_stream)]
 #![feature(const_mut_refs)]
 #![feature(custom_test_frameworks)]
 #![feature(naked_functions)]
@@ -12,13 +11,10 @@
 
 extern crate alloc;
 
-use alloc::rc::Rc;
-use alloc::sync::Arc;
 use core::panic::PanicInfo;
 
 #[cfg(test)]
 use bootloader::{entry_point, BootInfo};
-use spin::Mutex;
 
 // re-export Result<T, E = syscall::error::Errno>
 pub use syscall::error::Result;
@@ -29,6 +25,7 @@ pub mod driver;
 pub mod filesystem;
 pub mod gdt;
 pub mod interrupts;
+pub mod macros;
 pub mod memory;
 pub mod scheduler;
 pub mod serial;

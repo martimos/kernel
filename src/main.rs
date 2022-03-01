@@ -13,11 +13,12 @@ use bootloader::{entry_point, BootInfo};
 use martim::driver::ide::IDEController;
 use martim::driver::pci::device::{MassStorageSubClass, PCIDeviceClass};
 use martim::driver::pci::header::PCIStandardHeaderDevice;
+use martim::filesystem::vfs::Vfs;
 #[cfg(not(test))]
 use martim::hlt_loop;
 use martim::{
     driver::pci::PCI,
-    scheduler,
+    info, scheduler,
     scheduler::priority::NORMAL_PRIORITY,
     serial_print, serial_println,
     task::{executor::Executor, keyboard, Task},
@@ -28,7 +29,7 @@ use martim::{
 #[cfg(not(test))]
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
-    serial_println!(
+    info!(
         "terminating task {}: {}",
         scheduler::get_current_pid(),
         info
@@ -85,10 +86,16 @@ $$ | \_/ $$ |\$$$$$$$ |$$ |       \$$$$  |$$ |$$ | $$ | $$ |
 fn main() {
     vga_println!("Hello, {}!", "World");
 
+    let vfs = Vfs::new();
+    let path = "/dev/zero";
+    let res = vfs.find_vnode(&path);
+    info!("open {}: {:?}", path, res);
+
     scheduler::spawn(just_panic, NORMAL_PRIORITY).unwrap();
     scheduler::spawn(pci_stuff, NORMAL_PRIORITY).unwrap();
     scheduler::spawn(example_tasks, NORMAL_PRIORITY).unwrap();
 
+    info!("starting scheduler");
     scheduler::reschedule();
 }
 
@@ -118,7 +125,7 @@ extern "C" fn pci_stuff() {
         .map(Into::<IDEController>::into)
         .expect("need an IDE controller for this to work");
 
-    serial_println!("listing ATA drives:");
+    info!("listing ATA drives:");
     for drive in ide_controller.drives().iter().filter(|d| d.exists()) {
         serial_println!("{:#?}", drive);
     }

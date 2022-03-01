@@ -67,8 +67,14 @@ mod tests {
     use alloc::string::ToString;
 
     #[test_case]
-    fn test_foo() {
+    fn test_trivial() {
         let p = Path::new("/hello");
         assert_eq!("/hello", p.to_string());
+    }
+
+    #[test_case]
+    fn test_to_owned() {
+        let p = Path::new("hello/world").to_owned();
+        assert_eq!("hello/world", p.to_string());
     }
 }

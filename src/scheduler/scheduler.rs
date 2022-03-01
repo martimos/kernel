@@ -1,4 +1,5 @@
 use crate::{
+    info,
     scheduler::{
         pid::Pid,
         priority::Priority,
@@ -7,7 +8,6 @@ use crate::{
         task::{ProcessStatus, Task},
         NUM_PRIORITIES,
     },
-    serial_println,
     syscall::error::Errno,
     Result,
 };
@@ -100,7 +100,7 @@ impl Scheduler {
     pub fn abort(&mut self) -> ! {
         without_interrupts(|| {
             if self.current_task.borrow().status != ProcessStatus::Idle {
-                serial_println!("abort task with id {}", self.current_task.borrow().pid);
+                info!("abort task with id {}", self.current_task.borrow().pid);
                 self.current_task.borrow_mut().status = ProcessStatus::Finished;
                 self.task_count.fetch_sub(1, Ordering::SeqCst);
             } else {
@@ -116,7 +116,7 @@ impl Scheduler {
     pub fn block_current_task(&mut self) -> Rc<RefCell<Task>> {
         without_interrupts(|| {
             if self.current_task.borrow().status == ProcessStatus::Running {
-                serial_println!("block task {}", self.current_task.borrow().pid);
+                info!("block task {}", self.current_task.borrow().pid);
 
                 self.current_task.borrow_mut().status = ProcessStatus::Blocked;
                 self.current_task.clone()
@@ -129,7 +129,7 @@ impl Scheduler {
     pub fn wakeup_task(&mut self, task: TaskHandle) {
         without_interrupts(|| {
             if task.borrow().status == ProcessStatus::Blocked {
-                serial_println!("wake up task {}", task.borrow().pid);
+                info!("wake up task {}", task.borrow().pid);
 
                 task.borrow_mut().status = ProcessStatus::Ready;
                 self.ready_queue.lock().push(task.clone());
@@ -176,7 +176,7 @@ impl Scheduler {
 
         if next_task.is_none() {
             if current_status != ProcessStatus::Running && current_status != ProcessStatus::Idle {
-                serial_println!("next task is idle task");
+                info!("next task is idle task");
                 next_task = Some(self.idle_task.clone());
             }
         }
@@ -189,18 +189,18 @@ impl Scheduler {
             };
 
             if current_status == ProcessStatus::Running {
-                // serial_println!("task {} is ready", current_pid);
+                // info!("task {} is ready", current_pid);
                 self.current_task.borrow_mut().status = ProcessStatus::Ready;
                 self.ready_queue.lock().push(self.current_task.clone());
             } else if current_status == ProcessStatus::Finished {
-                // serial_println!("task {} is finished", current_pid);
+                // info!("task {} is finished", current_pid);
                 self.current_task.borrow_mut().status = ProcessStatus::Invalid;
                 // release the task later, because the stack is required
                 // to call the function "switch"
                 self.finished_tasks.lock().push_back(current_pid);
             }
 
-            // serial_println!(
+            // info!(
             //     "switch from pid:{} to pid:{} (*stack: {:#X}, {:#X})",
             //     current_pid,
             //     new_id,
