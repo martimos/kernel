@@ -13,6 +13,7 @@ use bootloader::{entry_point, BootInfo};
 use martim::driver::ide::IDEController;
 use martim::driver::pci::device::{MassStorageSubClass, PCIDeviceClass};
 use martim::driver::pci::header::PCIStandardHeaderDevice;
+use martim::driver::Peripherals;
 use martim::filesystem::vfs::Vfs;
 #[cfg(not(test))]
 use martim::hlt_loop;
@@ -92,11 +93,27 @@ fn main() {
     info!("open {}: {:?}", path, res);
 
     scheduler::spawn(just_panic, NORMAL_PRIORITY).unwrap();
-    scheduler::spawn(pci_stuff, NORMAL_PRIORITY).unwrap();
+    scheduler::spawn(cmos_stuff, NORMAL_PRIORITY).unwrap();
+    // scheduler::spawn(pci_stuff, NORMAL_PRIORITY).unwrap();
     scheduler::spawn(example_tasks, NORMAL_PRIORITY).unwrap();
 
     info!("starting scheduler");
     scheduler::reschedule();
+}
+
+extern "C" fn cmos_stuff() {
+    let mut cmos = Peripherals::take_cmos();
+    let time = cmos.read_time();
+    vga_println!(
+        "CMOS time: {:02}{:02}-{:02}-{:02}, {:02}:{:02}:{:02}",
+        time.century.unwrap(),
+        time.year,
+        time.month,
+        time.day_of_month,
+        time.hours,
+        time.minutes,
+        time.seconds
+    );
 }
 
 extern "C" fn pci_stuff() {
@@ -154,6 +171,8 @@ extern "C" fn example_tasks() {
 
 #[cfg(test)]
 mod tests {
+    use core::assert_eq;
+
     #[test_case]
     fn trivial_assertion() {
         assert_eq!(1, 1);
