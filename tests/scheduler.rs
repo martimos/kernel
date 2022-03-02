@@ -7,6 +7,7 @@
 
 extern crate alloc;
 
+use alloc::vec::Vec;
 use core::sync::atomic::AtomicBool;
 use core::{
     panic::PanicInfo,
@@ -14,8 +15,9 @@ use core::{
 };
 
 use bootloader::{entry_point, BootInfo};
-use martim::{scheduler, scheduler::priority::NORMAL_PRIORITY};
 use x86_64::instructions::hlt;
+
+use martim::scheduler;
 
 entry_point!(main);
 
@@ -23,15 +25,15 @@ fn main(boot_info: &'static mut BootInfo) -> ! {
     martim::init();
     martim::memory::init_heap(boot_info);
     scheduler::init();
+    scheduler::reschedule(); // start the scheduler
 
     test_main();
     loop {}
 }
 
 #[panic_handler]
-fn panic(_info: &PanicInfo) -> ! {
-    // martim::test_panic_handler(info)
-    scheduler::do_exit()
+fn panic(info: &PanicInfo) -> ! {
+    martim::test_panic_handler(info);
 }
 
 static COUNTER: AtomicU32 = AtomicU32::new(0);
@@ -46,11 +48,15 @@ fn counter_many_tasks_nohlt() {
     // the total kernel memory.
     const NUM_TASKS: u32 = 10;
 
-    for _ in 0..NUM_TASKS {
-        scheduler::spawn(counter_many_tasks_nohlt_fn, NORMAL_PRIORITY).unwrap();
-    }
-
     scheduler::reschedule();
+
+    let mut tids = Vec::new();
+    for _ in 0..NUM_TASKS {
+        tids.push(scheduler::spawn(counter_many_tasks_nohlt_fn).unwrap());
+    }
+    for tid in tids {
+        scheduler::join(tid);
+    }
 
     assert_eq!(NUM_TASKS * 1000, COUNTER.load(Ordering::SeqCst));
 }
@@ -65,10 +71,13 @@ extern "C" fn counter_many_tasks_nohlt_fn() {
 fn counter_two_tasks() {
     COUNTER.store(0, Ordering::SeqCst);
 
-    scheduler::spawn(counter_two_tasks_fn, NORMAL_PRIORITY).unwrap();
-    scheduler::spawn(counter_two_tasks_fn, NORMAL_PRIORITY).unwrap();
+    let tid1 = scheduler::spawn(counter_two_tasks_fn).unwrap();
+    let tid2 = scheduler::spawn(counter_two_tasks_fn).unwrap();
 
     scheduler::reschedule();
+
+    scheduler::join(tid1);
+    scheduler::join(tid2);
 
     assert_eq!(10, COUNTER.load(Ordering::SeqCst));
 }
@@ -86,7 +95,7 @@ static FINISHED: AtomicBool = AtomicBool::new(false);
 /// way before we've reached 10000 tasks (at least with the current stack model).
 #[test_case]
 fn task_stack_is_deallocated() {
-    scheduler::spawn(task_stack_is_deallocated_spawner, NORMAL_PRIORITY).unwrap();
+    scheduler::spawn(task_stack_is_deallocated_spawner).unwrap();
 
     scheduler::reschedule();
 }
@@ -103,7 +112,7 @@ extern "C" fn task_stack_is_deallocated_spawner() {
             scheduler::reschedule();
         } else {
             COUNTER.fetch_add(1, Ordering::SeqCst);
-            scheduler::spawn(task_stack_is_deallocated_fn, NORMAL_PRIORITY).unwrap();
+            scheduler::spawn(task_stack_is_deallocated_fn).unwrap();
         }
     }
     FINISHED.store(true, Ordering::SeqCst);
@@ -114,5 +123,10 @@ extern "C" fn task_stack_is_deallocated_fn() {
         scheduler::reschedule();
     }
     COUNTER.fetch_sub(1, Ordering::SeqCst);
-    panic!("I terminate now"); // scheduler must be able to handle panicking tasks
+}
+
+#[test_case]
+fn test_no_deadlock_when_join_self() {
+    let current_tid = scheduler::get_current_tid();
+    scheduler::join(current_tid); // this must return immediately
 }
