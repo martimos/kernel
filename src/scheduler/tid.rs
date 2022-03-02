@@ -3,14 +3,14 @@ use core::{
     sync::atomic::{AtomicU32, Ordering},
 };
 
-static PID_COUNTER: AtomicU32 = AtomicU32::new(0);
+static TID_COUNTER: AtomicU32 = AtomicU32::new(0);
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Clone, Copy)]
-pub struct Pid(usize);
+pub struct Tid(usize);
 
-impl Pid {
+impl Tid {
     pub fn new() -> Self {
-        Self::from(PID_COUNTER.fetch_add(1, Ordering::SeqCst))
+        Self::from(TID_COUNTER.fetch_add(1, Ordering::SeqCst))
     }
 
     pub fn as_usize(&self) -> usize {
@@ -18,19 +18,19 @@ impl Pid {
     }
 }
 
-impl From<u32> for Pid {
+impl From<u32> for Tid {
     fn from(v: u32) -> Self {
         Self::from(v as usize)
     }
 }
 
-impl From<usize> for Pid {
+impl From<usize> for Tid {
     fn from(v: usize) -> Self {
         Self(v)
     }
 }
 
-impl Display for Pid {
+impl Display for Tid {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", self.0)
     }
