@@ -1,4 +1,5 @@
 use core::arch::asm;
+
 macro_rules! push_context {
     () => {
         concat!(
@@ -54,7 +55,7 @@ macro_rules! pop_context {
 
 #[naked]
 pub unsafe extern "C" fn switch(_old_stack: *mut usize, _new_stack: usize) {
-    // _old_stack in located in $rdi, _new_stack is in $rsi
+    // _old_stack is located in $rdi, _new_stack is in $rsi
 
     asm!(
         push_context!(),
