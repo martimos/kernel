@@ -40,10 +40,3 @@ macro_rules! serial_println {
     ($fmt:expr, $($arg:tt)*) => ($crate::serial_print!(
         concat!($fmt, "\n"), $($arg)*));
 }
-
-#[macro_export]
-macro_rules! info {
-    ($fmt:expr) => ($crate::serial_print!(concat!("[{}] ", $fmt, "\n"), module_path!()));
-    ($fmt:expr, $($arg:tt)*) => ($crate::serial_print!(
-        concat!("[{}] ", $fmt, "\n"), module_path!(), $($arg)*));
-}
