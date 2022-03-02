@@ -15,13 +15,10 @@ use martim::driver::pci::device::{MassStorageSubClass, PCIDeviceClass};
 use martim::driver::pci::header::PCIStandardHeaderDevice;
 use martim::driver::Peripherals;
 use martim::filesystem::vfs::Vfs;
-#[cfg(not(test))]
 use martim::hlt_loop;
 use martim::{
     driver::pci::PCI,
-    info, scheduler,
-    scheduler::priority::NORMAL_PRIORITY,
-    serial_print, serial_println,
+    info, scheduler, serial_print, serial_println,
     task::{executor::Executor, keyboard, Task},
     vga_clear, vga_println,
 };
@@ -32,15 +29,15 @@ use martim::{
 fn panic(info: &PanicInfo) -> ! {
     info!(
         "terminating task {}: {}",
-        scheduler::get_current_pid(),
+        scheduler::get_current_tid(),
         info
     );
 
-    if scheduler::get_current_pid().as_usize() == 0 {
+    if scheduler::get_current_tid().as_usize() == 0 {
         serial_println!("kernel task panicked, halting...");
         hlt_loop()
     } else {
-        scheduler::do_exit()
+        scheduler::exit()
     }
 }
 
@@ -75,13 +72,17 @@ $$ | \_/ $$ |\$$$$$$$ |$$ |       \$$$$  |$$ |$$ | $$ | $$ |
 "#
     );
 
+    info!("starting multitasking");
+    scheduler::reschedule();
+
     #[cfg(not(test))]
     main();
 
     #[cfg(test)]
     test_main();
 
-    panic!("main returned")
+    info!("main returned");
+    hlt_loop()
 }
 
 fn main() {
@@ -92,17 +93,19 @@ fn main() {
     let res = vfs.find_vnode(&path);
     info!("open {}: {:?}", path, res);
 
-    scheduler::spawn(just_panic, NORMAL_PRIORITY).unwrap();
-    scheduler::spawn(cmos_stuff, NORMAL_PRIORITY).unwrap();
-    // scheduler::spawn(pci_stuff, NORMAL_PRIORITY).unwrap();
-    scheduler::spawn(example_tasks, NORMAL_PRIORITY).unwrap();
+    scheduler::spawn(just_panic).unwrap();
+    scheduler::spawn(cmos_stuff).unwrap();
+    scheduler::spawn(pci_stuff).unwrap();
+    scheduler::spawn(example_tasks).unwrap();
 
-    info!("starting scheduler");
-    scheduler::reschedule();
+    info!(
+        "kernel task with tid {} is still running",
+        scheduler::get_current_tid()
+    );
 }
 
 extern "C" fn cmos_stuff() {
-    let mut cmos = Peripherals::cmos();
+    let cmos = Peripherals::cmos();
     let mut guard = cmos.lock();
     let time = guard.read_time();
     vga_println!(
@@ -159,7 +162,7 @@ async fn example_task() {
 }
 
 extern "C" fn just_panic() {
-    serial_println!("Hi, my name is Pid {} and", scheduler::get_current_pid());
+    serial_println!("Hi, my name is Tid {} and", scheduler::get_current_tid());
     panic!("Welcome to MartimOS");
 }
 

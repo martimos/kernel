@@ -1,14 +1,7 @@
-use crate::scheduler::{
-    do_exit,
-    pid::Pid,
-    priority::{Priority, LOW_PRIORITY},
-    STACK_SIZE,
-};
-use alloc::{
-    alloc::{alloc, dealloc},
-    rc::Rc,
-};
-use core::{alloc::Layout, cell::RefCell, mem::size_of, ptr::write_bytes};
+use alloc::alloc::{alloc, dealloc};
+use core::{alloc::Layout, mem::size_of, ptr::write_bytes};
+
+use crate::scheduler::{exit, tid::Tid, STACK_SIZE};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum ProcessStatus {
@@ -17,7 +10,6 @@ pub enum ProcessStatus {
     Running,
     Blocked,
     Finished,
-    Idle,
 }
 
 #[repr(align(64))]
@@ -48,35 +40,61 @@ pub static mut BOOT_STACK: Stack = Stack::new();
 #[repr(align(64))]
 pub struct Task {
     /// The ID of this context
-    pub pid: Pid,
-    /// Task Priority
-    pub prio: Priority,
+    pub tid: Tid,
     /// Status of a task, e.g. if the task is ready or blocked
     pub status: ProcessStatus,
     /// Last stack pointer before a context switch to another task
     pub last_stack_pointer: usize,
     /// Stack of the task
     pub stack: *mut Stack,
-    // next task in queue
-    pub next: Option<Rc<RefCell<Task>>>,
-    // previous task in queue
-    pub prev: Option<Rc<RefCell<Task>>>,
 }
 
 impl Task {
-    pub fn new_idle(id: Pid) -> Task {
+    /// Creates a new task that has status=ready with the BOOT_STACK, but
+    /// without a stack pointer.
+    pub fn new_idle(id: Tid) -> Task {
         Task {
-            pid: id,
-            prio: LOW_PRIORITY,
-            status: ProcessStatus::Idle,
+            tid: id,
+            status: ProcessStatus::Ready,
             last_stack_pointer: 0,
             stack: unsafe { &mut BOOT_STACK },
-            next: None,
-            prev: None,
         }
     }
 
-    pub fn new(id: Pid, status: ProcessStatus, prio: Priority) -> Task {
+    /// Creates a Task that represents the currently running code, aka. the kernel.
+    pub fn new_for_current(id: Tid) -> Task {
+        let mut task = Self::new(id, ProcessStatus::Running); // current task is (of course) running
+        unsafe {
+            // copied and adapted from [`Task::allocate_stack`]
+
+            let mut stack: *mut u64 = ((*task.stack).top()) as *mut u64;
+
+            write_bytes((*task.stack).bottom() as *mut u8, 0xCD, STACK_SIZE);
+
+            *stack = 0xCAFEBABEu64;
+            stack = (stack as usize - size_of::<u64>()) as *mut u64;
+
+            /* the first-function-to-be-called's arguments, ... */
+            //TODO: add arguments
+
+            *stack = (leave_task as *const ()) as u64;
+            stack = (stack as usize - size_of::<State>()) as *mut u64;
+
+            /*
+            We don't need a State here.
+            If we switch from this task to another, everything is pushed.
+            We don't want to jump into this before we jump out of it
+            (since this is considered the currently running task), so
+            we will push a full State before we pop one (right?).
+            */
+
+            task.last_stack_pointer = stack as usize;
+        }
+        task
+    }
+
+    /// Creates a new task with the given status. Allocate stack for it with [`Task::allocate_stack`].
+    pub fn new(id: Tid, status: ProcessStatus) -> Task {
         let layout = Layout::new::<Stack>();
         let stack = unsafe { alloc(layout) as *mut Stack };
         if stack as usize == 0 {
@@ -87,13 +105,10 @@ impl Task {
         }
 
         Task {
-            pid: id,
-            prio,
+            tid: id,
             status,
             last_stack_pointer: 0,
             stack,
-            next: None,
-            prev: None,
         }
     }
 }
@@ -132,10 +147,12 @@ struct State {
 }
 
 extern "C" fn leave_task() -> ! {
-    do_exit()
+    exit()
 }
 
 impl Task {
+    /// Allocates stack memory for this task. The given entry_point is the code that
+    /// this task executes.
     pub fn allocate_stack(&mut self, entry_point: extern "C" fn()) {
         unsafe {
             let mut stack: *mut u64 = ((*self.stack).top()) as *mut u64; // "write" qwords

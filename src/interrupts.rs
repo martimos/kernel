@@ -135,7 +135,7 @@ extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: InterruptStackFr
         clear_interrupt(InterruptIndex::Timer);
     }
 
-    scheduler::schedule();
+    scheduler::reschedule();
 }
 
 extern "x86-interrupt" fn page_fault_handler(
