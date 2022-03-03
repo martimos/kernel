@@ -5,27 +5,11 @@ on:
   pull_request:
 
 jobs:
-  check:
-    name: Check
-
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: nightly
-          components: rustfmt, clippy, llvm-tools-preview, rust-src
-          profile: default
-
-      - name: "Run `cargo check`"
-        uses: actions-rs/cargo@v1
-        with:
-          command: check
 
   test:
     name: Test
+
+    needs: [check, fmt, clippy]
 
     strategy:
       fail-fast: false
@@ -56,6 +40,25 @@ jobs:
             grep Executable |             # the last lines in the build output start with 'Executable' and list the built test executables
             sed -rn 's/.*\((.*)\)/\1/p' | # extract the executable files from the output
             xargs -L1 cargo run -Zbuild-std --target=$RUST_HOST --package boot -- # this is the build command from '.cargo/config.toml'
+            
+  check:
+    name: Check
+
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          components: rustfmt, clippy, llvm-tools-preview, rust-src
+          profile: default
+
+      - name: "Run `cargo check`"
+        uses: actions-rs/cargo@v1
+        with:
+          command: check
 
   fmt:
     name: Check Formatting
