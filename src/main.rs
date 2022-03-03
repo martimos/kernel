@@ -9,7 +9,6 @@ extern crate alloc;
 use core::panic::PanicInfo;
 
 use bootloader::{entry_point, BootInfo};
-use x86_64::instructions::hlt;
 
 use martim::driver::ide::IDEController;
 use martim::driver::pci::device::{MassStorageSubClass, PCIDeviceClass};
@@ -73,9 +72,6 @@ $$ | \_/ $$ |\$$$$$$$ |$$ |       \$$$$  |$$ |$$ | $$ | $$ |
 "#
     );
 
-    info!("starting multitasking");
-    scheduler::reschedule();
-
     #[cfg(not(test))]
     main();
 
@@ -89,11 +85,7 @@ $$ | \_/ $$ |\$$$$$$$ |$$ |       \$$$$  |$$ |$$ | $$ | $$ |
 fn main() {
     vga_println!("Hello, {}!", "World");
 
-    let vfs = Vfs::new();
-    let path = "/dev/zero";
-    let res = vfs.find_vnode(&path);
-    info!("open {}: {:?}", path, res);
-
+    scheduler::spawn(vfs_stuff).unwrap();
     scheduler::spawn(just_panic).unwrap();
     scheduler::spawn(cmos_stuff).unwrap();
     scheduler::spawn(pci_stuff).unwrap();
@@ -103,10 +95,13 @@ fn main() {
         "kernel task with tid {} is still running",
         scheduler::get_current_tid()
     );
-    for _ in 0..50 {
-        hlt();
-    }
-    info!("cpu time: {:?}", scheduler::cpu_time());
+}
+
+extern "C" fn vfs_stuff() {
+    let vfs = Vfs::new();
+    let path = "/dev/zero";
+    let res = vfs.find_vnode(&path);
+    info!("open {}: {:?}", path, res);
 }
 
 extern "C" fn cmos_stuff() {
