@@ -29,7 +29,7 @@ pub struct CMOSTime {
 #[derive(Eq, PartialEq, Debug, Copy, Clone)]
 enum Mode {
     Binary,
-    BCD,
+    Bcd,
 }
 
 #[derive(Eq, PartialEq, Debug, Copy, Clone)]
@@ -50,7 +50,7 @@ impl CMOS {
     pub const fn new() -> Self {
         Self {
             initialized: false,
-            mode: Mode::BCD,
+            mode: Mode::Bcd,
             hour_format: HourFormat::_12h,
 
             register_select: Port::new(PORT_REGISTER_SELECT),
@@ -69,12 +69,11 @@ impl CMOS {
     }
 
     pub fn read_time(&mut self) -> CMOSTime {
-        let mut first: CMOSTime;
-        let mut second: CMOSTime;
         while self.update_in_progress() {
             // wait
         }
-        first = self.read_cmos_time_raw();
+        let mut first = self.read_cmos_time_raw();
+        let mut second: CMOSTime;
         loop {
             while self.update_in_progress() {
                 // wait again
@@ -99,7 +98,7 @@ impl CMOS {
         let mut month = self.read_register(REGISTER_RTC_MONTH);
         let mut year = self.read_register(REGISTER_RTC_YEAR);
         let mut century = self.read_register(REGISTER_RTC_CENTURY);
-        if self.mode == Mode::BCD {
+        if self.mode == Mode::Bcd {
             // we have to convert the values to binary
             seconds = bcd_to_binary(seconds);
             minutes = bcd_to_binary(minutes);

@@ -19,8 +19,8 @@ impl IDEChannel {
     pub fn new(ctrlbase: u16, iobase: u16, bus_master_ide: u16) -> Self {
         IDEChannel {
             ctrlbase,
-            alternate_status: PortReadOnly::new(ctrlbase + 0),
-            device_control: PortWriteOnly::new(ctrlbase + 0),
+            alternate_status: PortReadOnly::new(ctrlbase),
+            device_control: PortWriteOnly::new(ctrlbase),
             drive_address: PortReadOnly::new(ctrlbase + 1),
             iobase,
             ports: ChannelsLBA28DataPorts::new(iobase),
