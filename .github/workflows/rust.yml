@@ -37,6 +37,10 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          components: rustfmt, clippy, llvm-tools-preview, rust-src
+          profile: default
 
       # install QEMU
       - name: Install QEMU (Linux)
@@ -78,6 +82,10 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          components: rustfmt, clippy, llvm-tools-preview, rust-src
+          profile: default
       - name: Run `cargo fmt --all -- --check`
         uses: actions-rs/cargo@v1
         with:
@@ -90,6 +98,10 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          components: rustfmt, clippy, llvm-tools-preview, rust-src
+          profile: default
       - name: Run `cargo clippy`
         uses: actions-rs/cargo@v1
         with:
