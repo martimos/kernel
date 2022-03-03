@@ -47,10 +47,10 @@ pub enum Command {
     Identify = 0xEC,
 }
 
-impl Into<u8> for Command {
-    fn into(self) -> u8 {
-        self as u8
-    }
+impl From<Command> for u8 {
+	fn from(c: Command) -> u8 {
+		c as u8
+	}
 }
 
 pub struct IDEController {
@@ -116,13 +116,12 @@ impl From<PCIStandardHeaderDevice> for IDEController {
             secondary_channels.disable_irq();
         }
 
-        let controller = IDEController {
+        IDEController {
             primary: Arc::new(Mutex::new(primary_channels)),
             secondary: Arc::new(Mutex::new(secondary_channels)),
             interrupt_pin: device.interrupt_pin(),
             interrupt_line: device.interrupt_line(),
-        };
-        controller
+        }
     }
 }
 

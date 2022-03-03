@@ -37,7 +37,7 @@ impl Vfs {
             None => return Err(Errno::ENOENT),
             Some(v) => v,
         };
-        while let Some(component) = components.next() {
+       for component in components {
             match component {
                 Component::RootDir => panic!("unexpected root dir in the middle of a path"),
                 Component::CurrentDir | Component::ParentDir => panic!("path is not canonical"), // shouldn't happen with an OwnedPath

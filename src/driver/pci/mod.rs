@@ -106,6 +106,5 @@ unsafe fn read_config_word(bus: u8, slot: u8, function: u8, offset: u8) -> u16 {
     config_address.write(address);
 
     let i = config_data.read();
-    let data_in = (i >> ((offset & 2) * 8) & 0xFFFF) as u16;
-    data_in
+    (i >> ((offset & 2) * 8) & 0xFFFF) as u16
 }

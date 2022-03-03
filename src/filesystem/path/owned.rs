@@ -36,7 +36,7 @@ impl OwnedPath {
         let path = segment.as_ref();
 
         path.components().for_each(|c| {
-            if self.len() > 0 && self.inner.chars().last().unwrap() != SEPARATOR {
+            if !self.is_empty() && self.inner.chars().last().unwrap() != SEPARATOR {
                 // we need to push a separator if the rightmost char is not a separator
                 self.inner.push(SEPARATOR);
             }
@@ -55,7 +55,7 @@ impl OwnedPath {
                 }
                 Component::Normal(s) => self.inner.push_str(s),
                 Component::RootDir => {
-                    if self.len() == 0 {
+                    if self.is_empty() {
                         self.inner.push(SEPARATOR);
                     }
                 }
@@ -89,6 +89,10 @@ impl OwnedPath {
 
     pub fn len(&self) -> usize {
         self.inner.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+    	self.inner.is_empty()
     }
 
     pub fn components(&self) -> Components<'_> {

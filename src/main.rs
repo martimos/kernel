@@ -138,10 +138,9 @@ extern "C" fn pci_stuff() {
     }
 
     let ide_controller = PCI::devices()
-        .filter(|dev| {
+        .find(|dev| {
             dev.class() == PCIDeviceClass::MassStorageController(MassStorageSubClass::IDEController)
         })
-        .next()
         .map(PCIStandardHeaderDevice::new)
         .map(Into::<IDEController>::into)
         .expect("need an IDE controller for this to work");

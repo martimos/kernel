@@ -53,6 +53,15 @@ macro_rules! pop_context {
     };
 }
 
+/// Perform a context switch.
+///
+/// # Safety
+///
+/// Switching to another context is unsafe, as it executes
+/// some other code without any drop or safety guarantees
+/// about the caller of this method. The caller must ensure
+/// that _old_stack and _new_stack are valid pointers to
+/// a task stack.
 #[naked]
 pub unsafe extern "C" fn switch(_old_stack: *mut usize, _new_stack: usize) {
     // _old_stack is located in $rdi, _new_stack is in $rsi

@@ -55,9 +55,7 @@ impl FileDescriptor for MemFd {
         } else {
             slice.len()
         };
-        for i in 0..min_len {
-            buf[i] = slice[i];
-        }
+        buf[..min_len].copy_from_slice(&slice[..min_len]);
         self.ptr += min_len;
         Ok(min_len)
     }
@@ -78,9 +76,7 @@ impl FileDescriptor for MemFd {
 
         let slice = &mut guard[self.ptr..];
 
-        for i in 0..buf.len() {
-            slice[i] = buf[i];
-        }
+        slice[..buf.len()].copy_from_slice(&buf);
 
         self.ptr += buf.len();
         Ok(buf.len())
