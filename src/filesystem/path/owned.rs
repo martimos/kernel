@@ -92,7 +92,7 @@ impl OwnedPath {
     }
 
     pub fn is_empty(&self) -> bool {
-    	self.inner.is_empty()
+        self.inner.is_empty()
     }
 
     pub fn components(&self) -> Components<'_> {

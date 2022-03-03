@@ -48,9 +48,9 @@ pub enum Command {
 }
 
 impl From<Command> for u8 {
-	fn from(c: Command) -> u8 {
-		c as u8
-	}
+    fn from(c: Command) -> u8 {
+        c as u8
+    }
 }
 
 pub struct IDEController {
