@@ -1,3 +1,5 @@
+use core::time::Duration;
+
 use spin::Once;
 
 use crate::{scheduler::tid::Tid, Result};
@@ -39,6 +41,10 @@ pub fn reschedule() {
         }
         SCHEDULER.as_mut().unwrap().reschedule()
     }
+}
+
+pub fn cpu_time() -> Duration {
+    unsafe { SCHEDULER.as_mut().unwrap().cpu_time() }
 }
 
 /// Returns once the task with the given [`Tid`] is done.

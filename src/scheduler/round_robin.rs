@@ -2,6 +2,7 @@ use alloc::{
     collections::{BTreeMap, VecDeque},
     rc::Rc,
 };
+use core::time::Duration;
 use core::{
     cell::RefCell,
     sync::atomic::{AtomicU32, Ordering},
@@ -85,6 +86,11 @@ impl Scheduler {
         })
     }
 
+    pub fn cpu_time(&mut self) -> Duration {
+        // TODO: currently, it feels like the interrupts occur in 100ms intervals, so use that, but it's probably inaccurate
+        Duration::from_millis(self.current_task.borrow().ticks * 100)
+    }
+
     pub fn join(&mut self, tid: Tid) {
         without_interrupts(|| {
             if tid == self.get_current_tid() {
@@ -161,6 +167,9 @@ impl Scheduler {
         }
 
         if let Some(task) = next_task {
+            task.borrow_mut().ticks += 1; // increment the tick count by 1
+
+            // extract the Tid and the stack pointer from the next task
             let (new_id, new_stack_pointer) = {
                 let mut borrowed = task.borrow_mut();
                 borrowed.status = ProcessStatus::Running;
