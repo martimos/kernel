@@ -47,6 +47,9 @@ pub struct Task {
     pub last_stack_pointer: usize,
     /// Stack of the task
     pub stack: *mut Stack,
+    /// The amount of timer ticks that this task has been
+    /// executed on the cpu.
+    pub ticks: u64,
 }
 
 impl Task {
@@ -58,6 +61,7 @@ impl Task {
             status: ProcessStatus::Ready,
             last_stack_pointer: 0,
             stack: unsafe { &mut BOOT_STACK },
+            ticks: 0,
         }
     }
 
@@ -109,6 +113,7 @@ impl Task {
             status,
             last_stack_pointer: 0,
             stack,
+            ticks: 0,
         }
     }
 }

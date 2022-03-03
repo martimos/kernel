@@ -9,6 +9,7 @@ extern crate alloc;
 use core::panic::PanicInfo;
 
 use bootloader::{entry_point, BootInfo};
+use x86_64::instructions::hlt;
 
 use martim::driver::ide::IDEController;
 use martim::driver::pci::device::{MassStorageSubClass, PCIDeviceClass};
@@ -102,6 +103,10 @@ fn main() {
         "kernel task with tid {} is still running",
         scheduler::get_current_tid()
     );
+    for _ in 0..50 {
+        hlt();
+    }
+    info!("cpu time: {:?}", scheduler::cpu_time());
 }
 
 extern "C" fn cmos_stuff() {
