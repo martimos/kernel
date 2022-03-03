@@ -132,7 +132,7 @@ extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: InterruptStackFr
     // handle the interrupt
 
     unsafe {
-        clear_interrupt(InterruptIndex::Timer);
+        end_of_interrupt(InterruptIndex::Timer);
     }
 
     scheduler::reschedule();
@@ -159,12 +159,12 @@ extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: InterruptStac
     crate::task::keyboard::add_scancode(scancode);
 
     unsafe {
-        clear_interrupt(InterruptIndex::Keyboard);
+        end_of_interrupt(InterruptIndex::Keyboard);
     }
 }
 
 #[inline]
-unsafe fn clear_interrupt(which: InterruptIndex) {
+unsafe fn end_of_interrupt(which: InterruptIndex) {
     PICS.lock().notify_end_of_interrupt(which.as_u8());
 }
 
