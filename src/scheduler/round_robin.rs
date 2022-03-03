@@ -13,7 +13,7 @@ use x86_64::instructions::interrupts::without_interrupts;
 
 use crate::scheduler::reschedule;
 use crate::{
-    info,
+    hlt_loop, info,
     scheduler::{
         switch::switch,
         task::{ProcessStatus, Task},
@@ -117,8 +117,7 @@ impl Scheduler {
         });
 
         self.reschedule();
-
-        panic!("exit returned")
+        hlt_loop() // just hlt until this is finally collected
     }
 
     /// Returns the task id (tid) of the currently running task.
@@ -131,7 +130,7 @@ impl Scheduler {
         // One task cleanup per schedule should on average be enough (hopefully)
         // to not accumulate a whole pile of finished, not cleaned up, tasks.
 
-        if let Some(id) = self.finished_tasks.lock().pop_front() {
+        while let Some(id) = self.finished_tasks.lock().pop_front() {
             self.tasks
                 .lock()
                 .remove(&id)
