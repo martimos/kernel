@@ -9,8 +9,6 @@ jobs:
   test:
     name: Test ${{ matrix.mode }}
 
-    needs: [check, fmt, clippy]
-
     strategy:
       fail-fast: false
       matrix:
