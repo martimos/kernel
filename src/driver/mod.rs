@@ -2,19 +2,27 @@ use alloc::sync::Arc;
 
 use spin::Mutex;
 
-use crate::driver::cmos::CMOS;
+use crate::driver::cmos::{CMOSTime, CMOS};
 
 pub mod cmos;
 pub mod ide;
 pub mod pci;
 
-static mut PERIPHERALS: Peripherals = Peripherals { cmos: None };
+static mut PERIPHERALS: Peripherals = Peripherals {
+    cmos: None,
+    boot_time: None,
+};
 
 pub struct Peripherals {
     cmos: Option<Arc<Mutex<CMOS>>>,
+    boot_time: Option<CMOSTime>,
 }
 
 impl Peripherals {
+    pub fn boot_time(&self) -> CMOSTime {
+        self.boot_time.expect("cmos not initialized yet")
+    }
+
     pub fn cmos() -> Arc<Mutex<CMOS>> {
         unsafe {
             PERIPHERALS.init_cmos();
@@ -27,6 +35,8 @@ impl Peripherals {
             return;
         }
 
-        self.cmos = Some(Arc::new(Mutex::new(CMOS::new())));
+        let mut cmos = CMOS::new();
+        self.boot_time = Some(cmos.read_time());
+        self.cmos = Some(Arc::new(Mutex::new(cmos)));
     }
 }
