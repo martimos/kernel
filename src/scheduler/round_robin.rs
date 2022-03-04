@@ -12,10 +12,10 @@ use spin::Mutex;
 use x86_64::instructions::interrupts::without_interrupts;
 
 use crate::scheduler::reschedule;
+use crate::scheduler::switch::switch;
 use crate::{
     hlt_loop, info,
     scheduler::{
-        switch::switch,
         task::{ProcessStatus, Task},
         tid::Tid,
     },
@@ -138,88 +138,92 @@ impl Scheduler {
         // One task cleanup per schedule should on average be enough (hopefully)
         // to not accumulate a whole pile of finished, not cleaned up, tasks.
 
-        while let Some(id) = self.finished_tasks.lock().pop_front() {
-            self.tasks
-                .lock()
-                .remove(&id)
-                .expect("finished task must be part of the task list");
-        }
+        let mut switch_args: Option<(*mut usize, usize)> = None;
 
-        let current_tid: Tid;
-        let current_stack_pointer: *mut usize;
-        let current_status: ProcessStatus;
-        {
-            let mut borrowed = self.current_task.borrow_mut();
-            current_tid = borrowed.tid;
-            current_stack_pointer = &mut borrowed.last_stack_pointer as *mut usize;
-            current_status = borrowed.status;
-        }
-
-        // TODO: create tests for this
-        let mut next_task = match current_status {
-            ProcessStatus::Running => self.ready_queue.lock().pop_front(),
-            _ => self
-                .sleeping_tasks
-                .lock()
-                .pop_front()
-                .or_else(|| self.ready_queue.lock().pop_front()),
-        };
-
-        if next_task.is_none() {
-            if self.idle_task.is_none() {
-                info!("no more tasks to run (not even an idle task)");
-                return;
+        without_interrupts(|| {
+            while let Some(id) = self.finished_tasks.lock().pop_front() {
+                self.tasks
+                    .lock()
+                    .remove(&id)
+                    .expect("finished task must be part of the task list");
             }
-            next_task = Some(self.idle_task.as_ref().unwrap().clone());
-        }
 
-        if let Some(task) = next_task {
-            task.borrow_mut().ticks += 1; // increment the tick count by 1
+            let current_tid: Tid;
+            let current_stack_pointer: *mut usize;
+            let current_status: ProcessStatus;
+            {
+                let mut borrowed = self.current_task.borrow_mut();
+                current_tid = borrowed.tid;
+                current_stack_pointer = &mut borrowed.last_stack_pointer as *mut usize;
+                current_status = borrowed.status;
+            }
 
-            // extract the Tid and the stack pointer from the next task
-            let (new_id, new_stack_pointer) = {
-                let mut borrowed = task.borrow_mut();
-                borrowed.status = ProcessStatus::Running;
-                (borrowed.tid, borrowed.last_stack_pointer)
+            // TODO: create tests for this
+            let mut next_task = match current_status {
+                ProcessStatus::Running => self.ready_queue.lock().pop_front(),
+                _ => self.ready_queue.lock().pop_front(),
             };
 
-            // if the next task is the idle task, do nothing
-            if let Some(tid) = self.idle_task.as_ref().map(|t| t.borrow().tid) {
-                if tid == new_id {
-                    /*
-                    We don't need to hlt() here.
-                    If this was called from an interrupt handler, it will return into that
-                    handler, and that's it. If this was called from somewhere else, the caller
-                    immediately continues to execute code.
-                     */
+            if next_task.is_none() {
+                if self.idle_task.is_none() {
+                    info!("no more tasks to run (not even an idle task)");
                     return;
                 }
+                next_task = Some(self.idle_task.as_ref().unwrap().clone());
             }
 
-            if current_status == ProcessStatus::Running {
-                // info!("task {} is ready", current_tid);
-                self.current_task.borrow_mut().status = ProcessStatus::Ready;
-                self.ready_queue.lock().push_back(self.current_task.clone());
-            } else if current_status == ProcessStatus::Finished {
-                // info!("task {} is finished", current_tid);
-                self.current_task.borrow_mut().status = ProcessStatus::Invalid;
-                // release the task later, because the stack is required
-                // to call the function "switch"
-                self.finished_tasks.lock().push_back(current_tid);
+            if let Some(task) = next_task {
+                task.borrow_mut().ticks += 1; // increment the tick count by 1
+
+                // extract the Tid and the stack pointer from the next task
+                let (new_id, new_stack_pointer) = {
+                    let mut borrowed = task.borrow_mut();
+                    borrowed.status = ProcessStatus::Running;
+                    (borrowed.tid, borrowed.last_stack_pointer)
+                };
+
+                // if the next task is the idle task, do nothing
+                if let Some(tid) = self.idle_task.as_ref().map(|t| t.borrow().tid) {
+                    if tid == new_id {
+                        /*
+                        We don't need to hlt() here.
+                        If this was called from an interrupt handler, it will return into that
+                        handler, and that's it. If this was called from somewhere else, the caller
+                        immediately continues to execute code.
+                         */
+                        return;
+                    }
+                }
+
+                if current_status == ProcessStatus::Running {
+                    // info!("task {} is ready", current_tid);
+                    self.current_task.borrow_mut().status = ProcessStatus::Ready;
+                    self.ready_queue.lock().push_back(self.current_task.clone());
+                } else if current_status == ProcessStatus::Finished {
+                    // info!("task {} is finished", current_tid);
+                    self.current_task.borrow_mut().status = ProcessStatus::Invalid;
+                    // release the task later, because the stack is required
+                    // to call the function "switch"
+                    self.finished_tasks.lock().push_back(current_tid);
+                }
+
+                // info!(
+                //     "switch from tid:{} to tid:{} (*stack: {:#X}, {:#X})",
+                //     current_tid,
+                //     new_id,
+                //     unsafe { *current_stack_pointer },
+                //     new_stack_pointer,
+                // );
+
+                self.current_task = task;
+
+                switch_args = Some((current_stack_pointer, new_stack_pointer));
             }
+        });
 
-            // info!(
-            //     "switch from tid:{} to tid:{} (*stack: {:#X}, {:#X})",
-            //     current_tid,
-            //     new_id,
-            //     unsafe { *current_stack_pointer },
-            //     new_stack_pointer,
-            // );
-
-            self.current_task = task;
-
+        if let Some(args) = switch_args {
             unsafe {
-                switch(current_stack_pointer, new_stack_pointer);
+                switch(args.0, args.1);
             }
         }
     }

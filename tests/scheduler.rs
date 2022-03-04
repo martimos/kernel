@@ -54,6 +54,7 @@ fn counter_many_tasks_nohlt() {
     for _ in 0..NUM_TASKS {
         tids.push(scheduler::spawn(counter_many_tasks_nohlt_fn).unwrap());
     }
+
     for tid in tids {
         scheduler::join(tid);
     }
