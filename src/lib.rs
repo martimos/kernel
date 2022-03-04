@@ -5,6 +5,7 @@
 #![feature(const_mut_refs)]
 #![feature(custom_test_frameworks)]
 #![feature(naked_functions)]
+#![feature(negative_impls)]
 #![feature(thread_local)]
 #![test_runner(crate::test_runner)]
 #![reexport_test_harness_main = "test_main"]

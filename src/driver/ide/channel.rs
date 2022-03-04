@@ -1,7 +1,9 @@
-use crate::driver::ide::{Command, Error, Status};
 use alloc::format;
 use core::fmt::{Debug, Formatter};
+
 use x86_64::instructions::port::{Port, PortReadOnly, PortWriteOnly};
+
+use crate::driver::ide::{Command, Error, Status};
 
 #[allow(dead_code)] // a lot of fields are unused, but they exist according to spec, so we keep them
 pub struct IDEChannel {
@@ -36,6 +38,11 @@ impl IDEChannel {
     }
 
     /// Writes the iNIEN bit to the device control port.
+    ///
+    /// # Safety
+    ///
+    /// This function is unsafe because it writes to a port,
+    /// which could have side effects that violate memory safety.
     pub unsafe fn disable_irq(&mut self) {
         self.device_control.write(2);
     }
@@ -48,11 +55,11 @@ impl IDEChannel {
         unsafe { Error::from_bits_truncate(self.ports.error.read()) }
     }
 
-    pub unsafe fn wait_for_ready(&mut self) {
+    pub fn wait_for_ready(&mut self) {
         while !self.status().contains(Status::READY) {}
     }
 
-    pub unsafe fn wait_for_not_busy(&mut self) {
+    pub fn wait_for_not_busy(&mut self) {
         for _ in 0..16 {
             let _ = self.status();
         }

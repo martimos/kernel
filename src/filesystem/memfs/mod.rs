@@ -1,3 +1,11 @@
+use alloc::borrow::ToOwned;
+use alloc::boxed::Box;
+use alloc::collections::BTreeMap;
+use alloc::rc::Rc;
+use alloc::vec;
+
+use spin::Mutex;
+
 use crate::filesystem::file_descriptor::FileDescriptor;
 use crate::filesystem::flags::OpenFlags;
 use crate::filesystem::memfs::memfd::MemFd;
@@ -8,19 +16,13 @@ use crate::filesystem::perm::Permission;
 use crate::filesystem::{FileSystem, FsId};
 use crate::syscall::error::Errno;
 use crate::Result;
-use alloc::borrow::ToOwned;
-use alloc::boxed::Box;
-use alloc::collections::BTreeMap;
-use alloc::rc::Rc;
-use alloc::vec;
-use spin::Mutex;
 
 pub mod memfd;
 pub mod memfile;
 
 struct MemFsEntry {
     file: RefcountMemFile,
-    perm: Permission,
+    _perm: Permission,
 }
 
 pub struct MemFs {
@@ -62,7 +64,7 @@ impl FileSystem for MemFs {
         let file = Rc::new(Mutex::new(MemFile::new(vec![])));
         let entry = MemFsEntry {
             file: file.clone(),
-            perm,
+            _perm: perm,
         };
 
         // store the file in the fs
@@ -84,8 +86,9 @@ impl FileSystem for MemFs {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::filesystem::file_descriptor::Seek;
+
+    use super::*;
 
     #[test_case]
     fn test_foo_for_starters() {

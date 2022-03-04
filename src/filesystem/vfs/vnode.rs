@@ -1,11 +1,13 @@
-use crate::filesystem::perm::Permission;
-use crate::filesystem::FileSystem;
 use alloc::boxed::Box;
 use alloc::rc::Rc;
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::fmt::{Debug, Formatter};
+
 use spin::Mutex;
+
+use crate::filesystem::perm::Permission;
+use crate::filesystem::FileSystem;
 
 pub enum Type {
     File { length: u64 },
@@ -13,7 +15,7 @@ pub enum Type {
 }
 
 pub struct VNode {
-    origin: Option<Rc<Mutex<Box<dyn FileSystem>>>>,
+    _origin: Option<Rc<Mutex<Box<dyn FileSystem>>>>,
 
     name: String,
     permissions: Permission,

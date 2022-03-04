@@ -39,6 +39,14 @@ pub struct Scheduler {
     task_count: AtomicU32,
 }
 
+impl !Default for Scheduler {}
+
+// impl Default for Scheduler {
+//     fn default() -> Self {
+//         Self::new()
+//     }
+// }
+
 impl Scheduler {
     pub fn new() -> Self {
         let current_tid = Tid::new();

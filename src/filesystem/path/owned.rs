@@ -1,10 +1,11 @@
-use crate::filesystem::path::components::{Component, Components};
-use crate::filesystem::path::{Path, SEPARATOR};
 use alloc::borrow::ToOwned;
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::borrow::Borrow;
 use core::fmt::{Display, Formatter};
+
+use crate::filesystem::path::components::{Component, Components};
+use crate::filesystem::path::{Path, SEPARATOR};
 
 #[derive(Ord, PartialOrd, Eq, PartialEq, Clone, Debug)]
 pub struct OwnedPath {
@@ -22,6 +23,12 @@ impl<P: AsRef<Path>> From<P> for OwnedPath {
 impl Borrow<Path> for OwnedPath {
     fn borrow(&self) -> &Path {
         Path::new(&self.inner)
+    }
+}
+
+impl Default for OwnedPath {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -108,10 +115,10 @@ impl Display for OwnedPath {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::serial_println;
     use alloc::string::ToString;
     use alloc::vec;
+
+    use super::*;
 
     #[test_case]
     fn test_push_trivial() {
