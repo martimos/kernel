@@ -66,3 +66,11 @@ pub fn exit() -> ! {
 pub fn get_current_tid() -> Tid {
     unsafe { SCHEDULER.as_ref().unwrap().get_current_tid() }
 }
+
+pub fn timer_tick() {
+    unsafe { SCHEDULER.as_mut().unwrap().timer_tick() }
+}
+
+pub fn total_ticks() -> u64 {
+    unsafe { SCHEDULER.as_ref().unwrap().total_ticks() }
+}

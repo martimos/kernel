@@ -129,7 +129,7 @@ table[index]: {}[{}]
 }
 
 extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: InterruptStackFrame) {
-    // handle the interrupt
+    scheduler::timer_tick();
 
     unsafe {
         end_of_interrupt(InterruptIndex::Timer);

@@ -37,6 +37,7 @@ pub struct Scheduler {
     /// The amount of running or ready tasks.
     /// Finished tasks are not included.
     task_count: AtomicU32,
+    ticks: u64,
 }
 
 impl !Default for Scheduler {}
@@ -69,6 +70,7 @@ impl Scheduler {
             sleeping_tasks: Mutex::new(VecDeque::new()),
             tasks,
             task_count: AtomicU32::new(0),
+            ticks: 0,
         }
     }
 
@@ -131,6 +133,14 @@ impl Scheduler {
     /// Returns the task id (tid) of the currently running task.
     pub fn get_current_tid(&self) -> Tid {
         without_interrupts(|| self.current_task.borrow().tid)
+    }
+
+    pub fn total_ticks(&self) -> u64 {
+        self.ticks
+    }
+
+    pub fn timer_tick(&mut self) {
+        self.ticks += 1
     }
 
     pub fn reschedule(&mut self) {
