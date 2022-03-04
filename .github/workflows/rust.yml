@@ -29,9 +29,7 @@ jobs:
 
     strategy:
       fail-fast: false
-      matrix:
-        os: [ubuntu-latest]
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     timeout-minutes: 30
 
     steps:
@@ -43,12 +41,12 @@ jobs:
           profile: default
 
       # install QEMU
-      - name: Install QEMU (Linux)
+      - name: Install QEMU
         run: sudo apt update && sudo apt install qemu-system-x86
       - name: "Print QEMU Version"
         run: qemu-system-x86_64 --version
 
-      - name: Run all tests
+      - name: Build and run all tests
         run: |
             set -e
             export RUST_HOST=$(rustc --version --verbose | grep 'host:' | awk '{ print $2 }')
