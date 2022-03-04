@@ -71,7 +71,7 @@ pub fn get_current_tid() -> Tid {
 /// The tick is ignored if the scheduler is not initialized yet.
 pub fn timer_tick() {
     unsafe {
-        if let Some(mut sched) = SCHEDULER.as_mut() {
+        if let Some(sched) = SCHEDULER.as_mut() {
             sched.timer_tick()
         }
     }
