@@ -1,0 +1,78 @@
+name: Build
+
+on:
+  push:
+  pull_request:
+
+jobs:
+
+  test:
+    name: Test ${{ matrix.mode }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: [ '', '--release' ]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          components: rustfmt, clippy, llvm-tools-preview, rust-src
+          profile: default
+
+      # install QEMU
+      - name: Install QEMU
+        run: sudo apt update && sudo apt install qemu-system-x86
+      - name: "Print QEMU Version"
+        run: qemu-system-x86_64 --version
+
+      - name: Build and run all tests
+        run: |
+          set -e
+          export RUST_HOST=$(rustc --version --verbose | grep 'host:' | awk '{ print $2 }')
+          echo "host: $RUST_HOST"
+          # maybe the `grep Executable` stops working with some rust version
+          cargo t --no-run 2>&1 |       # only build tests, redirect the cargo output from stderr to stdout
+          grep Executable |             # the last lines in the build output start with 'Executable' and list the built test executables
+          sed -rn 's/.*\((.*)\)/\1/p' | # extract the executable files from the output
+          xargs -L1 cargo run -Zbuild-std --target=$RUST_HOST --package boot ${{ matrix.mode }} -- # this is the build command from '.cargo/config.toml'
+
+
+  build:
+    name: Build
+    needs: test
+
+    strategy:
+      fail-fast: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          components: rustfmt, clippy, llvm-tools-preview, rust-src
+          profile: default
+
+      - name: Build in release mode
+        run: |
+            set -e
+            export RUST_HOST=$(rustc --version --verbose | grep 'host:' | awk '{ print $2 }')
+            echo "host: $RUST_HOST"
+            
+            # build the kernel
+            cargo build --release
+            
+            # create the bios image
+            cargo run -Zbuild-std --target=$RUST_HOST --package boot --release -- target/x86_64-martim/release/martim --no-run
+
+      - name: Archive
+        uses: actions/upload-artifact@v3
+        with:
+          name: kernel-image-bios
+          path: target/x86_64-martim/release/boot-bios-martim.img
