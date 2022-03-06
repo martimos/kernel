@@ -15,7 +15,6 @@ use x86_64::{
 
 #[cfg(test)]
 use crate::serial_println;
-
 use crate::{allocator, vga_buffer};
 
 static mut OFFSET_PAGE_TABLE: Option<Mutex<OffsetPageTable>> = None;
