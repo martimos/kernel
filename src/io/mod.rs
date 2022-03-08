@@ -1,6 +1,3 @@
-use core::ops::Index;
-use core::slice::SliceIndex;
-
 use crate::Result;
 
 pub mod fs;
