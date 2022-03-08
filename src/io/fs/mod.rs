@@ -1,7 +1,8 @@
+use alloc::boxed::Box;
+
 use crate::io::fs::perm::Permission;
 use crate::io::fs::{file_descriptor::FileDescriptor, flags::OpenFlags, path::Path};
 use crate::Result;
-use alloc::boxed::Box;
 
 pub mod fat32;
 pub mod file_descriptor;
@@ -12,6 +13,7 @@ pub mod path;
 pub mod perm;
 pub mod stat;
 pub mod upnode;
+pub mod ustar;
 pub mod vfs;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
