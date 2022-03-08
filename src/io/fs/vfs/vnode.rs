@@ -6,8 +6,8 @@ use core::fmt::{Debug, Formatter};
 
 use spin::Mutex;
 
-use crate::filesystem::perm::Permission;
-use crate::filesystem::FileSystem;
+use crate::io::fs::perm::Permission;
+use crate::io::fs::FileSystem;
 
 pub enum Type {
     File { length: u64 },

@@ -1,4 +1,4 @@
-use crate::filesystem::perm::Permission;
+use crate::io::fs::perm::Permission;
 
 #[derive(Copy, Clone, Default)]
 pub struct Stat {

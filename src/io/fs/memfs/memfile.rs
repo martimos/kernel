@@ -1,4 +1,4 @@
-use crate::filesystem::stat::Stat;
+use crate::io::fs::stat::Stat;
 use alloc::rc::Rc;
 use alloc::vec::Vec;
 use core::ops::{Index, IndexMut};

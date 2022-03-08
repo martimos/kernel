@@ -1,8 +1,6 @@
-use crate::filesystem::perm::Permission;
-use crate::{
-    filesystem::{file_descriptor::FileDescriptor, flags::OpenFlags, path::Path},
-    Result,
-};
+use crate::io::fs::perm::Permission;
+use crate::io::fs::{file_descriptor::FileDescriptor, flags::OpenFlags, path::Path};
+use crate::Result;
 use alloc::boxed::Box;
 
 pub mod fat32;

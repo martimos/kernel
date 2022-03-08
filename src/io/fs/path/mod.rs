@@ -1,5 +1,5 @@
-use crate::filesystem::path::components::Components;
-use crate::filesystem::path::owned::OwnedPath;
+use crate::io::fs::path::components::Components;
+use crate::io::fs::path::owned::OwnedPath;
 use alloc::borrow::ToOwned;
 use core::fmt::{Display, Formatter};
 use core::ops::Deref;

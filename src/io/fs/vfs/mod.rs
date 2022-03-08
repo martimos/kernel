@@ -1,6 +1,6 @@
-use crate::filesystem::path::components::Component;
-use crate::filesystem::path::Path;
-use crate::filesystem::vfs::vnode::{Type, VNode};
+use crate::io::fs::path::components::Component;
+use crate::io::fs::path::Path;
+use crate::io::fs::vfs::vnode::{Type, VNode};
 use crate::syscall::error::Errno;
 use crate::{info, Result};
 use alloc::borrow::ToOwned;

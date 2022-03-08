@@ -6,14 +6,14 @@ use alloc::vec;
 
 use spin::Mutex;
 
-use crate::filesystem::file_descriptor::FileDescriptor;
-use crate::filesystem::flags::OpenFlags;
-use crate::filesystem::memfs::memfd::MemFd;
-use crate::filesystem::memfs::memfile::{MemFile, RefcountMemFile};
-use crate::filesystem::path::owned::OwnedPath;
-use crate::filesystem::path::Path;
-use crate::filesystem::perm::Permission;
-use crate::filesystem::{FileSystem, FsId};
+use crate::io::fs::file_descriptor::FileDescriptor;
+use crate::io::fs::flags::OpenFlags;
+use crate::io::fs::memfs::memfd::MemFd;
+use crate::io::fs::memfs::memfile::{MemFile, RefcountMemFile};
+use crate::io::fs::path::owned::OwnedPath;
+use crate::io::fs::path::Path;
+use crate::io::fs::perm::Permission;
+use crate::io::fs::{FileSystem, FsId};
 use crate::syscall::error::Errno;
 use crate::Result;
 
@@ -86,7 +86,7 @@ impl FileSystem for MemFs {
 
 #[cfg(test)]
 mod tests {
-    use crate::filesystem::file_descriptor::Seek;
+    use crate::io::fs::file_descriptor::Seek;
 
     use super::*;
 

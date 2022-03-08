@@ -1,4 +1,4 @@
-use crate::filesystem::path::{Path, SEPARATOR};
+use crate::io::fs::path::{Path, SEPARATOR};
 use alloc::vec::Vec;
 
 pub struct Components<'a> {

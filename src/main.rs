@@ -14,8 +14,8 @@ use martim::driver::ide::IDEController;
 use martim::driver::pci::device::{MassStorageSubClass, PCIDeviceClass};
 use martim::driver::pci::header::PCIStandardHeaderDevice;
 use martim::driver::Peripherals;
-use martim::filesystem::vfs::Vfs;
 use martim::hlt_loop;
+use martim::io::fs::vfs::Vfs;
 use martim::{
     driver::pci::PCI,
     info, scheduler, serial_print, serial_println,

@@ -1,7 +1,7 @@
-use crate::filesystem::file_descriptor::{FileDescriptor, Seek};
-use crate::filesystem::memfs::memfile::RefcountMemFile;
-use crate::filesystem::path::owned::OwnedPath;
-use crate::filesystem::stat::Stat;
+use crate::io::fs::file_descriptor::{FileDescriptor, Seek};
+use crate::io::fs::memfs::memfile::RefcountMemFile;
+use crate::io::fs::path::owned::OwnedPath;
+use crate::io::fs::stat::Stat;
 use crate::syscall::error::Errno;
 use crate::Result;
 

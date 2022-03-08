@@ -1,4 +1,4 @@
-use crate::filesystem::inode::Inode;
+use crate::io::fs::inode::Inode;
 use alloc::{boxed::Box, rc::Rc};
 use spin::Mutex;
 

@@ -1,5 +1,6 @@
-use crate::filesystem::path::owned::OwnedPath;
-use crate::{filesystem::stat::Stat, Result};
+use crate::io::fs::path::owned::OwnedPath;
+use crate::io::fs::stat::Stat;
+use crate::Result;
 
 pub enum Seek {
     Set(usize),

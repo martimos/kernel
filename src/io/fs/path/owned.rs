@@ -4,8 +4,8 @@ use alloc::vec::Vec;
 use core::borrow::Borrow;
 use core::fmt::{Display, Formatter};
 
-use crate::filesystem::path::components::{Component, Components};
-use crate::filesystem::path::{Path, SEPARATOR};
+use crate::io::fs::path::components::{Component, Components};
+use crate::io::fs::path::{Path, SEPARATOR};
 
 #[derive(Ord, PartialOrd, Eq, PartialEq, Clone, Debug)]
 pub struct OwnedPath {
