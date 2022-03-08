@@ -8,13 +8,13 @@ use crate::{read_be_u16, read_be_u32, read_be_u64, read_bytes, read_u8};
 
 bitflags! {
     pub struct TypeFlag: u8 {
-        const Regular = 0;
-        const Link = 1;
-        const SymLink = 2;
-        const CharSpecialDevice = 3;
-        const BlockSpecialDevice = 4;
-        const Directory = 5;
-        const FIFOSpecialFile = 6;
+        const REGULAR = 0;
+        const LINK = 1;
+        const SYMLINK = 2;
+        const CHAR_SPECIAL_DEVICE = 3;
+        const BLOCK_SPECIAL_DEVICE = 4;
+        const DIRECTORY = 5;
+        const FIFO_SPECIAL_FILE = 6;
     }
 }
 
@@ -91,11 +91,11 @@ impl HeaderBlock {
             && self.uid == 0
             && self.gid == 0
             && self.size == 0
-            && self.mtime.iter().find(|&&b| b != 0).is_none()
+            && !self.mtime.iter().any(|&b| b != 0)
             && self.checksum == 0
             && self.typeflag == TypeFlag::empty()
             && self.linkname.is_empty()
-            && self.magic.iter().find(|&&b| b != 0).is_none()
+            && !self.magic.iter().any(|&b| b != 0)
             && self.version == 0
             && self.uname.is_empty()
             && self.gname.is_empty()
@@ -106,10 +106,7 @@ impl HeaderBlock {
 }
 
 fn null_terminated_string<const SZ: usize>(data: [u8; SZ]) -> String {
-    let nullbyte = data
-        .iter()
-        .position(|&p| p == 0)
-        .unwrap_or_else(|| data.len());
+    let nullbyte = data.iter().position(|&p| p == 0).unwrap_or(data.len());
     let string = data.split_at(nullbyte).0;
     String::from_utf8_lossy(string).to_string()
 }
