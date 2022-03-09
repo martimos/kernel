@@ -99,7 +99,7 @@ mod tests {
 
         let write_data = "Hello, World!";
         assert_eq!(13, f.write(&write_data).unwrap());
-        f.seek(Seek::Set(0));
+        f.seek(Seek::Set(0)).unwrap();
 
         let mut data = vec![0_u8; 10];
         assert_eq!(10, f.read(&mut data).unwrap());

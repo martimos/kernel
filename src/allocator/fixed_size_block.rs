@@ -1,6 +1,8 @@
 use alloc::alloc::GlobalAlloc;
 use core::{alloc::Layout, mem, ptr, ptr::NonNull};
 
+use x86_64::structures::paging::{PageSize, Size4KiB};
+
 use super::Locked;
 
 struct ListNode {
@@ -11,7 +13,18 @@ struct ListNode {
 ///
 /// The sizes must each be power of 2 because they are also used as
 /// the block alignment (alignments must be always powers of 2).
-const BLOCK_SIZES: &[usize] = &[8, 16, 32, 64, 128, 256, 512, 1024, 2048];
+const BLOCK_SIZES: &[usize] = &[
+    8,
+    16,
+    32,
+    64,
+    128,
+    256,
+    512,
+    1024,
+    2048,
+    Size4KiB::SIZE as usize,
+];
 
 /// Choose an appropriate block size for the given layout.
 ///
