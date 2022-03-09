@@ -46,8 +46,6 @@ jobs:
     name: Build
     needs: test
 
-    strategy:
-      fail-fast: false
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -76,35 +74,3 @@ jobs:
         with:
           name: kernel-image-bios
           path: target/x86_64-martim/release/boot-bios-martim.img
-
-  fmt:
-    name: Check Formatting
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: nightly
-          components: rustfmt, clippy, llvm-tools-preview, rust-src
-          profile: default
-      - name: Run `cargo fmt --all -- --check`
-        uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: --all -- --check
-
-  clippy:
-    name: Clippy
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: nightly
-          components: rustfmt, clippy, llvm-tools-preview, rust-src
-          profile: default
-      - name: Run `cargo clippy`
-        uses: actions-rs/cargo@v1
-        with:
-          command: clippy
-          args: -- -D warnings
