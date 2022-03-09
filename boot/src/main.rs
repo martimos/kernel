@@ -1,10 +1,11 @@
-use fern::colors::{Color, ColoredLevelConfig};
-use log::{debug, info};
 use std::{
     path::{Path, PathBuf},
     process::{Command, ExitStatus},
     time::Duration,
 };
+
+use fern::colors::{Color, ColoredLevelConfig};
+use log::{debug, info};
 
 const TEST_TIMEOUT_SECS: u64 = 30;
 
@@ -130,7 +131,7 @@ pub fn create_disk_images(kernel_binary_path: &Path) -> PathBuf {
         .arg(kernel_binary_path.parent().unwrap());
     build_cmd.arg("--quiet");
 
-    debug!("{:?}", build_cmd);
+    // debug!("{:?}", build_cmd);
 
     if !build_cmd.status().unwrap().success() {
         panic!("build failed");
