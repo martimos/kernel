@@ -1,6 +1,7 @@
 # martim
 
-[![Build](https://github.com/martimos/kernel/actions/workflows/rust.yml/badge.svg)](https://github.com/martimos/kernel/actions/workflows/rust.yml)
+[![build](https://github.com/martimos/kernel/actions/workflows/build.yml/badge.svg)](https://github.com/martimos/kernel/actions/workflows/build.yml)
+[![lint](https://github.com/martimos/kernel/actions/workflows/lint.yml/badge.svg)](https://github.com/martimos/kernel/actions/workflows/lint.yml)
 
 A ~experimental~ superior kernel written in Rust
 
