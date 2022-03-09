@@ -30,8 +30,7 @@ where
         // search for file
         let needle = path.as_ref().to_string();
         let mut offset = 0;
-        let mut header_block: Option<HeaderBlock> = None;
-        loop {
+        let header_block: Option<HeaderBlock> = loop {
             let mut current_section = SectionRead::new(&self.source, offset);
             let current_header = HeaderBlock::decode(&mut current_section)?;
 
@@ -46,11 +45,10 @@ where
             }
 
             if current_header.name == needle {
-                header_block = Some(current_header);
-                break;
+                break Some(current_header);
             }
             offset += BLOCK_SIZE + current_header.size; // skip to the next header
-        }
+        };
 
         // file found, read data
         offset += BLOCK_SIZE;
@@ -58,10 +56,7 @@ where
         let mut data = SectionRead::new(&self.source, offset);
         let mut buffer = vec![0_u8; header.size as usize];
         data.read_exact(&mut buffer)?;
-        Ok(UstarFile {
-            header,
-            data: buffer,
-        })
+        Ok(UstarFile::new(header, buffer))
     }
 }
 
@@ -73,5 +68,18 @@ pub struct UstarFile {
 impl UstarFile {
     fn new(header: HeaderBlock, data: Vec<u8>) -> Self {
         Self { header, data }
+    }
+
+    pub fn size(&self) -> u64 {
+        self.header.size
+    }
+
+    pub fn name(&self) -> &str {
+        &self.header.name
+    }
+
+    pub fn data(&self) -> &[u8] {
+        // no data_mut because no write support
+        self.data.as_slice()
     }
 }

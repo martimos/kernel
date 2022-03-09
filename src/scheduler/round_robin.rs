@@ -31,7 +31,7 @@ pub struct Scheduler {
     ready_queue: Mutex<VecDeque<TaskHandle>>,
     /// Finished tasks waiting for cleanup.
     finished_tasks: Mutex<VecDeque<Tid>>,
-    sleeping_tasks: Mutex<VecDeque<TaskHandle>>,
+    _sleeping_tasks: Mutex<VecDeque<TaskHandle>>,
     /// Tasks by their Pid.
     tasks: Mutex<BTreeMap<Tid, TaskHandle>>,
     /// The amount of running or ready tasks.
@@ -61,7 +61,7 @@ impl Scheduler {
             idle_task: Some(idle_task),
             ready_queue,
             finished_tasks: Mutex::new(VecDeque::new()),
-            sleeping_tasks: Mutex::new(VecDeque::new()),
+            _sleeping_tasks: Mutex::new(VecDeque::new()),
             tasks,
             task_count: AtomicU32::new(0),
             ticks: 0,
