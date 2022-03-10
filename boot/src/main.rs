@@ -124,8 +124,6 @@ fn run_args() -> Vec<&'static str> {
     vec.push("--no-reboot");
     vec.push("-serial");
     vec.push("stdio");
-    vec.push("-drive");
-    vec.push("file=disk.img,if=ide,format=raw");
     vec.push("-s");
     vec.push("-monitor");
     vec.push("telnet::45454,server,nowait");
