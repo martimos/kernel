@@ -1,9 +1,6 @@
-use std::collections::BTreeMap;
 use std::{
-    fs,
     path::{Path, PathBuf},
-    process::{Command, ExitStatus},
-    time::Duration,
+    process::Command,
 };
 
 use fern::colors::{Color, ColoredLevelConfig};
@@ -11,40 +8,38 @@ use log::{debug, info};
 
 const TEST_TIMEOUT_SECS: u64 = 30;
 
+mod test;
+
 fn main() {
-    let colors = ColoredLevelConfig::new()
-        .error(Color::Red)
-        .warn(Color::Yellow)
-        .info(Color::Green)
-        .debug(Color::Magenta);
+    let mut verbose: bool = false;
+    let mut no_boot: bool = false;
+    let mut binary_path: Option<PathBuf> = None;
 
-    fern::Dispatch::new()
-        .format(move |out, message, record| {
-            out.finish(format_args!(
-                "{} [{}] {}",
-                chrono::Local::now().format("[%H:%M:%S]"),
-                colors.color(record.level()),
-                message
-            ))
-        })
-        .level(log::LevelFilter::Debug)
-        .chain(std::io::stdout())
-        .apply()
+    std::env::args()
+        .skip(1) // skip executable name
+        .for_each(|arg| {
+            match arg.as_str() {
+                "-v" | "--verbose" => verbose = true,
+                "--no-run" => no_boot = true,
+                p => {
+                    if binary_path.is_some() {
+                        panic!(
+                            "already have a binary path\n\tfirst: '{}'\n\tsecond: '{}'",
+                            binary_path.as_ref().unwrap().display(),
+                            p
+                        );
+                    }
+                    binary_path = Some(PathBuf::from(p));
+                }
+            };
+        });
+
+    configure_logging(verbose);
+
+    let kernel_binary_path = binary_path
+        .expect("no binary path given")
+        .canonicalize()
         .unwrap();
-
-    let mut args = std::env::args().skip(1); // skip executable name
-
-    let kernel_binary_path = PathBuf::from(args.next().unwrap()).canonicalize().unwrap();
-
-    let no_boot = if let Some(arg) = args.next() {
-        match arg.as_str() {
-            "--no-run" => true,
-            other => panic!("unexpected argument `{}`", other),
-        }
-    } else {
-        false
-    };
-
     let image = create_disk_images(&kernel_binary_path);
 
     if no_boot {
@@ -71,9 +66,16 @@ fn main() {
             .expect("should be of form <image>-<random>")
             .0
             .to_string();
-        run_test_binary(file_name, run_cmd)
+        test::run_test_binary(file_name, run_cmd)
     } else {
-        run_cmd.args(run_args());
+        run_cmd.args(vec![
+            "--no-reboot",
+            "-serial",
+            "stdio",
+            "-s", // -gdb tcp::1234
+            "-monitor",
+            "telnet::45454,server,nowait",
+        ]);
         debug!("{:?}\n", run_cmd);
 
         let exit_status = run_cmd.status().unwrap();
@@ -83,55 +85,30 @@ fn main() {
     }
 }
 
-#[derive(Debug, PartialEq, serde_derive::Serialize, serde_derive::Deserialize)]
-pub struct QemuConfig {
-    all_tests: Vec<String>,
-    tests: BTreeMap<String, Vec<String>>,
-}
+fn configure_logging(verbose: bool) {
+    let colors = ColoredLevelConfig::new()
+        .error(Color::Red)
+        .warn(Color::Yellow)
+        .info(Color::Green)
+        .debug(Color::Magenta);
 
-fn run_test_binary(test_name: String, mut run_cmd: Command) {
-    let data = fs::read("tests/qemu_config.yaml").unwrap();
-    let config_content = String::from_utf8_lossy(&data);
-    let config: QemuConfig = serde_yaml::from_str(&config_content).unwrap();
-
-    let mut args: Vec<String> = config
-        .all_tests
-        .iter()
-        .flat_map(|s| s.split(" "))
-        .map(|s| s.to_string())
-        .collect();
-    if let Some(additional_args) = config.tests.get(&test_name) {
-        info!("found additional qemu arguments for test '{}'", test_name);
-        additional_args
-            .iter()
-            .flat_map(|s| s.split(" "))
-            .for_each(|e| args.push(e.to_string()))
-    }
-
-    run_cmd.args(args);
-    debug!("{:?}\n", run_cmd);
-
-    let exit_status = run_test_command(run_cmd);
-    match exit_status.code() {
-        Some(33) => {} // success
-        Some(other) => panic!("Test failed (exit code: {:?})", other),
-        None => panic!("Test failed (no exit code)"),
-    }
-}
-
-fn run_args() -> Vec<&'static str> {
-    let mut vec = Vec::new();
-    vec.push("--no-reboot");
-    vec.push("-serial");
-    vec.push("stdio");
-    vec.push("-s");
-    vec.push("-monitor");
-    vec.push("telnet::45454,server,nowait");
-    vec
-}
-
-fn run_test_command(mut cmd: Command) -> ExitStatus {
-    runner_utils::run_with_timeout(&mut cmd, Duration::from_secs(TEST_TIMEOUT_SECS)).unwrap()
+    fern::Dispatch::new()
+        .format(move |out, message, record| {
+            out.finish(format_args!(
+                "{} [{}] {}",
+                chrono::Local::now().format("[%H:%M:%S]"),
+                colors.color(record.level()),
+                message
+            ))
+        })
+        .level(if verbose {
+            log::LevelFilter::Debug
+        } else {
+            log::LevelFilter::Info
+        })
+        .chain(std::io::stdout())
+        .apply()
+        .unwrap();
 }
 
 pub fn create_disk_images(kernel_binary_path: &Path) -> PathBuf {

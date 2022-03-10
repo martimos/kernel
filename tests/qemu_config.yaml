@@ -8,5 +8,5 @@ all_tests: # will be passed to all tests, in addition to properties configured b
   - '-serial stdio'
 
 tests:
-  ide_main:
-    - '-drive file=tests/ide/disk.img,if=ide,format=raw'
+  ide:
+    - '-drive file=tests/resources/disk.img,if=ide,format=raw'
