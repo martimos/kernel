@@ -1,0 +1,12 @@
+# This file contains a qemu config for the tests.
+# The test will be started with the parameters configured.
+
+all_tests: # will be passed to all tests, in addition to properties configured below
+  - '-display none'
+  - '-device isa-debug-exit,iobase=0xf4,iosize=0x04'
+  - '--no-reboot'
+  - '-serial stdio'
+
+tests:
+  ide_main:
+    - '-drive file=tests/ide/disk.img,if=ide,format=raw'

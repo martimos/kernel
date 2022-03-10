@@ -12,3 +12,6 @@ locate-cargo-manifest = "0.2.2" # for locating the kernel's `Cargo.toml`
 log = "0.4.14"
 fern = { version = "0.6.0", features = ["colored"] }
 chrono = "0.4.19"
+serde_yaml = "0.8.23"
+serde = "1.0.136"
+serde_derive = "1.0.136"
