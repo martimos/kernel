@@ -5,9 +5,9 @@ use core::fmt::{Debug, Formatter};
 use spin::Mutex;
 use x86_64::instructions::interrupts::without_interrupts;
 
+use crate::device::block::BlockDevice;
 use crate::driver::ide::channel::IDEChannel;
 use crate::driver::ide::{is_bit_set, Command, Status, UDMAMode};
-use crate::io::read_at::ReadAt;
 
 pub struct IDEDrive {
     channel: Arc<Mutex<IDEChannel>>,
@@ -142,12 +142,15 @@ impl IDEDrive {
     }
 }
 
-impl ReadAt for IDEDrive {
-    fn read_at(&self, offset: u64, buf: &mut dyn AsMut<[u8]>) -> crate::Result<usize> {
+impl BlockDevice for IDEDrive {
+    fn block_size(&self) -> usize {
+        512
+    }
+
+    fn read_block(&self, block: u64, buf: &mut dyn AsMut<[u8]>) {
         let mut data = [0_u16; 256];
 
-        let lba = offset >> 9;
-        let buffer_offset = (offset & 511) as usize;
+        let lba = block;
         let sector_count = 1;
 
         let mut channel = self.channel.lock();
@@ -176,7 +179,6 @@ impl ReadAt for IDEDrive {
 
         let target = buf.as_mut();
         let data_u8 = unsafe { data.as_slice().align_to::<u8>().1 };
-        target.copy_from_slice(&data_u8[buffer_offset..buffer_offset + target.len()]);
-        Ok(target.len())
+        target.copy_from_slice(&data_u8[0..target.len()]);
     }
 }
