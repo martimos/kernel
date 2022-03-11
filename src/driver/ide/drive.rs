@@ -1,10 +1,13 @@
-use crate::driver::ide::channel::IDEChannel;
-use crate::driver::ide::{is_bit_set, Command, Status, UDMAMode};
 use alloc::format;
 use alloc::sync::Arc;
 use core::fmt::{Debug, Formatter};
+
 use spin::Mutex;
 use x86_64::instructions::interrupts::without_interrupts;
+
+use crate::driver::ide::channel::IDEChannel;
+use crate::driver::ide::{is_bit_set, Command, Status, UDMAMode};
+use crate::io::read_at::ReadAt;
 
 pub struct IDEDrive {
     channel: Arc<Mutex<IDEChannel>>,
@@ -16,7 +19,6 @@ pub struct IDEDrive {
     // The following block consists of the identify_sector and then values
     // that were read from it.
     identify_sector: [u16; 256],
-    block_size: usize,
     supported_udma_modes: UDMAMode,
     active_udma_mode: UDMAMode,
     sector_count: u64,
@@ -42,7 +44,6 @@ impl IDEDrive {
             drive,
             exists: false,
             identify_sector: [0; 256],
-            block_size: 0,
             supported_udma_modes: UDMAMode::empty(),
             active_udma_mode: UDMAMode::empty(),
             sector_count: 0,
@@ -62,7 +63,7 @@ impl IDEDrive {
 }
 
 impl IDEDrive {
-    pub fn identify(&mut self) -> bool {
+    fn identify(&mut self) -> bool {
         let mut channel = self.channel.lock();
         unsafe {
             channel.ports.drive_select.write(self.drive);
@@ -139,8 +140,42 @@ impl IDEDrive {
     pub fn active_udma_mode(&self) -> UDMAMode {
         self.active_udma_mode
     }
+}
 
-    pub fn block_size(&self) -> usize {
-        self.block_size
+impl ReadAt for IDEDrive {
+    fn read_at(&self, offset: u64, buf: &mut dyn AsMut<[u8]>) -> crate::Result<usize> {
+        let mut data = [0_u16; 256];
+
+        let lba = offset >> 9;
+        let buffer_offset = (offset & 511) as usize;
+        let sector_count = 1;
+
+        let mut channel = self.channel.lock();
+        unsafe {
+            channel
+                .ports
+                .drive_select
+                .write((0x40 + self.drive) | (((lba >> 24) & 0x0F) as u8) as u8);
+            channel.ports.features.write(0);
+            channel.ports.sector_count.write(sector_count);
+            channel.ports.lba_lo.write(lba as u8);
+            channel.ports.lba_mid.write((lba >> 8) as u8);
+            channel.ports.lba_hi.write((lba >> 16) as u8);
+            channel.write_command(Command::ReadSectors); // TODO: disable the interrupt with iNIEN
+            channel.wait_for_not_busy();
+            without_interrupts(|| {
+                channel.wait_for_ready();
+                while !channel.status().contains(Status::DATA_READY) {}
+                for b in &mut data {
+                    *b = channel.ports.data.read();
+                }
+            });
+            while !channel.status().contains(Status::READY) {}
+        }
+
+        let target = buf.as_mut();
+        let data_u8 = unsafe { data.as_slice().align_to::<u8>().1 };
+        target.copy_from_slice(&data_u8[buffer_offset..buffer_offset + target.len()]);
+        Ok(target.len())
     }
 }
