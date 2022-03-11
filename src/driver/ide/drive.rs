@@ -161,7 +161,8 @@ impl ReadAt for IDEDrive {
             channel.ports.lba_lo.write(lba as u8);
             channel.ports.lba_mid.write((lba >> 8) as u8);
             channel.ports.lba_hi.write((lba >> 16) as u8);
-            channel.write_command(Command::ReadSectors); // TODO: disable the interrupt with iNIEN
+            channel.write_command(Command::ReadSectors);
+            channel.disable_irq();
             channel.wait_for_not_busy();
             without_interrupts(|| {
                 channel.wait_for_ready();

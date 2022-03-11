@@ -65,50 +65,6 @@ impl IDEChannel {
         }
         while self.status().contains(Status::BUSY) {} // wait for !BUSY
     }
-
-    // pub fn foo(&mut self) {
-    //     /*
-    //     This is reading from the boot drive (unfortunately), but it's reading the full drive
-    //     and prints it to serial output.
-    //     ~Also, this doesn't terminate. If probably gets stuck in some of the polling loops.~ not anymore
-    //      */
-    //     unsafe {
-    //         for lba in 0_u32.. {
-    //             self.ports
-    //                 .drive_select
-    //                 .write(0xF0 | (((lba >> 24) & 0x0F) as u8) as u8);
-    //             self.ports.features.write(0);
-    //             self.ports.sector_count.write(1); // sector count
-    //             self.ports.lba_lo.write(lba as u8);
-    //             self.ports.lba_mid.write((lba >> 8) as u8);
-    //             self.ports.lba_hi.write((lba >> 16) as u8);
-    //             self.write_command(Command::ReadSectors); // TODO: disable the interrupt with iNIEN
-    //             self.wait_for_not_busy();
-    //             let mut data = [0_u16; 256];
-    //             without_interrupts(|| {
-    //                 self.wait_for_ready();
-    //                 while !self.status().contains(Status::DATA_READY) {}
-    //                 for i in 0..256 {
-    //                     data[i] = self.ports.data.read();
-    //                 }
-    //             });
-    //             data.as_slice()
-    //                 .align_to::<u8>()
-    //                 .1
-    //                 .iter()
-    //                 .map(|&b| b as char)
-    //                 .map(|c| {
-    //                     return if c.is_ascii() && !c.is_control() {
-    //                         c
-    //                     } else {
-    //                         '_'
-    //                     };
-    //                 })
-    //                 .for_each(|c| serial_print!("{}", c));
-    //             while !self.status().contains(Status::READY) {}
-    //         }
-    //     }
-    // }
 }
 
 impl Debug for IDEChannel {
