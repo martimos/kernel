@@ -3,6 +3,7 @@ use std::{
     process::Command,
 };
 
+use clap::Parser;
 use fern::colors::{Color, ColoredLevelConfig};
 use log::{debug, info};
 
@@ -10,39 +11,26 @@ const TEST_TIMEOUT_SECS: u64 = 30;
 
 mod test;
 
+#[derive(Parser, Debug)]
+#[clap(author, version, about, long_about = None)]
+struct Args {
+    #[clap(parse(from_os_str))]
+    binary: PathBuf,
+    #[clap(short, long, help = "Print debug information")]
+    verbose: bool,
+    #[clap(long, help = "Only create the bootable image, don't run it")]
+    no_run: bool,
+}
+
 fn main() {
-    let mut verbose: bool = false;
-    let mut no_boot: bool = false;
-    let mut binary_path: Option<PathBuf> = None;
+    let args: Args = Args::parse();
 
-    std::env::args()
-        .skip(1) // skip executable name
-        .for_each(|arg| {
-            match arg.as_str() {
-                "-v" | "--verbose" => verbose = true,
-                "--no-run" => no_boot = true,
-                p => {
-                    if binary_path.is_some() {
-                        panic!(
-                            "already have a binary path\n\tfirst: '{}'\n\tsecond: '{}'",
-                            binary_path.as_ref().unwrap().display(),
-                            p
-                        );
-                    }
-                    binary_path = Some(PathBuf::from(p));
-                }
-            };
-        });
+    configure_logging(args.verbose);
 
-    configure_logging(verbose);
-
-    let kernel_binary_path = binary_path
-        .expect("no binary path given")
-        .canonicalize()
-        .unwrap();
+    let kernel_binary_path = args.binary.canonicalize().unwrap();
     let image = create_disk_images(&kernel_binary_path);
 
-    if no_boot {
+    if args.no_run {
         info!("created disk image at `{}`", image.display());
         return;
     }
