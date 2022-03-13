@@ -1,3 +1,5 @@
+use alloc::vec::Vec;
+
 use crate::io::read_at::ReadAt;
 
 pub trait BlockDevice {
@@ -20,10 +22,17 @@ where
         let block_index = offset >> 9;
         let relative_offset = (offset & 511) as usize;
 
-        let mut block = [0_u8; 512];
-        self.read_block(block_index, &mut block);
-
-        target.copy_from_slice(&block[relative_offset..relative_offset + target.len()]);
+        // read blocks
+        // TODO: optimize this, this is doable without heap allocation
+        let block_count = 1 + ((target.len() - 1) >> 9); // depends on block_size=512 aka block_size=1<<9
+        let mut read_block_data: Vec<u8> = Vec::with_capacity(block_size);
+        for _ in 0..block_count {
+            let mut block = [0_u8; 512];
+            self.read_block(block_index, &mut block);
+            read_block_data.reserve(block_size);
+            block.iter().for_each(|&b| read_block_data.push(b));
+        }
+        target.copy_from_slice(&read_block_data[relative_offset..relative_offset + target.len()]);
 
         Ok(target.len())
     }

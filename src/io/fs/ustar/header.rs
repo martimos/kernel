@@ -4,7 +4,7 @@ use bitflags::bitflags;
 
 use crate::io::read::Read;
 use crate::io::Result;
-use crate::{read_be_u16, read_be_u32, read_be_u64, read_bytes, read_u8};
+use crate::{read_be_u16, read_be_u64, read_bytes, read_u8};
 
 bitflags! {
     pub struct TypeFlag: u8 {
@@ -25,7 +25,7 @@ pub struct HeaderBlock {
     pub uid: u64,
     pub gid: u64,
     pub size: u64,
-    pub mtime: [u8; 12],
+    pub mtime: u64,
     pub checksum: u64,
     pub typeflag: TypeFlag,
     pub linkname: String,
@@ -45,11 +45,15 @@ impl HeaderBlock {
         let mode = read_be_u64!(source);
         let uid = read_be_u64!(source);
         let gid = read_be_u64!(source);
-        if read_be_u32!(source) > 0 {
-            panic!("size > u64.max not supported");
-        }
-        let size = read_be_u64!(source);
-        let mtime = read_bytes!(source, 12);
+
+        let size_bytes = read_bytes!(source, 11);
+        let _ = read_u8!(source); // skip space
+        let size = oct_to_bin(size_bytes);
+
+        let mtime_bytes = read_bytes!(source, 11);
+        let _ = read_u8!(source); // skip space
+        let mtime = oct_to_bin(mtime_bytes);
+
         let checksum = read_be_u64!(source);
         let typeflag_byte = read_u8!(source);
         let typeflag = TypeFlag::from_bits_truncate(typeflag_byte);
@@ -91,7 +95,7 @@ impl HeaderBlock {
             && self.uid == 0
             && self.gid == 0
             && self.size == 0
-            && !self.mtime.iter().any(|&b| b != 0)
+            && self.mtime == 0
             && self.checksum == 0
             && self.typeflag == TypeFlag::empty()
             && self.linkname.is_empty()
@@ -105,6 +109,15 @@ impl HeaderBlock {
     }
 }
 
+fn oct_to_bin<const SZ: usize>(data: [u8; SZ]) -> u64 {
+    let mut n: u64 = 0;
+    for b in &data[0..data.len()] {
+        n = n << 3;
+        n |= (b - 0x30) as u64;
+    }
+    n
+}
+
 fn null_terminated_string<const SZ: usize>(data: [u8; SZ]) -> String {
     let nullbyte = data.iter().position(|&p| p == 0).unwrap_or(data.len());
     let string = data.split_at(nullbyte).0;
@@ -113,6 +126,8 @@ fn null_terminated_string<const SZ: usize>(data: [u8; SZ]) -> String {
 
 #[cfg(test)]
 mod tests {
+    use core::assert_eq;
+
     use super::*;
 
     #[test_case]
@@ -120,6 +135,14 @@ mod tests {
         assert_eq!(
             "hello",
             null_terminated_string([b'h', b'e', b'l', b'l', b'o', 0, b'x'])
+        );
+    }
+
+    #[test_case]
+    fn test_oct_to_bin() {
+        assert_eq!(
+            1025,
+            oct_to_bin([b'0', b'0', b'0', b'0', b'0', b'0', b'0', b'0', b'2', b'0', b'0', b'1'])
         );
     }
 }

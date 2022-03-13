@@ -2,12 +2,12 @@ use crate::io::read::Read;
 use crate::io::read_at::ReadAt;
 use crate::Result;
 
-pub struct SectionRead<'a, T> {
+pub struct FromRead<'a, T> {
     inner: &'a T,
     offset: u64,
 }
 
-impl<'a, T> SectionRead<'a, T>
+impl<'a, T> FromRead<'a, T>
 where
     T: ReadAt,
 {
@@ -16,7 +16,7 @@ where
     }
 }
 
-impl<T> Read for SectionRead<'_, T>
+impl<T> Read for FromRead<'_, T>
 where
     T: ReadAt,
 {

@@ -2,11 +2,11 @@ use alloc::string::ToString;
 use alloc::vec;
 use alloc::vec::Vec;
 
+use crate::io::from_read::FromRead;
 use crate::io::fs::path::Path;
 use crate::io::fs::ustar::header::HeaderBlock;
 use crate::io::read::Read;
 use crate::io::read_at::ReadAt;
-use crate::io::section_read::SectionRead;
 use crate::syscall::error::Errno;
 use crate::Result;
 
@@ -31,12 +31,12 @@ where
         let needle = path.as_ref().to_string();
         let mut offset = 0;
         let header_block: Option<HeaderBlock> = loop {
-            let mut current_section = SectionRead::new(&self.source, offset);
+            let mut current_section = FromRead::new(&self.source, offset);
             let current_header = HeaderBlock::decode(&mut current_section)?;
 
             // check for end of archive
             if current_header.is_end_block() {
-                let mut next_section = SectionRead::new(&self.source, offset + BLOCK_SIZE);
+                let mut next_section = FromRead::new(&self.source, offset + BLOCK_SIZE);
                 let next_header = HeaderBlock::decode(&mut next_section)?;
                 if next_header.is_end_block() {
                     // two end blocks is end of archive
@@ -47,13 +47,14 @@ where
             if current_header.name == needle {
                 break Some(current_header);
             }
-            offset += BLOCK_SIZE + current_header.size; // skip to the next header
+            let jump = (((current_header.size + BLOCK_SIZE - 1) >> 9) + 1) << 9;
+            offset += jump;
         };
 
         // file found, read data
         offset += BLOCK_SIZE;
         let header = header_block.unwrap();
-        let mut data = SectionRead::new(&self.source, offset);
+        let mut data = FromRead::new(&self.source, offset);
         let mut buffer = vec![0_u8; header.size as usize];
         data.read_exact(&mut buffer)?;
         Ok(UstarFile::new(header, buffer))
