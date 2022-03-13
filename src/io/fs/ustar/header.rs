@@ -112,7 +112,7 @@ impl HeaderBlock {
 fn oct_to_bin<const SZ: usize>(data: [u8; SZ]) -> u64 {
     let mut n: u64 = 0;
     for b in &data[0..data.len()] {
-        n = n << 3;
+        n <<= 3;
         n |= (b - 0x30) as u64;
     }
     n
