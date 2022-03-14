@@ -3,6 +3,8 @@ name: build
 on:
   push:
   pull_request:
+  schedule:
+    - cron:  '0 5,17 * * *' # every day because of the rust nightly version
 
 jobs:
 
