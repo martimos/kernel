@@ -1,7 +1,7 @@
 use core::fmt;
 
 use bootloader::boot_info::{FrameBuffer, FrameBufferInfo, PixelFormat};
-use font8x8::UnicodeFonts;
+use noto_sans_mono_bitmap::{get_bitmap, BitmapHeight, FontWeight};
 use spin::Mutex;
 
 static WRITER: Mutex<Writer> = Mutex::new(Writer::new());
@@ -71,20 +71,14 @@ impl<'a> Writer<'a> {
                 }
             }
             _ => {
-                let c = font8x8::BASIC_FONTS
-                    .get(byte as char)
-                    .expect("no matching character found");
-                for (y, row_byte) in c.iter().enumerate() {
-                    for (x, col_bit) in (0..8).enumerate() {
-                        let alpha = if *row_byte & (1 << col_bit) == 0 {
-                            0
-                        } else {
-                            255
-                        };
-                        self.write_pixel(self.x_pos + x, self.y_pos + y, alpha);
+                let c =
+                    get_bitmap(byte as char, FontWeight::Regular, BitmapHeight::Size14).unwrap();
+                for (y, row) in c.bitmap().iter().enumerate() {
+                    for (x, byte) in row.iter().enumerate() {
+                        self.write_pixel(self.x_pos + x, self.y_pos + y, *byte);
                     }
                 }
-                self.x_pos += 8;
+                self.x_pos += c.width();
             }
         }
     }
@@ -109,7 +103,7 @@ impl<'a> Writer<'a> {
     }
 
     fn new_line(&mut self) {
-        let line_height = 8 + 4;
+        let line_height = 14 + 2;
         self.x_pos = 0;
         self.y_pos += line_height;
 
