@@ -20,6 +20,12 @@ struct Args {
     verbose: bool,
     #[clap(long, help = "Only create the bootable image, don't run it")]
     no_run: bool,
+    #[clap(
+        long,
+        help = "Run Qemu in fullscreen. No-op if the image is not run.",
+        conflicts_with = "no-run"
+    )]
+    fullscreen: bool,
 }
 
 fn main() {
@@ -56,14 +62,18 @@ fn main() {
             .to_string();
         test::run_test_binary(file_name, run_cmd)
     } else {
-        run_cmd.args(vec![
+        let mut run_args = vec![
             "--no-reboot",
             "-serial",
             "stdio",
             "-s", // -gdb tcp::1234
             "-monitor",
             "telnet::45454,server,nowait",
-        ]);
+        ];
+        if args.fullscreen {
+            run_args.push("-full-screen");
+        }
+        run_cmd.args(run_args);
         debug!("{:?}\n", run_cmd);
 
         let exit_status = run_cmd.status().unwrap();
