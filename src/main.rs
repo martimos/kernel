@@ -176,6 +176,7 @@ extern "C" fn example_tasks() {
 mod tests {
     use core::assert_eq;
 
+    #[allow(clippy::eq_op)]
     #[test_case]
     fn trivial_assertion() {
         assert_eq!(1, 1);
