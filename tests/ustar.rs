@@ -19,16 +19,15 @@ use martim::driver::pci::device::{MassStorageSubClass, PCIDeviceClass};
 use martim::driver::pci::header::PCIStandardHeaderDevice;
 use martim::driver::pci::PCI;
 use martim::io::fs::ustar::UstarFs;
-use martim::io::read_at::ReadAt;
 use martim::scheduler;
 
 entry_point!(main);
 
+#[allow(clippy::empty_loop)]
 fn main(boot_info: &'static mut BootInfo) -> ! {
     martim::init();
     martim::memory::init_heap(boot_info);
     scheduler::init();
-    scheduler::reschedule(); // start the scheduler
 
     test_main();
     loop {}

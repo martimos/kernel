@@ -21,11 +21,11 @@ use martim::scheduler;
 
 entry_point!(main);
 
+#[allow(clippy::empty_loop)]
 fn main(boot_info: &'static mut BootInfo) -> ! {
     martim::init();
     martim::memory::init_heap(boot_info);
     scheduler::init();
-    scheduler::reschedule(); // start the scheduler
 
     test_main();
     loop {}

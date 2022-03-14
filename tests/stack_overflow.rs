@@ -26,6 +26,7 @@ pub fn init_test_idt() {
     TEST_IDT.load();
 }
 
+#[allow(clippy::empty_loop)]
 extern "x86-interrupt" fn test_double_fault_handler(
     _stack_frame: InterruptStackFrame,
     _error_code: u64,
