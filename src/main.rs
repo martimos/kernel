@@ -6,9 +6,11 @@
 
 extern crate alloc;
 
+use alloc::sync::Arc;
 use core::panic::PanicInfo;
 
 use bootloader::{entry_point, BootInfo};
+use spin::Mutex;
 
 use martim::driver::ide::IDEController;
 use martim::driver::pci::device::{MassStorageSubClass, PCIDeviceClass};
@@ -16,7 +18,8 @@ use martim::driver::pci::header::PCIStandardHeaderDevice;
 use martim::driver::Peripherals;
 use martim::io::fs::devfs::DevFs;
 use martim::io::fs::vfs;
-use martim::{dbg, hlt_loop};
+use martim::io::fs::vfs::vnode::{Type, VNode};
+use martim::{dbg, hlt_loop, vga_print};
 use martim::{
     driver::pci::PCI,
     info, scheduler, serial_print, serial_println,
@@ -101,6 +104,27 @@ fn main() {
 extern "C" fn vfs_mounts() {
     info!("mounting devfs");
     vfs::mount(&"/", DevFs::new().into_root()).expect("mounting devfs failed");
+
+    vga_println!("walking VFS");
+    let current = vfs::find_vnode(&"/").unwrap();
+    walk(0, current);
+}
+
+fn walk(indent: usize, current: Arc<Mutex<VNode>>) {
+    vga_print!(">");
+    for _ in 0..indent {
+        vga_print!(" ");
+    }
+    let guard = current.lock();
+    match guard.typ() {
+        Type::File { .. } => {
+            vga_println!("file: {:?}", guard);
+        }
+        Type::Directory { children } => {
+            vga_println!("dir: {:?}", guard);
+            children.values().for_each(|c| walk(indent + 1, c.clone()));
+        }
+    };
 }
 
 extern "C" fn cmos_stuff() {
