@@ -60,6 +60,12 @@ impl<'a> Writer<'a> {
             panic!("vga buffer not initialized");
         }
 
+        // m is conventionally the widest letter in a font
+        // TODO: probably slower than it needs to be, cache the result
+        let m_width: usize = get_bitmap('m', FontWeight::Regular, BitmapHeight::Size14)
+            .unwrap()
+            .width();
+
         match byte {
             b'\n' => self.new_line(),
             b'\xFE' => {
@@ -71,6 +77,10 @@ impl<'a> Writer<'a> {
                 }
             }
             _ => {
+                if self.info.unwrap().horizontal_resolution - m_width <= self.x_pos {
+                    self.new_line();
+                }
+
                 let c =
                     get_bitmap(byte as char, FontWeight::Regular, BitmapHeight::Size14).unwrap();
                 for (y, row) in c.bitmap().iter().enumerate() {
