@@ -1,27 +1,44 @@
-use alloc::boxed::Box;
-use alloc::rc::Rc;
 use alloc::string::String;
+use alloc::sync::Arc;
 use alloc::vec::Vec;
 use core::fmt::{Debug, Formatter};
 
 use spin::Mutex;
 
 use crate::io::fs::perm::Permission;
-use crate::io::fs::FileSystem;
 
 pub enum Type {
-    File { length: u64 },
-    Directory { children: Vec<VNode> },
+    File { size: u64 },
+    Directory { children: Vec<Arc<Mutex<VNode>>> },
 }
 
 pub struct VNode {
-    _origin: Option<Rc<Mutex<Box<dyn FileSystem>>>>,
-
     name: String,
     permissions: Permission,
-    owning_user_id: u32,  // TODO: replace with a strong type
-    owning_group_id: u32, // TODO: replace with a strong type
     typ: Type,
+}
+
+impl VNode {
+    pub fn new_file(name: String, permissions: Permission, size: u64) -> Self {
+        Self {
+            name,
+            permissions,
+            typ: Type::File { size },
+        }
+    }
+
+    pub fn new_directory(name: String, permissions: Permission, children: Vec<VNode>) -> Self {
+        Self {
+            name,
+            permissions,
+            typ: Type::Directory {
+                children: children
+                    .into_iter()
+                    .map(|n| Arc::new(Mutex::new(n)))
+                    .collect(),
+            },
+        }
+    }
 }
 
 impl Debug for VNode {
@@ -37,16 +54,16 @@ impl VNode {
     pub fn name(&self) -> &str {
         &self.name
     }
+
     pub fn permissions(&self) -> Permission {
         self.permissions
     }
-    pub fn owning_user_id(&self) -> u32 {
-        self.owning_user_id
-    }
-    pub fn owning_group_id(&self) -> u32 {
-        self.owning_group_id
-    }
+
     pub fn typ(&self) -> &Type {
         &self.typ
+    }
+
+    pub fn typ_mut(&mut self) -> &mut Type {
+        &mut self.typ
     }
 }

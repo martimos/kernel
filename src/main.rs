@@ -14,8 +14,9 @@ use martim::driver::ide::IDEController;
 use martim::driver::pci::device::{MassStorageSubClass, PCIDeviceClass};
 use martim::driver::pci::header::PCIStandardHeaderDevice;
 use martim::driver::Peripherals;
-use martim::hlt_loop;
-use martim::io::fs::vfs::Vfs;
+use martim::io::fs::devfs::DevFs;
+use martim::io::fs::vfs;
+use martim::{dbg, hlt_loop};
 use martim::{
     driver::pci::PCI,
     info, scheduler, serial_print, serial_println,
@@ -54,6 +55,7 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     martim::init();
     martim::memory::init_heap(boot_info);
     scheduler::init();
+    vfs::init();
     serial_println!("done");
 
     vga_clear!();
@@ -78,30 +80,27 @@ $$ | \_/ $$ |\$$$$$$$ |$$ |       \$$$$  |$$ |$$ | $$ | $$ |
     #[cfg(test)]
     test_main();
 
-    info!("main returned");
     hlt_loop()
 }
 
 fn main() {
     vga_println!("Hello, {}!", "World");
 
-    scheduler::spawn(vfs_stuff).unwrap();
+    scheduler::spawn(vfs_mounts).unwrap();
     scheduler::spawn(just_panic).unwrap();
     scheduler::spawn(cmos_stuff).unwrap();
-    scheduler::spawn(pci_stuff).unwrap();
+    scheduler::spawn(ide_drives).unwrap();
     scheduler::spawn(example_tasks).unwrap();
 
-    info!(
+    dbg!(
         "kernel task with tid {} is still running",
         scheduler::get_current_tid()
     );
 }
 
-extern "C" fn vfs_stuff() {
-    let vfs = Vfs::new();
-    let path = "/dev/zero";
-    let res = vfs.find_vnode(&path);
-    info!("open {}: {:?}", path, res);
+extern "C" fn vfs_mounts() {
+    info!("mounting devfs");
+    vfs::mount(&"/", DevFs::new().into_root()).expect("mounting devfs failed");
 }
 
 extern "C" fn cmos_stuff() {
@@ -120,23 +119,7 @@ extern "C" fn cmos_stuff() {
     );
 }
 
-extern "C" fn pci_stuff() {
-    for dev in PCI::devices() {
-        serial_println!(
-            "pci device on bus {}, slot {}, function {}: {:X}:{:X}\n\theader type: {:?} (mf: {})\n\tclass/prog: {:?}/{:#X}\n\tstatus: {:?}",
-            dev.bus(),
-            dev.slot(),
-            dev.function(),
-            dev.vendor(),
-            dev.device(),
-            dev.header_type(),
-            dev.is_multi_function(),
-            dev.class(),
-            dev.prog_if(),
-            dev.status(),
-        );
-    }
-
+extern "C" fn ide_drives() {
     let ide_controller = PCI::devices()
         .find(|dev| {
             dev.class() == PCIDeviceClass::MassStorageController(MassStorageSubClass::IDEController)
@@ -145,9 +128,12 @@ extern "C" fn pci_stuff() {
         .map(Into::<IDEController>::into)
         .expect("need an IDE controller for this to work");
 
-    info!("listing ATA drives:");
     for drive in ide_controller.drives().iter().filter(|d| d.exists()) {
-        serial_println!("{:#?}", drive);
+        vga_println!(
+            "found IDE drive at ctrlbase={:#X} iobase={:#X}",
+            drive.ctrlbase(),
+            drive.iobase()
+        );
     }
 }
 

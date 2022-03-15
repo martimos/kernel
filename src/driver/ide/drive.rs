@@ -60,6 +60,14 @@ impl IDEDrive {
     pub fn exists(&self) -> bool {
         self.exists
     }
+
+    pub fn ctrlbase(&self) -> u16 {
+        self.channel.lock().ctrlbase()
+    }
+
+    pub fn iobase(&self) -> u16 {
+        self.channel.lock().iobase()
+    }
 }
 
 impl IDEDrive {
