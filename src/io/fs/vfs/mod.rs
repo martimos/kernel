@@ -62,10 +62,10 @@ impl Vfs {
             Type::Directory { children } => children,
         };
         let node_name = node.lock().name().to_string();
-        if children.iter().any(|n| n.lock().name() == node_name) {
+        if children.contains_key(&node_name) {
             return Err(Errno::EBUSY);
         }
-        children.push(node);
+        children.insert(node_name, node);
 
         Ok(())
     }
@@ -105,10 +105,10 @@ impl Vfs {
                             return Err(Errno::ENOENT);
                         }
                         Type::Directory { children } => {
-                            match children.iter().find(|&c| c.lock().name() == v) {
-                                None => return Err(Errno::ENOENT),
-                                Some(v) => v.clone(),
+                            if !children.contains_key(v) {
+                                return Err(Errno::ENOENT);
                             }
+                            children.get(v).cloned().unwrap()
                         }
                     };
                     drop(guard);
@@ -124,6 +124,8 @@ impl Vfs {
 
 #[cfg(test)]
 mod tests {
+    use core::assert_eq;
+
     use crate::io::fs::devfs::DevFs;
 
     use super::*;

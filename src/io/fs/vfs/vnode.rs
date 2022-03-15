@@ -1,3 +1,4 @@
+use alloc::collections::BTreeMap;
 use alloc::string::String;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
@@ -8,8 +9,12 @@ use spin::Mutex;
 use crate::io::fs::perm::Permission;
 
 pub enum Type {
-    File { size: u64 },
-    Directory { children: Vec<Arc<Mutex<VNode>>> },
+    File {
+        size: u64,
+    },
+    Directory {
+        children: BTreeMap<String, Arc<Mutex<VNode>>>,
+    },
 }
 
 pub struct VNode {
@@ -28,14 +33,16 @@ impl VNode {
     }
 
     pub fn new_directory(name: String, permissions: Permission, children: Vec<VNode>) -> Self {
+        let mut children_map = BTreeMap::new();
+        children.into_iter().for_each(|n| {
+            children_map.insert(n.name.clone(), Arc::new(Mutex::new(n)));
+        });
+
         Self {
             name,
             permissions,
             typ: Type::Directory {
-                children: children
-                    .into_iter()
-                    .map(|n| Arc::new(Mutex::new(n)))
-                    .collect(),
+                children: children_map,
             },
         }
     }
