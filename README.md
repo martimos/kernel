@@ -1,11 +1,17 @@
+<div align="center">
+
 # martim
 
 [![build](https://github.com/martimos/kernel/actions/workflows/build.yml/badge.svg)](https://github.com/martimos/kernel/actions/workflows/build.yml)
 [![lint](https://github.com/martimos/kernel/actions/workflows/lint.yml/badge.svg)](https://github.com/martimos/kernel/actions/workflows/lint.yml)
 
-A ~experimental~ superior kernel written in Rust
+A <strike>experimental</strike> superior kernel written in Rust
 
-## Setup
+[Requirements](#requirements) •
+[Build and Run](#build-and-run) •
+[Wiki](https://github.com/martimos/kernel/wiki)
+
+</div>
 
 ### Requirements
 
@@ -26,4 +32,10 @@ To run the tests
 
 ```plain
 cargo test
+```
+
+#### What else can I do?
+
+```plain
+cargo run -- --help
 ```

@@ -58,11 +58,3 @@ pub fn init() {
         load_tss(GDT.1.tss_selector);
     }
 }
-
-#[cfg(test)]
-mod tests {
-    #[test_case]
-    fn test_trivial() {
-        assert_eq!(1, 1)
-    }
-}

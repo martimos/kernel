@@ -13,6 +13,7 @@ use bootloader::{entry_point, BootInfo};
 
 entry_point!(main);
 
+#[allow(clippy::empty_loop)]
 fn main(boot_info: &'static mut BootInfo) -> ! {
     use martim::{
         allocator,

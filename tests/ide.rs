@@ -13,7 +13,6 @@ use core::panic::PanicInfo;
 
 use bootloader::{entry_point, BootInfo};
 
-use martim::driver::ide::drive::IDEDrive;
 use martim::driver::ide::IDEController;
 use martim::driver::pci::device::{MassStorageSubClass, PCIDeviceClass};
 use martim::driver::pci::header::PCIStandardHeaderDevice;
@@ -23,6 +22,7 @@ use martim::scheduler;
 
 entry_point!(main);
 
+#[allow(clippy::empty_loop)]
 fn main(boot_info: &'static mut BootInfo) -> ! {
     martim::init();
     martim::memory::init_heap(boot_info);
@@ -48,13 +48,13 @@ fn test_find_drives() {
         .map(Into::<IDEController>::into)
         .expect("need an IDE controller for this to work");
 
-    let drives: Vec<IDEDrive> = ide_controller
+    let drives = ide_controller
         .drives()
         .into_iter()
         .filter(|d| d.exists())
-        .collect();
+        .count();
 
-    assert_eq!(2, drives.len()); // (1) boot drive, (2) disk.img
+    assert_eq!(2, drives); // (1) boot drive, (2) disk.img
 }
 
 #[test_case]
