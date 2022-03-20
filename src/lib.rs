@@ -79,7 +79,7 @@ where
     fn run(&self) {
         serial_print!("test {}...\t", core::any::type_name::<T>());
         self();
-        serial_println!("[ok]");
+        serial_println!("[\u{001b}[32mok\u{001b}[0m]");
     }
 }
 
@@ -92,8 +92,8 @@ pub fn test_runner(tests: &[&dyn Testable]) {
 }
 
 pub fn test_panic_handler(info: &PanicInfo) -> ! {
-    serial_println!("[failed]\n");
-    serial_println!("Error: {}\n", info);
+    serial_println!("[\u{001b}[31mfailed\u{001b}[0m]\n");
+    serial_println!("\u{001b}[1m\u{001b}[31merror\u{001b}[0m: {}\n", info);
     exit_qemu(QemuExitCode::Failed);
     hlt_loop();
 }
