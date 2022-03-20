@@ -6,23 +6,18 @@
 
 extern crate alloc;
 
-use alloc::sync::Arc;
 use core::panic::PanicInfo;
 
 use bootloader::{entry_point, BootInfo};
-use spin::Mutex;
 
 use martim::driver::ide::IDEController;
 use martim::driver::pci::device::{MassStorageSubClass, PCIDeviceClass};
 use martim::driver::pci::header::PCIStandardHeaderDevice;
 use martim::driver::Peripherals;
-use martim::io::fs::devfs::DevFs;
-use martim::io::fs::vfs;
-use martim::io::fs::vfs::vnode::{Type, VNode};
-use martim::{dbg, hlt_loop, vga_print};
+use martim::{dbg, hlt_loop};
 use martim::{
     driver::pci::PCI,
-    info, scheduler, serial_print, serial_println,
+    scheduler, serial_print, serial_println,
     task::{executor::Executor, keyboard, Task},
     vga_clear, vga_println,
 };
@@ -31,7 +26,7 @@ use martim::{
 #[cfg(not(test))]
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
-    info!(
+    martim::info!(
         "terminating task {}: {}",
         scheduler::get_current_tid(),
         info
@@ -58,7 +53,6 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     martim::init();
     martim::memory::init_heap(boot_info);
     scheduler::init();
-    vfs::init();
     serial_println!("done");
 
     vga_clear!();
@@ -89,7 +83,6 @@ $$ | \_/ $$ |\$$$$$$$ |$$ |       \$$$$  |$$ |$$ | $$ | $$ |
 fn main() {
     vga_println!("Hello, {}!", "World");
 
-    scheduler::spawn(vfs_mounts).unwrap();
     scheduler::spawn(just_panic).unwrap();
     scheduler::spawn(cmos_stuff).unwrap();
     scheduler::spawn(ide_drives).unwrap();
@@ -99,32 +92,6 @@ fn main() {
         "kernel task with tid {} is still running",
         scheduler::get_current_tid()
     );
-}
-
-extern "C" fn vfs_mounts() {
-    info!("mounting devfs");
-    vfs::mount(&"/", DevFs::new().into_root()).expect("mounting devfs failed");
-
-    vga_println!("walking VFS");
-    let current = vfs::find_vnode(&"/").unwrap();
-    walk(0, current);
-}
-
-fn walk(indent: usize, current: Arc<Mutex<VNode>>) {
-    vga_print!(">");
-    for _ in 0..indent {
-        vga_print!(" ");
-    }
-    let guard = current.lock();
-    match guard.typ() {
-        Type::File { .. } => {
-            vga_println!("file: {:?}", guard);
-        }
-        Type::Directory { children } => {
-            vga_println!("dir: {:?}", guard);
-            children.values().for_each(|c| walk(indent + 1, c.clone()));
-        }
-    };
 }
 
 extern "C" fn cmos_stuff() {
@@ -154,9 +121,10 @@ extern "C" fn ide_drives() {
 
     for drive in ide_controller.drives().iter().filter(|d| d.exists()) {
         vga_println!(
-            "found IDE drive at ctrlbase={:#X} iobase={:#X}",
+            "found IDE drive at ctrlbase={:#X} iobase={:#X} drive={:#X}",
             drive.ctrlbase(),
-            drive.iobase()
+            drive.iobase(),
+            drive.drive_num()
         );
     }
 }

@@ -68,6 +68,10 @@ impl IDEDrive {
     pub fn iobase(&self) -> u16 {
         self.channel.lock().iobase()
     }
+
+    pub fn drive_num(&self) -> u8 {
+        self.drive
+    }
 }
 
 impl IDEDrive {
