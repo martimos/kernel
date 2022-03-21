@@ -1,11 +1,13 @@
 use alloc::rc::Rc;
 use alloc::string::String;
+use alloc::vec::Vec;
 use core::fmt::{Debug, Display, Formatter};
 
 use spin::RwLock;
 
 use crate::io::ReadAt;
 use crate::io::WriteAt;
+use crate::syscall::error::Errno;
 use crate::Result;
 
 pub mod devfs;
@@ -13,7 +15,7 @@ pub mod flags;
 pub mod memfs;
 pub mod path;
 pub mod perm;
-pub mod ustar;
+pub mod rootdir;
 pub mod vfs;
 
 #[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Debug, Default)]
@@ -164,6 +166,13 @@ pub trait IFile: INodeBase {
     fn read_at(&self, offset: u64, buf: &mut dyn AsMut<[u8]>) -> Result<usize>;
 
     fn write_at(&mut self, offset: u64, buf: &dyn AsRef<[u8]>) -> Result<usize>;
+
+    fn read_full(&self) -> Result<Vec<u8>> {
+        let size = TryInto::<usize>::try_into(self.size()).or(Err(Errno::EFBIG))?;
+        let mut data = Vec::<u8>::with_capacity(size);
+        self.read_at(0, &mut data)?;
+        Ok(data)
+    }
 }
 
 impl ReadAt for dyn IFile {

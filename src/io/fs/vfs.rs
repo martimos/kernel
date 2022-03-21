@@ -1,12 +1,11 @@
 use alloc::borrow::ToOwned;
-use alloc::collections::BTreeMap;
-use alloc::string::String;
 
 use spin::{Mutex, Once};
 
 use crate::io::fs::path::components::Component;
 use crate::io::fs::path::Path;
-use crate::io::fs::{IDir, IFileHandle, INode, INodeBase, INodeNum, INodeType, Stat};
+use crate::io::fs::rootdir::RootDir;
+use crate::io::fs::{IFileHandle, INode, INodeBase, Stat};
 use crate::syscall::error::Errno;
 use crate::{info, Result};
 
@@ -51,7 +50,13 @@ pub struct Vfs {
 impl Vfs {
     fn new() -> Self {
         Self {
-            root: INode::new_dir(RootDir::new()),
+            root: INode::new_dir(RootDir::new(
+                "/".into(),
+                Stat {
+                    inode: 0_u64.into(),
+                    ..Default::default()
+                },
+            )),
         }
     }
 
@@ -114,70 +119,11 @@ impl Vfs {
     }
 }
 
-struct RootDir {
-    children: BTreeMap<String, INode>,
-}
-
-impl RootDir {
-    fn new() -> Self {
-        Self {
-            children: BTreeMap::new(),
-        }
-    }
-}
-
-impl INodeBase for RootDir {
-    fn num(&self) -> INodeNum {
-        0_u64.into()
-    }
-
-    fn name(&self) -> String {
-        "/".into()
-    }
-
-    fn stat(&self) -> Stat {
-        Stat {
-            dev: 0,
-            inode: 0_u64.into(),
-            rdev: 0,
-            nlink: 0,
-            uid: 0,
-            gid: 0,
-            size: 0,
-            atime: 0,
-            mtime: 0,
-            ctime: 0,
-            blksize: 0,
-            blocks: 0,
-        }
-    }
-}
-
-impl IDir for RootDir {
-    fn lookup(&self, name: &dyn AsRef<str>) -> Result<INode> {
-        if let Some(inode) = self.children.get(name.as_ref()) {
-            return Ok(inode.clone());
-        }
-        Err(Errno::ENOENT)
-    }
-
-    fn create(&mut self, _: &dyn AsRef<str>, _: INodeType) -> Result<INode> {
-        Err(Errno::ENOSYS)
-    }
-
-    fn mount(&mut self, node: INode) -> Result<()> {
-        if self.children.get(&node.name()).is_some() {
-            return Err(Errno::EEXIST);
-        }
-        self.children.insert(node.name(), node);
-        Ok(())
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use crate::io::fs::memfs::MemFs;
-    use crate::io::fs::Fs;
+    use crate::io::fs::rootdir::RootDir;
+    use crate::io::fs::{Fs, IDir, INodeType};
 
     use super::*;
 
@@ -201,7 +147,7 @@ mod tests {
             .write()
             .create(&name, typ)
             .unwrap();
-        let mut r = RootDir::new();
+        let mut r = RootDir::new("/".into(), Default::default());
         assert_eq!(Err(Errno::ENOENT), r.lookup(&name));
 
         r.mount(inode).unwrap();

@@ -10,5 +10,3 @@ all_tests: # will be passed to all tests, in addition to properties configured b
 tests:
   ide:
     - '-drive file=tests/resources/disk.img,if=ide,format=raw'
-  ustar:
-    - '-drive file=tests/resources/hello.tar,if=ide,format=raw'
