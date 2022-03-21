@@ -12,7 +12,9 @@ use crate::syscall::error::Errno;
 use crate::Result;
 
 pub struct MemFs {
+    #[allow(dead_code)] // TODO: inner is read by tests, but remove it anyways
     inner: InnerHandle,
+    root: INode,
 }
 
 type InnerHandle = Rc<RwLock<Inner>>;
@@ -28,48 +30,25 @@ impl Inner {
     }
 }
 
-impl Default for MemFs {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl MemFs {
-    pub fn new() -> Self {
-        let inner_handle = Rc::new(RwLock::new(Inner {
+    pub fn new(root_node_name: String) -> Self {
+        let inner = Rc::new(RwLock::new(Inner {
             nodes: BTreeMap::new(),
             inode_counter: AtomicU64::new(1),
         }));
 
         let root_inode_num = 0_u64.into();
-        let root = MemDir::new(inner_handle.clone(), "/".into(), root_inode_num);
-        inner_handle
-            .write()
-            .nodes
-            .insert(root_inode_num, INode::new_dir(root));
+        let root_dir = MemDir::new(inner.clone(), root_node_name, root_inode_num);
+        let root = INode::new_dir(root_dir);
+        inner.write().nodes.insert(root_inode_num, root.clone());
 
-        Self {
-            inner: inner_handle,
-        }
-    }
-
-    pub fn root_inode(&self) -> Result<INode> {
-        self.get_node(self.root_inode_num())
+        Self { inner, root }
     }
 }
 
 impl Fs for MemFs {
-    fn root_inode_num(&self) -> INodeNum {
-        // root is always node 0
-        0_u64.into()
-    }
-
-    fn get_node(&self, num: INodeNum) -> Result<INode> {
-        let guard = self.inner.read();
-        match guard.nodes.get(&num) {
-            None => Err(Errno::ENOENT),
-            Some(n) => Ok(n.clone()),
-        }
+    fn root_inode(&self) -> INode {
+        self.root.clone()
     }
 }
 
@@ -111,18 +90,9 @@ impl MemFile {
                 fs,
                 name,
                 Stat {
-                    dev: 0,
                     inode: inode_num,
-                    rdev: 0,
-                    nlink: 0,
-                    uid: 0,
-                    gid: 0,
                     size: data.len() as u64,
-                    atime: 0,
-                    mtime: 0,
-                    ctime: 0,
-                    blksize: 0,
-                    blocks: 0,
+                    ..Default::default()
                 },
             ),
             data,
@@ -192,18 +162,8 @@ impl MemDir {
                 fs,
                 name,
                 Stat {
-                    dev: 0,
                     inode: inode_num,
-                    rdev: 0,
-                    nlink: 0,
-                    uid: 0,
-                    gid: 0,
-                    size: 0,
-                    atime: 0,
-                    mtime: 0,
-                    ctime: 0,
-                    blksize: 0,
-                    blocks: 0,
+                    ..Default::default()
                 },
             ),
             children: vec![],
@@ -258,7 +218,7 @@ impl IDir for MemDir {
         Ok(inode)
     }
 
-    fn link(&mut self, _name: &dyn AsRef<str>, _target: &dyn INodeBase) -> Result<INode> {
+    fn mount(&mut self, _node: INode) -> Result<()> {
         todo!()
     }
 }
@@ -280,7 +240,7 @@ mod tests {
             };
         }
 
-        let fs = MemFs::new();
+        let fs = MemFs::new("mem".into());
         let mut f = MemFile::new(fs.inner, "file.txt".into(), 0_u64.into(), vec![]);
         assert_size!(f, 0);
 
@@ -296,7 +256,7 @@ mod tests {
 
     #[test_case]
     fn test_file_write_at() {
-        let fs = MemFs::new();
+        let fs = MemFs::new("mem".into());
         let mut f = MemFile::new(fs.inner, "file.txt".into(), 0_u64.into(), vec![]);
         let data = "Hello, World!";
         f.truncate(data.len() as u64).unwrap();
@@ -308,7 +268,7 @@ mod tests {
     #[test_case]
     fn test_file_read_at() {
         let data = Vec::from("Hello, World!".to_string());
-        let fs = MemFs::new();
+        let fs = MemFs::new("mem".into());
         let f = MemFile::new(fs.inner, "file.txt".into(), 0_u64.into(), data.clone());
         let mut buf = vec![0_u8; data.len()];
         f.read_at(0, &mut buf).unwrap();
@@ -317,7 +277,7 @@ mod tests {
 
     #[test_case]
     fn test_dir_lookup() {
-        let fs = MemFs::new();
+        let fs = MemFs::new("mem".into());
         let mut d = MemDir::new(fs.inner.clone(), "/".into(), 0_u64.into());
 
         let f_inode_num = 1_u64.into();
@@ -334,22 +294,10 @@ mod tests {
     }
 
     #[test_case]
-    fn test_fs_root_inode_is_ok() {
-        let fs = MemFs::new();
-        fs.root_inode().expect("root inode must be set");
-    }
-
-    #[test_case]
-    fn test_default_fs_root_inode_is_ok() {
-        let fs: MemFs = Default::default();
-        fs.root_inode().expect("root inode must be set");
-    }
-
-    #[test_case]
     fn test_fs_create_file() {
-        let fs = MemFs::new();
-        let root_dir = fs.root_inode().unwrap();
-        let file = root_dir
+        let fs = MemFs::new("mem".into());
+        let file = fs
+            .root_inode()
             .dir()
             .expect("root must be a dir")
             .write()

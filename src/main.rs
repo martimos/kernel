@@ -6,6 +6,7 @@
 
 extern crate alloc;
 
+use alloc::string::ToString;
 use core::panic::PanicInfo;
 
 use bootloader::{entry_point, BootInfo};
@@ -14,6 +15,9 @@ use martim::driver::ide::IDEController;
 use martim::driver::pci::device::{MassStorageSubClass, PCIDeviceClass};
 use martim::driver::pci::header::PCIStandardHeaderDevice;
 use martim::driver::Peripherals;
+use martim::io::fs::devfs::DevFs;
+use martim::io::fs::memfs::MemFs;
+use martim::io::fs::{vfs, Fs};
 use martim::{dbg, hlt_loop};
 use martim::{
     driver::pci::PCI,
@@ -53,6 +57,7 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     martim::init();
     martim::memory::init_heap(boot_info);
     scheduler::init();
+    vfs::init();
     serial_println!("done");
 
     vga_clear!();
@@ -84,6 +89,7 @@ fn main() {
     vga_println!("Hello, {}!", "World");
 
     scheduler::spawn(just_panic).unwrap();
+    scheduler::spawn(vfs_setup).unwrap();
     scheduler::spawn(cmos_stuff).unwrap();
     scheduler::spawn(ide_drives).unwrap();
     scheduler::spawn(example_tasks).unwrap();
@@ -92,6 +98,13 @@ fn main() {
         "kernel task with tid {} is still running",
         scheduler::get_current_tid()
     );
+}
+
+extern "C" fn vfs_setup() {
+    let memfs = MemFs::new("mem".to_string());
+    vfs::mount(&"/", memfs.root_inode()).unwrap();
+    let devfs = DevFs::new("dev".to_string());
+    vfs::mount(&"/", devfs.root_inode()).unwrap();
 }
 
 extern "C" fn cmos_stuff() {

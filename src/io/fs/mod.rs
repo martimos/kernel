@@ -1,6 +1,6 @@
 use alloc::rc::Rc;
 use alloc::string::String;
-use core::fmt::{Debug, Formatter};
+use core::fmt::{Debug, Display, Formatter};
 
 use spin::RwLock;
 
@@ -8,15 +8,22 @@ use crate::io::ReadAt;
 use crate::io::WriteAt;
 use crate::Result;
 
+pub mod devfs;
 pub mod flags;
 pub mod memfs;
-pub mod nullfs;
 pub mod path;
 pub mod perm;
 pub mod ustar;
+pub mod vfs;
 
-#[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Debug)]
+#[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Debug, Default)]
 pub struct INodeNum(u64);
+
+impl Display for INodeNum {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
 
 impl<T: Into<u64>> From<T> for INodeNum {
     fn from(v: T) -> Self {
@@ -25,8 +32,7 @@ impl<T: Into<u64>> From<T> for INodeNum {
 }
 
 pub trait Fs {
-    fn root_inode_num(&self) -> INodeNum;
-    fn get_node(&self, num: INodeNum) -> Result<INode>;
+    fn root_inode(&self) -> INode;
 }
 
 pub trait INodeBase {
@@ -37,7 +43,7 @@ pub trait INodeBase {
     fn stat(&self) -> Stat;
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Default)]
 pub struct Stat {
     pub dev: u64,
     pub inode: INodeNum,
@@ -98,6 +104,12 @@ impl INode {
     }
 }
 
+impl Display for INode {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{}", self.name())
+    }
+}
+
 impl Debug for INode {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("INode")
@@ -145,6 +157,10 @@ pub trait IFile: INodeBase {
 
     fn truncate(&mut self, size: u64) -> Result<()>;
 
+    fn reserve(&mut self, additional: u64) -> Result<()> {
+        self.truncate(self.size() + additional)
+    }
+
     fn read_at(&self, offset: u64, buf: &mut dyn AsMut<[u8]>) -> Result<usize>;
 
     fn write_at(&mut self, offset: u64, buf: &dyn AsRef<[u8]>) -> Result<usize>;
@@ -168,9 +184,15 @@ pub enum INodeType {
 }
 
 pub trait IDir: INodeBase {
+    /// Searches for an [`INode`] in the immediate children of this dir by name.
     fn lookup(&self, name: &dyn AsRef<str>) -> Result<INode>;
 
+    /// Creates a new [`INode`] of the given type. The operation may fail if a type
+    /// is not supported.
     fn create(&mut self, name: &dyn AsRef<str>, typ: INodeType) -> Result<INode>;
 
-    fn link(&mut self, name: &dyn AsRef<str>, target: &dyn INodeBase) -> Result<INode>;
+    /// Adds an (possibly external) [`INode`] to the children of this dir. External
+    /// means, that the given [`INode`] does not necessarily belong to the same file
+    /// system or device as this node.
+    fn mount(&mut self, node: INode) -> Result<()>;
 }
