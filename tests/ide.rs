@@ -17,7 +17,7 @@ use martim::driver::ide::IDEController;
 use martim::driver::pci::device::{MassStorageSubClass, PCIDeviceClass};
 use martim::driver::pci::header::PCIStandardHeaderDevice;
 use martim::driver::pci::PCI;
-use martim::io::read_at::ReadAt;
+use martim::io::ReadAt;
 use martim::scheduler;
 
 entry_point!(main);

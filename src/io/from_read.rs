@@ -1,5 +1,5 @@
 use crate::io::read::Read;
-use crate::io::read_at::ReadAt;
+use crate::io::ReadAt;
 use crate::Result;
 
 pub struct FromRead<'a, T> {

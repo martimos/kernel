@@ -65,6 +65,14 @@ impl IDEChannel {
         }
         while self.status().contains(Status::BUSY) {} // wait for !BUSY
     }
+
+    pub fn ctrlbase(&self) -> u16 {
+        self.ctrlbase
+    }
+
+    pub fn iobase(&self) -> u16 {
+        self.iobase
+    }
 }
 
 impl Debug for IDEChannel {

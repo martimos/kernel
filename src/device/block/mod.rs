@@ -1,6 +1,6 @@
 use alloc::vec::Vec;
 
-use crate::io::read_at::ReadAt;
+use crate::io::ReadAt;
 
 pub trait BlockDevice {
     fn block_size(&self) -> usize;
