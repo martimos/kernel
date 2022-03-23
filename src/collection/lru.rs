@@ -5,12 +5,6 @@ pub struct LruCache<V> {
     data: VecDeque<V>,
 }
 
-impl<V> Default for LruCache<V> {
-    fn default() -> Self {
-        Self::new(100)
-    }
-}
-
 impl<V> LruCache<V> {
     pub fn new(size: usize) -> Self {
         Self {
