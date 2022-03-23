@@ -1,17 +1,20 @@
 use alloc::vec::Vec;
 
 use crate::io::ReadAt;
+use crate::Result;
+
+pub mod cache;
 
 pub trait BlockDevice {
     fn block_size(&self) -> usize;
-    fn read_block(&self, block: u64, buf: &mut dyn AsMut<[u8]>);
+    fn read_block(&self, block: u64, buf: &mut dyn AsMut<[u8]>) -> Result<usize>;
 }
 
 impl<T> ReadAt for T
 where
     T: BlockDevice,
 {
-    fn read_at(&self, offset: u64, buf: &mut dyn AsMut<[u8]>) -> crate::Result<usize> {
+    fn read_at(&self, offset: u64, buf: &mut dyn AsMut<[u8]>) -> Result<usize> {
         let target = buf.as_mut();
 
         let block_size = self.block_size();
@@ -28,7 +31,7 @@ where
         let mut read_block_data: Vec<u8> = Vec::with_capacity(block_size);
         for _ in 0..block_count {
             let mut block = [0_u8; 512];
-            self.read_block(block_index, &mut block);
+            self.read_block(block_index, &mut block)?;
             read_block_data.reserve(block_size);
             block.iter().for_each(|&b| read_block_data.push(b));
         }
