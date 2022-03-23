@@ -8,6 +8,7 @@ use x86_64::instructions::interrupts::without_interrupts;
 use crate::device::block::BlockDevice;
 use crate::driver::ide::channel::IDEChannel;
 use crate::driver::ide::{is_bit_set, Command, Status, UDMAMode};
+use crate::Result;
 
 pub struct IDEDrive {
     channel: Arc<Mutex<IDEChannel>>,
@@ -159,7 +160,7 @@ impl BlockDevice for IDEDrive {
         512
     }
 
-    fn read_block(&self, block: u64, buf: &mut dyn AsMut<[u8]>) {
+    fn read_block(&self, block: u64, buf: &mut dyn AsMut<[u8]>) -> Result<usize> {
         let mut data = [0_u16; 256];
 
         let lba = block;
@@ -192,5 +193,6 @@ impl BlockDevice for IDEDrive {
         let target = buf.as_mut();
         let data_u8 = unsafe { data.as_slice().align_to::<u8>().1 };
         target.copy_from_slice(&data_u8[0..target.len()]);
+        Ok(target.len())
     }
 }

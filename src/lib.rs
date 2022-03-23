@@ -21,6 +21,7 @@ use bootloader::{entry_point, BootInfo};
 pub use syscall::error::Result;
 
 pub mod allocator;
+pub mod collection;
 pub mod device;
 pub mod driver;
 pub mod gdt;
