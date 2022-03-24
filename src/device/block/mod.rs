@@ -79,7 +79,7 @@ mod tests {
             Ok(buffer.len())
         }
 
-        fn write_block(&mut self, block: u64, buf: &dyn AsRef<[u8]>) -> Result<usize> {
+        fn write_block(&mut self, _: u64, _: &dyn AsRef<[u8]>) -> Result<usize> {
             panic!("no write in this test, please");
         }
     }
@@ -105,11 +105,11 @@ mod tests {
         let mut data = vec![0_u8; 1025];
 
         dev.read_at(0, &mut &mut data[0..1024]).unwrap();
-        for i in 0..512 {
-            assert_eq!(1, data[i]);
+        for &item in data.iter().take(512) {
+            assert_eq!(1, item);
         }
-        for i in 512..1024 {
-            assert_eq!(2, data[i]);
+        for &item in data.iter().skip(512).take(512) {
+            assert_eq!(2, item);
         }
         assert_eq!(0, data[1024]);
     }

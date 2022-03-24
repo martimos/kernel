@@ -139,7 +139,7 @@ mod tests {
             Ok(buffer.len())
         }
 
-        fn write_block(&mut self, block: u64, buf: &dyn AsRef<[u8]>) -> Result<usize> {
+        fn write_block(&mut self, _: u64, buf: &dyn AsRef<[u8]>) -> Result<usize> {
             Ok(buf.as_ref().len())
         }
     }

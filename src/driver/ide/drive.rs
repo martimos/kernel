@@ -200,7 +200,7 @@ impl BlockDevice for IDEDrive {
         Ok(target.len())
     }
 
-    fn write_block(&mut self, block: u64, buf: &dyn AsRef<[u8]>) -> Result<usize> {
+    fn write_block(&mut self, _: u64, _: &dyn AsRef<[u8]>) -> Result<usize> {
         todo!()
     }
 }
