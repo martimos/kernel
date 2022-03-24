@@ -9,6 +9,7 @@ pub trait BlockDevice {
     fn block_size(&self) -> usize;
     fn block_count(&self) -> usize;
     fn read_block(&self, block: u64, buf: &mut dyn AsMut<[u8]>) -> Result<usize>;
+    fn write_block(&mut self, block: u64, buf: &dyn AsRef<[u8]>) -> Result<usize>;
 }
 
 impl<T> ReadAt for T

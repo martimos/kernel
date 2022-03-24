@@ -199,4 +199,8 @@ impl BlockDevice for IDEDrive {
         target.copy_from_slice(&data_u8[0..target.len()]);
         Ok(target.len())
     }
+
+    fn write_block(&mut self, block: u64, buf: &dyn AsRef<[u8]>) -> Result<usize> {
+        todo!()
+    }
 }
