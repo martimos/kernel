@@ -55,6 +55,14 @@ impl<V> LruCache<V> {
     }
 }
 
+impl<V> Drop for LruCache<V> {
+    fn drop(&mut self) {
+        while let Some(e) = self.data.pop_back() {
+            self.evict(e);
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use alloc::collections::VecDeque;
@@ -107,5 +115,20 @@ mod tests {
             lru.data
         );
         assert_eq!(90, evict_count.load(Ordering::SeqCst));
+    }
+
+    #[test_case]
+    fn test_lru_evict_all_on_drop() {
+        let evict_count = Arc::new(AtomicUsize::default());
+        let in_closure = evict_count.clone();
+        let mut lru = LruCache::<u8>::with_evict(10, move |_| {
+            in_closure.fetch_add(1, Ordering::SeqCst);
+        });
+        for i in 0_u8..10 {
+            lru.insert(i);
+        }
+        drop(lru);
+
+        assert_eq!(10, evict_count.load(Ordering::SeqCst));
     }
 }
