@@ -44,6 +44,10 @@ where
         self.block_size
     }
 
+    fn block_count(&self) -> usize {
+        self.device.block_count()
+    }
+
     fn read_block(&self, block: u64, buf: &mut dyn AsMut<[u8]>) -> Result<usize> {
         let buffer = buf.as_mut();
         let len = buffer.len();
@@ -98,6 +102,10 @@ mod tests {
             let _ = self.block_size_count.fetch_add(1, Ordering::SeqCst);
 
             512
+        }
+
+        fn block_count(&self) -> usize {
+            1024
         }
 
         fn read_block(&self, _: u64, buf: &mut dyn AsMut<[u8]>) -> Result<usize> {

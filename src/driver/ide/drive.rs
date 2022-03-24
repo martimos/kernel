@@ -160,6 +160,10 @@ impl BlockDevice for IDEDrive {
         512
     }
 
+    fn block_count(&self) -> usize {
+        TryInto::<usize>::try_into(self.sector_count).expect("too many blocks")
+    }
+
     fn read_block(&self, block: u64, buf: &mut dyn AsMut<[u8]>) -> Result<usize> {
         let mut data = [0_u16; 256];
 

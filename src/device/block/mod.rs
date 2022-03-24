@@ -7,6 +7,7 @@ pub mod cache;
 
 pub trait BlockDevice {
     fn block_size(&self) -> usize;
+    fn block_count(&self) -> usize;
     fn read_block(&self, block: u64, buf: &mut dyn AsMut<[u8]>) -> Result<usize>;
 }
 
