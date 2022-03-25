@@ -99,54 +99,15 @@ where
 #[cfg(test)]
 mod tests {
     use alloc::vec;
-    use core::sync::atomic::{AtomicUsize, Ordering};
+    use core::sync::atomic::Ordering;
 
     use crate::device::block::cache::BlockCache;
+    use crate::device::block::one::OneDevice;
     use crate::device::block::BlockDevice;
-    use crate::Result;
-
-    struct ZeroDevice {
-        block_size_count: AtomicUsize,
-        read_block_count: AtomicUsize,
-    }
-
-    impl ZeroDevice {
-        fn new() -> Self {
-            Self {
-                block_size_count: AtomicUsize::default(),
-                read_block_count: AtomicUsize::default(),
-            }
-        }
-    }
-
-    impl BlockDevice for ZeroDevice {
-        fn block_size(&self) -> usize {
-            let _ = self.block_size_count.fetch_add(1, Ordering::SeqCst);
-
-            512
-        }
-
-        fn block_count(&self) -> usize {
-            1024
-        }
-
-        fn read_block(&self, _: u64, buf: &mut dyn AsMut<[u8]>) -> Result<usize> {
-            let _ = self.read_block_count.fetch_add(1, Ordering::SeqCst);
-
-            let buffer = buf.as_mut();
-            buffer.fill(0);
-
-            Ok(buffer.len())
-        }
-
-        fn write_block(&mut self, _: u64, buf: &dyn AsRef<[u8]>) -> Result<usize> {
-            Ok(buf.as_ref().len())
-        }
-    }
 
     #[test_case]
     fn test_cache_read() {
-        let device = ZeroDevice::new();
+        let device = OneDevice::new(512, 1024);
         let cache = BlockCache::new(device, 10);
         let mut data = vec![0_u8; cache.block_size()];
         for block_num in [1, 2, 3, 1, 2, 3, 4] {

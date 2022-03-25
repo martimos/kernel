@@ -5,6 +5,9 @@ use crate::io::ReadAt;
 use crate::Result;
 
 pub mod cache;
+pub mod cow;
+#[cfg(test)]
+pub mod one;
 
 pub trait BlockDevice {
     fn block_size(&self) -> usize;
