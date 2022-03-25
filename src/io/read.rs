@@ -16,10 +16,10 @@ pub trait Read {
                 Err(e) => return Err(e),
             }
         }
-        if !buffer.is_empty() {
-            Err(Errno::EIO)
-        } else {
+        if buffer.is_empty() {
             Ok(())
+        } else {
+            Err(Errno::EIO)
         }
     }
 }
