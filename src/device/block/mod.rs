@@ -19,8 +19,12 @@ where
 {
     fn read_at(&self, offset: u64, buf: &mut dyn AsMut<[u8]>) -> Result<usize> {
         let buffer = buf.as_mut();
-
         let block_size = self.block_size();
+        if offset % buffer.len() as u64 == 0 && buffer.len() == block_size {
+        	// if we read exactly one block, and that read is aligned, delegate to the device impl
+        	return self.read_block(offset / block_size as u64, buf);
+        }
+
         let start_block = offset / block_size as u64;
         let end_block = (offset + buffer.len() as u64) / block_size as u64;
         let relative_offset = offset as usize % block_size;
