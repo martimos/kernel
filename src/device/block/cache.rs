@@ -113,8 +113,8 @@ mod tests {
     impl ZeroDevice {
         fn new() -> Self {
             Self {
-                block_size_count: Default::default(),
-                read_block_count: Default::default(),
+                block_size_count: AtomicUsize::default(),
+                read_block_count: AtomicUsize::default(),
             }
         }
     }

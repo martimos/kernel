@@ -147,7 +147,7 @@ mod tests {
             .write()
             .create(&name, typ)
             .unwrap();
-        let mut r = RootDir::new("/".into(), Default::default());
+        let mut r = RootDir::new("/".into(), Stat::default());
         assert_eq!(Err(Errno::ENOENT), r.lookup(&name));
 
         r.mount(inode).unwrap();
