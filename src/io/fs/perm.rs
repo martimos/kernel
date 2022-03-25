@@ -2,13 +2,15 @@ use bitflags::bitflags;
 
 bitflags! {
     pub struct Permission: u16 {
-        const USER_READ = 1 << 10;
-        const USER_WRITE = 1 << 9;
-        const USER_EXECUTE = 1 << 8;
+        const STICKY = 1 << 9;
 
-        const GROUP_READ = 1 << 6;
-        const GROUP_WRITE = 1 << 5;
-        const GROUP_EXECUTE = 1 << 4;
+        const USER_READ = 1 << 8;
+        const USER_WRITE = 1 << 7;
+        const USER_EXECUTE = 1 << 6;
+
+        const GROUP_READ = 1 << 5;
+        const GROUP_WRITE = 1 << 4;
+        const GROUP_EXECUTE = 1 << 3;
 
         const OTHER_READ = 1 << 2;
         const OTHER_WRITE = 1 << 1;
@@ -66,6 +68,10 @@ impl Permission {
 
     pub fn can_execute(&self, triad: Triad) -> bool {
         self.contains(triad.get_execute_perm())
+    }
+
+    pub fn is_sticky(&self) -> bool {
+        self.contains(Permission::STICKY)
     }
 
     pub fn set_readable(&mut self, triad: Triad, readable: bool) {
@@ -160,5 +166,21 @@ mod tests {
             perm.set_executable(triad, false);
             assert_eq!(Permission::empty(), perm);
         }
+    }
+
+    #[test_case]
+    fn test_from_u16() {
+        let perm = Permission::from_bits_truncate(0o755);
+        assert!(perm.can_read(Triad::User));
+        assert!(perm.can_write(Triad::User));
+        assert!(perm.can_execute(Triad::User));
+
+        assert!(perm.can_read(Triad::Group));
+        assert!(!perm.can_write(Triad::Group));
+        assert!(perm.can_execute(Triad::Group));
+
+        assert!(perm.can_read(Triad::Other));
+        assert!(!perm.can_write(Triad::Other));
+        assert!(perm.can_execute(Triad::Other));
     }
 }

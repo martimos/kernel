@@ -31,7 +31,7 @@ where
         let start_block = offset / block_size as u64;
         let end_block = (offset + buffer.len() as u64) / block_size as u64;
         let relative_offset = offset as usize % block_size;
-        let block_count = if relative_offset == 0 {
+        let block_count = if relative_offset == 0 && start_block != end_block {
             end_block - start_block
         } else {
             end_block - start_block + 1

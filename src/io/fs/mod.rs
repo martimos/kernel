@@ -11,6 +11,7 @@ use crate::syscall::error::Errno;
 use crate::Result;
 
 pub mod devfs;
+pub mod ext2;
 pub mod flags;
 pub mod memfs;
 pub mod path;

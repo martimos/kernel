@@ -2,7 +2,7 @@ use alloc::vec::Vec;
 
 use crate::Result;
 
-pub mod from_read;
+pub mod cursor;
 pub mod fs;
 pub mod read;
 

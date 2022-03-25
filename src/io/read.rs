@@ -36,6 +36,15 @@ macro_rules! read_bytes {
 }
 
 #[macro_export]
+macro_rules! read_null_terminated_string {
+    ($source:expr, $count:expr) => {{
+        let data = read_bytes!($source, $count);
+        let pos = data.iter().position(|&b| b == 0).unwrap_or(data.len());
+        alloc::string::ToString::to_string(&String::from_utf8_lossy(&data[0..pos]))
+    }};
+}
+
+#[macro_export]
 macro_rules! read_u8 {
     ($source:expr) => {{
         u8::from_be_bytes(read_bytes!($source, 1))
@@ -53,6 +62,20 @@ macro_rules! read_be_u16 {
 macro_rules! read_be_u32 {
     ($source:expr) => {{
         u32::from_be_bytes(read_bytes!($source, 4))
+    }};
+}
+
+#[macro_export]
+macro_rules! read_le_u16 {
+    ($source:expr) => {{
+        u16::from_le_bytes(read_bytes!($source, 2))
+    }};
+}
+
+#[macro_export]
+macro_rules! read_le_u32 {
+    ($source:expr) => {{
+        u32::from_le_bytes(read_bytes!($source, 4))
     }};
 }
 
