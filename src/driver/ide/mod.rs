@@ -92,14 +92,16 @@ impl From<PCIStandardHeaderDevice> for IDEController {
          */
 
         let prog_if = device.prog_if();
-        let (primary_ctrlbase, primary_iobase) = match is_bit_set(prog_if as u64, 0) {
-            true => (device.bar1() as u16, device.bar0() as u16), // TODO: this might not be correct
-            false => (0x3F6, 0x1F0),
+        let (primary_ctrlbase, primary_iobase) = if is_bit_set(prog_if as u64, 0) {
+            (device.bar1() as u16, device.bar0() as u16)
+        } else {
+            (0x3F6, 0x1F0)
         };
 
-        let (secondary_ctrlbase, secondary_iobase) = match is_bit_set(prog_if as u64, 2) {
-            true => (device.bar3() as u16, device.bar2() as u16), // TODO: this might not be correct
-            false => (0x376, 0x170),
+        let (secondary_ctrlbase, secondary_iobase) = if is_bit_set(prog_if as u64, 2) {
+            (device.bar3() as u16, device.bar2() as u16)
+        } else {
+            (0x376, 0x170)
         };
 
         let bus_master_ide = device.bar4();
