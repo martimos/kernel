@@ -18,7 +18,7 @@ use martim::driver::Peripherals;
 use martim::io::fs::devfs::DevFs;
 use martim::io::fs::memfs::MemFs;
 use martim::io::fs::{vfs, Fs};
-use martim::{dbg, hlt_loop};
+use martim::{debug, hlt_loop};
 use martim::{
     driver::pci::PCI,
     scheduler, serial_print, serial_println,
@@ -94,7 +94,7 @@ fn main() {
     scheduler::spawn(ide_drives).unwrap();
     scheduler::spawn(example_tasks).unwrap();
 
-    dbg!(
+    debug!(
         "kernel task with tid {} is still running",
         scheduler::get_current_tid()
     );

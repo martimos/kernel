@@ -6,7 +6,7 @@ macro_rules! info {
 }
 
 #[macro_export]
-macro_rules! dbg {
+macro_rules! debug {
     ($fmt:expr) => {
         #[cfg(debug_assertions)]
         ($crate::serial_print!(concat!("[{}:{}] ", $fmt, "\n"), file!(), line!()))
