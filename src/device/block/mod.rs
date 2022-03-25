@@ -21,8 +21,8 @@ where
         let buffer = buf.as_mut();
         let block_size = self.block_size();
         if offset % buffer.len() as u64 == 0 && buffer.len() == block_size {
-        	// if we read exactly one block, and that read is aligned, delegate to the device impl
-        	return self.read_block(offset / block_size as u64, buf);
+            // if we read exactly one block, and that read is aligned, delegate to the device impl
+            return self.read_block(offset / block_size as u64, buf);
         }
 
         let start_block = offset / block_size as u64;
