@@ -1,20 +1,24 @@
 use alloc::rc::Rc;
-use alloc::string::String;
 use alloc::vec;
 
 use spin::RwLock;
 
+use dir::Ext2Dir;
+
 use crate::device::block::BlockDevice;
 use crate::io::cursor::Cursor;
 use crate::io::fs::ext2::block_group::BlockGroupDescriptorTable;
-use crate::io::fs::ext2::inode::{Ext2DirEntry, Ext2INode};
+use crate::io::fs::ext2::inode::Ext2INode;
 use crate::io::fs::ext2::superblock::Superblock;
-use crate::io::fs::{Fs, INode, INodeBase, INodeNum, Stat};
+use crate::io::fs::{Fs, INode};
 use crate::io::ReadAt;
 use crate::syscall::error::Errno;
-use crate::{debug, Result};
+use crate::Result;
 
+mod base;
 mod block_group;
+mod dir;
+mod file;
 mod inode;
 mod superblock;
 
@@ -37,7 +41,7 @@ impl TryFrom<u32> for Ext2INodeAddress {
 
 pub struct Ext2Fs<D>
 where
-    D: BlockDevice,
+    D: 'static + BlockDevice,
 {
     inner: Rc<RwLock<Inner<D>>>,
 }
@@ -53,7 +57,6 @@ where
             let mut cursor = Cursor::new(superblock_buf);
             Superblock::decode(&mut cursor)?
         };
-        debug!("read superblock: {:#?}", superblock);
 
         let number_of_block_groups = {
             let chck1 = (superblock.num_blocks + superblock.blocks_per_group - 1)
@@ -72,35 +75,19 @@ where
             let mut cursor = Cursor::new(block_group_descriptor_buf);
             BlockGroupDescriptorTable::decode(&mut cursor, number_of_block_groups as usize)?
         };
-        debug!(
-            "read block group descriptor table: {:#?}",
-            block_group_descriptor_table
-        );
 
-        let block_size = superblock.block_size;
-
-        let inner = Inner {
+        let inner = Rc::new(RwLock::new(Inner {
             device,
             superblock,
             block_group_descriptor_table,
-        };
+            root: None,
+        }));
 
-        {
-            let root_inode = inner.read_inode(2_u32.try_into().unwrap()).unwrap();
-            debug!("root inode: {:#?}", root_inode);
-            let direntry_block = root_inode.direct_pointers[0];
-            let mut data = vec![0_u8; block_size as usize];
-            inner
-                .device
-                .read_at(inner.get_block_address(direntry_block), &mut data)?;
-            let mut cursor = Cursor::new(data);
-            let direntry = Ext2DirEntry::decode(&mut cursor);
-            debug!("direntry: {:#?}", direntry);
-        }
+        let root_inode = inner.read().read_inode(2_u32.try_into().unwrap()).unwrap();
+        let inner_root_inode = INode::new_dir(Ext2Dir::new(inner.clone(), root_inode, "/".into()));
+        inner.write().root = Some(inner_root_inode);
 
-        Ok(Self {
-            inner: Rc::new(RwLock::new(inner)),
-        })
+        Ok(Self { inner })
     }
 }
 
@@ -109,11 +96,16 @@ where
     D: BlockDevice,
 {
     fn root_inode(&self) -> INode {
-        todo!()
+        self.inner
+            .read()
+            .root
+            .as_ref()
+            .expect("root inode not initialized yet")
+            .clone()
     }
 }
 
-struct Inner<D>
+pub struct Inner<D>
 where
     D: BlockDevice,
 {
@@ -121,30 +113,35 @@ where
 
     superblock: Superblock,
     block_group_descriptor_table: BlockGroupDescriptorTable,
+
+    root: Option<INode>,
 }
 
 impl<D> Inner<D>
 where
     D: BlockDevice,
 {
-    fn superblock(&self) -> &'_ Superblock {
+    pub fn device(&self) -> &D {
+        &self.device
+    }
+
+    pub fn superblock(&self) -> &'_ Superblock {
         &self.superblock
     }
 
-    fn superblock_mut(&mut self) -> &'_ mut Superblock {
+    pub fn superblock_mut(&mut self) -> &'_ mut Superblock {
         &mut self.superblock
     }
 
-    fn block_group_descriptor_table(&self) -> &'_ BlockGroupDescriptorTable {
+    pub fn block_group_descriptor_table(&self) -> &'_ BlockGroupDescriptorTable {
         &self.block_group_descriptor_table
     }
 
-    fn block_group_descriptor_table_mut(&mut self) -> &'_ mut BlockGroupDescriptorTable {
+    pub fn block_group_descriptor_table_mut(&mut self) -> &'_ mut BlockGroupDescriptorTable {
         &mut self.block_group_descriptor_table
     }
 
     fn read_inode(&self, inode: Ext2INodeAddress) -> Result<Ext2INode> {
-        debug!("read inode: {:?}", inode);
         let block_group_index = (inode.0 - 1) / self.superblock.inodes_per_group;
         let block_group = &self.block_group_descriptor_table[block_group_index as usize];
         let itable_start_block = block_group.inode_table_starting_block;
@@ -157,62 +154,17 @@ where
         let mut inode_buffer = vec![0_u8; inode_size as usize];
         self.device.read_at(address, &mut inode_buffer)?;
         let mut cursor = Cursor::new(inode_buffer);
-        Ext2INode::decode(&mut cursor)
+        let res = Ext2INode::decode(&mut cursor);
+        match res {
+            Ok(mut n) => {
+                n.inode_num = (inode.0 as u64).into();
+                Ok(n)
+            }
+            e @ Err(_) => e,
+        }
     }
 
     fn get_block_address(&self, block: u32) -> u64 {
         (1024 + (block - 1) * self.superblock.block_size) as u64
-    }
-}
-
-struct Ext2NodeBase {}
-
-impl INodeBase for Ext2NodeBase {
-    fn num(&self) -> INodeNum {
-        todo!()
-    }
-
-    fn name(&self) -> String {
-        todo!()
-    }
-
-    fn stat(&self) -> Stat {
-        todo!()
-    }
-}
-
-pub struct Ext2File {
-    base: Ext2NodeBase,
-}
-
-impl INodeBase for Ext2File {
-    fn num(&self) -> INodeNum {
-        self.base.num()
-    }
-
-    fn name(&self) -> String {
-        self.base.name()
-    }
-
-    fn stat(&self) -> Stat {
-        self.base.stat()
-    }
-}
-
-pub struct Ext2Dir {
-    base: Ext2NodeBase,
-}
-
-impl INodeBase for Ext2Dir {
-    fn num(&self) -> INodeNum {
-        self.base.num()
-    }
-
-    fn name(&self) -> String {
-        self.base.name()
-    }
-
-    fn stat(&self) -> Stat {
-        self.base.stat()
     }
 }

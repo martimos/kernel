@@ -4,11 +4,15 @@ use alloc::vec;
 use bitflags::bitflags;
 
 use crate::io::fs::perm::Permission;
+use crate::io::fs::INodeNum;
 use crate::io::read::Read;
+use crate::syscall::error::Errno;
 use crate::{read_bytes, read_le_u16, read_le_u32, read_u8, Result};
 
 #[derive(Debug)]
 pub struct Ext2INode {
+    pub inode_num: INodeNum,
+
     pub node_type: Ext2INodeType,
     pub permissions: Permission,
     pub uid: u16,
@@ -37,7 +41,9 @@ impl Ext2INode {
     pub fn decode(source: &mut impl Read) -> Result<Self> {
         let mode = read_le_u16!(source);
         Ok(Self {
-            node_type: Ext2INodeType::from_bits_truncate(mode >> 12),
+            inode_num: 0_u64.into(),
+
+            node_type: Ext2INodeType::try_from(mode >> 12).or(Err(Errno::EIO))?,
             permissions: Permission::from_bits_truncate(mode & 0x0FFF),
             uid: read_le_u16!(source),
             lower_size: read_le_u32!(source),
@@ -74,17 +80,45 @@ impl Ext2INode {
             os_specific_2: read_bytes!(source, 12),
         })
     }
+
+    pub fn size(&self) -> u64 {
+        match self.node_type {
+            Ext2INodeType::Directory => self.lower_size as u64,
+            Ext2INodeType::RegularFile => {
+                self.lower_size as u64 | ((self.upper_size_or_dir_acl as u64) << 32)
+            }
+            _ => panic!("called 'size' on neither a directory nor a file"),
+        }
+    }
 }
 
-bitflags! {
-    pub struct Ext2INodeType: u16 {
-        const FIFO = 0x1;
-        const CHARACTER_DEVICE = 0x2;
-        const DIRECTORY = 0x4;
-        const BLOCK_DEVICE = 0x6;
-        const REGULAR_FILE = 0x8;
-        const SYMBOLIC_LINK = 0xA;
-        const UNIX_SOCKET = 0xC;
+#[derive(Debug, Eq, PartialEq, Copy, Clone)]
+pub enum Ext2INodeType {
+    Fifo,
+    CharacterDevice,
+    Directory,
+    BlockDevice,
+    RegularFile,
+    SymbolicLink,
+    UnixSocket,
+}
+
+pub struct InvalidExt2INodeType;
+
+impl TryFrom<u16> for Ext2INodeType {
+    type Error = InvalidExt2INodeType;
+
+    fn try_from(value: u16) -> core::result::Result<Self, Self::Error> {
+        Ok(match value {
+            0x1 => Self::Fifo,
+            0x2 => Self::CharacterDevice,
+            0x4 => Self::Directory,
+            0x6 => Self::BlockDevice,
+            0x8 => Self::RegularFile,
+            0xA => Self::SymbolicLink,
+            0xC => Self::UnixSocket,
+            _ => return Err(InvalidExt2INodeType),
+        })
     }
 }
 
@@ -109,7 +143,7 @@ pub struct Ext2DirEntry {
     pub inode: u32,
     pub total_size: u16,
     pub name_length_lower: u8,
-    pub type_indicator: u8,
+    pub type_indicator: Ext2IDirEntryType,
     pub name: String,
 }
 
@@ -118,20 +152,48 @@ impl Ext2DirEntry {
         let inode = read_le_u32!(source);
         let total_size = read_le_u16!(source);
         let name_length_lower = read_u8!(source);
-        let type_indicator = read_u8!(source);
+        let type_indicator = Ext2IDirEntryType::try_from(read_u8!(source)).or(Err(Errno::EIO))?;
         let mut name_data = vec![0_u8; total_size as usize - 8];
         source.read_exact(&mut name_data)?;
-        let null_pos = name_data
-            .iter()
-            .position(|&b| b == 0)
-            .unwrap_or(name_data.len());
-        let name = String::from_utf8_lossy(&name_data[0..null_pos]).to_string();
+        let name = String::from_utf8_lossy(&name_data[0..name_length_lower as usize]).to_string();
         Ok(Self {
             inode,
             total_size,
             name_length_lower,
             type_indicator,
             name,
+        })
+    }
+}
+
+#[derive(Debug, Eq, PartialEq, Copy, Clone)]
+pub enum Ext2IDirEntryType {
+    Unknown,
+    RegularFile,
+    Directory,
+    CharacterDevice,
+    BlockDevice,
+    Fifo,
+    Socket,
+    SymbolicLink,
+}
+
+pub struct InvalidExt2IDirEntryType;
+
+impl TryFrom<u8> for Ext2IDirEntryType {
+    type Error = InvalidExt2IDirEntryType;
+
+    fn try_from(value: u8) -> core::result::Result<Self, Self::Error> {
+        Ok(match value {
+            0 => Self::Unknown,
+            1 => Self::RegularFile,
+            2 => Self::Directory,
+            3 => Self::CharacterDevice,
+            4 => Self::BlockDevice,
+            5 => Self::Fifo,
+            6 => Self::Socket,
+            7 => Self::SymbolicLink,
+            _ => return Err(InvalidExt2IDirEntryType),
         })
     }
 }

@@ -1,5 +1,6 @@
 use alloc::collections::BTreeMap;
 use alloc::string::String;
+use alloc::vec::Vec;
 
 use crate::io::fs::{IDir, INode, INodeBase, INodeNum, INodeType, Stat};
 use crate::syscall::error::Errno;
@@ -49,6 +50,10 @@ impl IDir for RootDir {
 
     fn create(&mut self, _: &dyn AsRef<str>, _: INodeType) -> Result<INode> {
         Err(Errno::ENOSYS)
+    }
+
+    fn children(&self) -> Result<Vec<INode>> {
+        Ok(self.children.values().cloned().collect())
     }
 
     fn mount(&mut self, node: INode) -> Result<()> {

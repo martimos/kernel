@@ -22,6 +22,10 @@ where
     pub fn into_inner(self) -> T {
         self.inner
     }
+
+    pub fn offset(&self) -> u64 {
+        self.offset
+    }
 }
 
 impl<T> Read for Cursor<T>

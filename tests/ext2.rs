@@ -7,6 +7,7 @@
 
 extern crate alloc;
 
+use alloc::string::String;
 use core::panic::PanicInfo;
 
 use bootloader::{entry_point, BootInfo};
@@ -17,6 +18,7 @@ use martim::driver::pci::device::{MassStorageSubClass, PCIDeviceClass};
 use martim::driver::pci::header::PCIStandardHeaderDevice;
 use martim::driver::pci::PCI;
 use martim::io::fs::ext2::Ext2Fs;
+use martim::io::fs::Fs;
 use martim::scheduler;
 
 entry_point!(main);
@@ -41,6 +43,16 @@ fn panic(info: &PanicInfo) -> ! {
 fn test_create_fs() {
     let drive = get_drive();
     let fs = Ext2Fs::new(drive).unwrap();
+    let root = fs.root_inode();
+    let root_dir = root.dir().unwrap();
+    let hello = root_dir
+        .read()
+        .lookup(&"hello.txt")
+        .expect("root dir must have inode 'hello.txt'");
+    let hello_file = hello.file().expect("'hello.txt' should be a file");
+    let hello_data = hello_file.read().read_full().unwrap();
+    let hello_content = String::from_utf8(hello_data).unwrap();
+    assert_eq!("hello world", hello_content);
 }
 
 fn get_drive() -> IDEDrive {
