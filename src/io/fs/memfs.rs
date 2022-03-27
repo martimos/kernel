@@ -218,6 +218,16 @@ impl IDir for MemDir {
         Ok(inode)
     }
 
+    fn children(&self) -> Result<Vec<INode>> {
+        let guard = self.base.fs.read();
+        Ok(self
+            .children
+            .iter()
+            .filter_map(|n| guard.nodes.get(n))
+            .cloned()
+            .collect())
+    }
+
     fn mount(&mut self, _node: INode) -> Result<()> {
         todo!()
     }

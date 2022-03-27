@@ -1,5 +1,6 @@
 use alloc::rc::Rc;
 use alloc::string::String;
+use alloc::vec;
 use alloc::vec::Vec;
 use core::fmt::{Debug, Display, Formatter};
 
@@ -11,6 +12,7 @@ use crate::syscall::error::Errno;
 use crate::Result;
 
 pub mod devfs;
+pub mod ext2;
 pub mod flags;
 pub mod memfs;
 pub mod path;
@@ -129,7 +131,6 @@ impl Debug for INode {
 }
 
 impl INodeBase for INode {
-    #[inline]
     fn num(&self) -> INodeNum {
         match self {
             INode::File(file) => file.read().num(),
@@ -137,7 +138,6 @@ impl INodeBase for INode {
         }
     }
 
-    #[inline]
     fn name(&self) -> String {
         match self {
             INode::File(file) => file.read().name(),
@@ -145,7 +145,6 @@ impl INodeBase for INode {
         }
     }
 
-    #[inline]
     fn stat(&self) -> Stat {
         match self {
             INode::File(file) => file.read().stat(),
@@ -169,7 +168,7 @@ pub trait IFile: INodeBase {
 
     fn read_full(&self) -> Result<Vec<u8>> {
         let size = TryInto::<usize>::try_into(self.size()).or(Err(Errno::EFBIG))?;
-        let mut data = Vec::<u8>::with_capacity(size);
+        let mut data = vec![0_u8; size];
         self.read_at(0, &mut data)?;
         Ok(data)
     }
@@ -199,6 +198,9 @@ pub trait IDir: INodeBase {
     /// Creates a new [`INode`] of the given type. The operation may fail if a type
     /// is not supported.
     fn create(&mut self, name: &dyn AsRef<str>, typ: INodeType) -> Result<INode>;
+
+    /// Returns a vec of [`INodes`] that are contained within this directory.
+    fn children(&self) -> Result<Vec<INode>>;
 
     /// Adds an (possibly external) [`INode`] to the children of this dir. External
     /// means, that the given [`INode`] does not necessarily belong to the same file
