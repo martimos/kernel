@@ -108,6 +108,11 @@ unsafe fn read_config_double_word(bus: u8, slot: u8, function: u8, offset: u8) -
 }
 
 unsafe fn read_config_word(bus: u8, slot: u8, function: u8, offset: u8) -> u16 {
+    #[cfg(debug_assertions)]
+    if offset & 1 > 0 {
+        panic!("can not read unaligned word, use read_config_half_word instead");
+    }
+
     let mut config_address = Port::<u32>::new(CONFIG_ADDRESS);
     let mut config_data = Port::<u32>::new(CONFIG_DATA);
 
@@ -121,4 +126,12 @@ unsafe fn read_config_word(bus: u8, slot: u8, function: u8, offset: u8) -> u16 {
 
     let i = config_data.read();
     (i >> ((offset & 2) * 8) & 0xFFFF) as u16
+}
+
+unsafe fn read_config_half_word(bus: u8, slot: u8, function: u8, offset: u8) -> u8 {
+    let word = read_config_word(bus, slot, function, offset & (!1));
+    if offset & 1 > 0 {
+        return (word >> 8) as u8;
+    }
+    word as u8
 }

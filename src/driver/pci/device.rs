@@ -1,9 +1,9 @@
 use bitflags::bitflags;
 
-use crate::driver::pci::Error::UnknownHeaderType;
 use crate::driver::pci::{
-    read_config_word, Error, OFFSET_BIST, OFFSET_CLASS_SUBCLASS, OFFSET_HEADER_TYPE,
-    OFFSET_INTERRUPT_LINE, OFFSET_INTERRUPT_PIN, OFFSET_PROG_IF_REVISION_ID, OFFSET_STATUS,
+    read_config_half_word, read_config_word, Error, OFFSET_BIST, OFFSET_CLASS_SUBCLASS,
+    OFFSET_HEADER_TYPE, OFFSET_INTERRUPT_LINE, OFFSET_INTERRUPT_PIN, OFFSET_PROG_IF_REVISION_ID,
+    OFFSET_STATUS,
 };
 use crate::error;
 
@@ -47,7 +47,7 @@ impl TryFrom<u8> for PCIHeaderType {
             0x00 => Self::Standard,
             0x01 => Self::PCI2PCIBridge,
             0x02 => Self::CardBusBridge,
-            _ => return Err(UnknownHeaderType(value)),
+            _ => return Err(Error::UnknownHeaderType(value)),
         })
     }
 }
@@ -317,15 +317,17 @@ impl PCIDevice {
         vendor: u16,
         device: u16,
     ) -> Result<Self, Error> {
-        let header_type_raw = read_config_word(bus, slot, function, OFFSET_HEADER_TYPE) as u8;
+        let header_type_raw = read_config_half_word(bus, slot, function, OFFSET_HEADER_TYPE);
         let header_type = PCIHeaderType::try_from(header_type_raw & ((1 << 7) - 1))?;
         let multi_function = header_type_raw & (1 << 7) > 0;
         let class =
             PCIDeviceClass::try_from(read_config_word(bus, slot, function, OFFSET_CLASS_SUBCLASS))?;
-        let interrupt_pin =
-            InterruptPin::try_from(
-                read_config_word(bus, slot, function, OFFSET_INTERRUPT_PIN) as u8
-            )?;
+        let interrupt_pin = InterruptPin::try_from(read_config_half_word(
+            bus,
+            slot,
+            function,
+            OFFSET_INTERRUPT_PIN,
+        ))?;
         let d = PCIDevice {
             bus,
             slot,
