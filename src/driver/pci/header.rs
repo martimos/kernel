@@ -1,7 +1,8 @@
 use core::ops::Deref;
 
 use crate::driver::pci::device::{PCIDevice, PCIHeaderType};
-use crate::driver::pci::{read_config_double_word, Error};
+use crate::driver::pci::raw::read_config_double_word;
+use crate::driver::pci::Error;
 
 pub struct PCIStandardHeaderDevice {
     inner: PCIDevice,

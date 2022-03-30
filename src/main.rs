@@ -12,15 +12,14 @@ use core::panic::PanicInfo;
 use bootloader::{entry_point, BootInfo};
 
 use martim::driver::ide::IDEController;
-use martim::driver::pci::device::{MassStorageSubClass, PCIDeviceClass};
+use martim::driver::pci::classes::{MassStorageSubClass, PCIDeviceClass};
 use martim::driver::pci::header::PCIStandardHeaderDevice;
-use martim::driver::Peripherals;
+use martim::driver::{pci, Peripherals};
 use martim::io::fs::devfs::DevFs;
 use martim::io::fs::memfs::MemFs;
 use martim::io::fs::{vfs, Fs};
 use martim::{debug, hlt_loop};
 use martim::{
-    driver::pci::PCI,
     scheduler, serial_print, serial_println,
     task::{executor::Executor, keyboard, Task},
     vga_clear, vga_println,
@@ -124,10 +123,12 @@ extern "C" fn cmos_stuff() {
 }
 
 extern "C" fn ide_drives() {
-    let ide_controller = PCI::devices()
+    let ide_controller = pci::devices()
+        .iter()
         .find(|dev| {
             dev.class() == PCIDeviceClass::MassStorageController(MassStorageSubClass::IDEController)
         })
+        .cloned()
         .map(|d| PCIStandardHeaderDevice::new(d).unwrap())
         .map(Into::<IDEController>::into)
         .expect("need an IDE controller for this to work");

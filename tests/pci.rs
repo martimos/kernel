@@ -11,12 +11,7 @@ use core::panic::PanicInfo;
 
 use bootloader::{entry_point, BootInfo};
 
-use martim::driver::pci::device::{
-    BridgeSubClass, MassStorageSubClass, NetworkSubClass, PCIDeviceClass,
-};
-
-use martim::driver::pci::PCI;
-
+use martim::driver::pci;
 use martim::scheduler;
 
 entry_point!(main);
@@ -38,10 +33,10 @@ fn panic(info: &PanicInfo) -> ! {
 
 #[test_case]
 fn test_pci_devices_exist() {
-    use BridgeSubClass::*;
-    use MassStorageSubClass::*;
-    use NetworkSubClass::*;
-    use PCIDeviceClass::*;
+    use martim::driver::pci::classes::BridgeSubClass::*;
+    use martim::driver::pci::classes::MassStorageSubClass::*;
+    use martim::driver::pci::classes::NetworkSubClass::*;
+    use martim::driver::pci::classes::PCIDeviceClass::*;
 
     for (count, class) in [
         (1, Bridge(HostBridge)),                    // always should be present
@@ -49,6 +44,9 @@ fn test_pci_devices_exist() {
         (1, MassStorageController(IDEController)),  // for the boot drive
                                                     // no display device since tests are booted with '-display none'
     ] {
-        assert_eq!(count, PCI::devices().filter(|d| d.class() == class).count());
+        assert_eq!(
+            count,
+            pci::devices().iter().filter(|d| d.class() == class).count()
+        );
     }
 }

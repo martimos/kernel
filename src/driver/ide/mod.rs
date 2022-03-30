@@ -1,13 +1,15 @@
-use crate::driver::ide::channel::IDEChannel;
-use crate::driver::ide::drive::IDEDrive;
-use crate::driver::pci::device::{InterruptPin, MassStorageSubClass, PCIDeviceClass};
-use crate::driver::pci::header::PCIStandardHeaderDevice;
 use alloc::sync::Arc;
 use alloc::vec;
 use alloc::vec::Vec;
-use bitflags::bitflags;
 use core::fmt::{Debug, Formatter};
+
+use bitflags::bitflags;
 use spin::Mutex;
+
+use crate::driver::ide::channel::IDEChannel;
+use crate::driver::ide::drive::IDEDrive;
+use crate::driver::pci::classes::{InterruptPin, MassStorageSubClass, PCIDeviceClass};
+use crate::driver::pci::header::PCIStandardHeaderDevice;
 
 pub mod channel;
 pub mod drive;

@@ -14,9 +14,9 @@ use core::panic::PanicInfo;
 use bootloader::{entry_point, BootInfo};
 
 use martim::driver::ide::IDEController;
-use martim::driver::pci::device::{MassStorageSubClass, PCIDeviceClass};
+use martim::driver::pci;
+use martim::driver::pci::classes::{MassStorageSubClass, PCIDeviceClass};
 use martim::driver::pci::header::PCIStandardHeaderDevice;
-use martim::driver::pci::PCI;
 use martim::io::ReadAt;
 use martim::scheduler;
 
@@ -40,10 +40,12 @@ fn panic(info: &PanicInfo) -> ! {
 
 #[test_case]
 fn test_find_drives() {
-    let ide_controller = PCI::devices()
+    let ide_controller = pci::devices()
+        .iter()
         .find(|dev| {
             dev.class() == PCIDeviceClass::MassStorageController(MassStorageSubClass::IDEController)
         })
+        .cloned()
         .map(|d| PCIStandardHeaderDevice::new(d).unwrap())
         .map(Into::<IDEController>::into)
         .expect("need an IDE controller for this to work");
@@ -59,10 +61,12 @@ fn test_find_drives() {
 
 #[test_case]
 fn test_read_first_block() {
-    let ide_controller = PCI::devices()
+    let ide_controller = pci::devices()
+        .iter()
         .find(|dev| {
             dev.class() == PCIDeviceClass::MassStorageController(MassStorageSubClass::IDEController)
         })
+        .cloned()
         .map(|d| PCIStandardHeaderDevice::new(d).unwrap())
         .map(Into::<IDEController>::into)
         .expect("need an IDE controller for this to work");
@@ -93,10 +97,12 @@ fn test_read_first_block() {
 
 #[test_case]
 fn test_read_first_block_offset() {
-    let ide_controller = PCI::devices()
+    let ide_controller = pci::devices()
+        .iter()
         .find(|dev| {
             dev.class() == PCIDeviceClass::MassStorageController(MassStorageSubClass::IDEController)
         })
+        .cloned()
         .map(|d| PCIStandardHeaderDevice::new(d).unwrap())
         .map(Into::<IDEController>::into)
         .expect("need an IDE controller for this to work");

@@ -14,9 +14,9 @@ use bootloader::{entry_point, BootInfo};
 
 use martim::driver::ide::drive::IDEDrive;
 use martim::driver::ide::IDEController;
-use martim::driver::pci::device::{MassStorageSubClass, PCIDeviceClass};
+use martim::driver::pci;
+use martim::driver::pci::classes::{MassStorageSubClass, PCIDeviceClass};
 use martim::driver::pci::header::PCIStandardHeaderDevice;
-use martim::driver::pci::PCI;
 use martim::io::fs::ext2::Ext2Fs;
 use martim::io::fs::Fs;
 use martim::scheduler;
@@ -56,10 +56,12 @@ fn test_create_fs() {
 }
 
 fn get_drive() -> IDEDrive {
-    let ide_controller = PCI::devices()
+    let ide_controller = pci::devices()
+        .iter()
         .find(|dev| {
             dev.class() == PCIDeviceClass::MassStorageController(MassStorageSubClass::IDEController)
         })
+        .cloned()
         .map(|d| PCIStandardHeaderDevice::new(d).unwrap())
         .map(Into::<IDEController>::into)
         .expect("need an IDE controller for this to work");
