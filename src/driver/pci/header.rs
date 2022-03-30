@@ -1,6 +1,7 @@
-use crate::driver::pci::device::{PCIDevice, PCIHeaderType};
-use crate::driver::pci::read_config_double_word;
 use core::ops::Deref;
+
+use crate::driver::pci::device::{PCIDevice, PCIHeaderType};
+use crate::driver::pci::{read_config_double_word, Error};
 
 pub struct PCIStandardHeaderDevice {
     inner: PCIDevice,
@@ -22,11 +23,12 @@ impl PCIStandardHeaderDevice {
     const OFFSET_BAR4: u8 = 0x20;
     const OFFSET_BAR5: u8 = 0x24;
 
-    pub fn new(inner: PCIDevice) -> Self {
-        if inner.header_type() != PCIHeaderType::Standard {
-            panic!("pci device does not have a standard header type");
+    pub fn new(inner: PCIDevice) -> Result<Self, Error> {
+        let header_type = inner.header_type();
+        if header_type != PCIHeaderType::Standard {
+            return Err(Error::NotStandardHeader(header_type));
         }
-        PCIStandardHeaderDevice { inner }
+        Ok(PCIStandardHeaderDevice { inner })
     }
 
     pub fn bar0(&self) -> u32 {
@@ -78,10 +80,11 @@ impl Deref for PCI2PCIBridge {
 }
 
 impl PCI2PCIBridge {
-    pub fn new(inner: PCIDevice) -> Self {
-        if inner.header_type() != PCIHeaderType::PCI2PCIBridge {
-            panic!("pci device is not a PCI-to-PCI bridge");
+    pub fn new(inner: PCIDevice) -> Result<Self, Error> {
+        let header_type = inner.header_type();
+        if header_type != PCIHeaderType::PCI2PCIBridge {
+            return Err(Error::NotPCI2PCIBridge(header_type));
         }
-        PCI2PCIBridge { inner }
+        Ok(PCI2PCIBridge { inner })
     }
 }

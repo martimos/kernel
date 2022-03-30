@@ -1,7 +1,11 @@
-use crate::driver::pci::device::PCIHeaderType;
 use alloc::vec::Vec;
-use device::PCIDevice;
+
 use x86_64::instructions::port::Port;
+
+use device::PCIDevice;
+
+use crate::driver::pci::device::PCIHeaderType;
+use crate::error;
 
 const CONFIG_ADDRESS: u16 = 0xCF8;
 const CONFIG_DATA: u16 = 0xCFC;
@@ -18,6 +22,21 @@ const OFFSET_INTERRUPT_PIN: u8 = 0x3D;
 
 pub mod device;
 pub mod header;
+
+#[derive(Debug, Eq, PartialEq, Copy, Clone)]
+pub enum Error {
+    UnknownHeaderType(u8),
+    UnknownPciDeviceClass(u16),
+    UnknownInterruptPin(u8),
+    UnknownDisplaySubClass(u8),
+    UnknownSerialBusSubClass(u8),
+    UnknownMassStorageSubClass(u8),
+    UnknownNetworkSubClass(u8),
+    UnknownBridgeSubClass(u8),
+
+    NotStandardHeader(PCIHeaderType),
+    NotPCI2PCIBridge(PCIHeaderType),
+}
 
 pub struct PCI {}
 
@@ -60,18 +79,13 @@ unsafe fn iterate_functions(bus: u8, slot: u8, devices: &mut Vec<PCIDevice>) {
 
 unsafe fn check_device(bus: u8, slot: u8, function: u8) -> Option<PCIDevice> {
     if let Some((vendor, device)) = pci_check_vendor(bus, slot, function) {
-        let header_type_raw = read_config_word(bus, slot, function, OFFSET_HEADER_TYPE) as u8;
-        let header_type = PCIHeaderType::from(header_type_raw & ((1 << 7) - 1));
-        let multi_function = header_type_raw & (1 << 7) > 0;
-        let dev = PCIDevice::new(
-            bus,
-            slot,
-            function,
-            vendor,
-            device,
-            header_type,
-            multi_function,
-        );
+        let dev = match PCIDevice::new(bus, slot, function, vendor, device) {
+            Ok(d) => d,
+            Err(e) => {
+                error!("create pci device: {:?}", e);
+                return None;
+            }
+        };
         return Some(dev);
     }
     None

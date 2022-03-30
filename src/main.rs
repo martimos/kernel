@@ -128,7 +128,7 @@ extern "C" fn ide_drives() {
         .find(|dev| {
             dev.class() == PCIDeviceClass::MassStorageController(MassStorageSubClass::IDEController)
         })
-        .map(PCIStandardHeaderDevice::new)
+        .map(|d| PCIStandardHeaderDevice::new(d).unwrap())
         .map(Into::<IDEController>::into)
         .expect("need an IDE controller for this to work");
 

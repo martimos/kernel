@@ -44,7 +44,7 @@ fn test_find_drives() {
         .find(|dev| {
             dev.class() == PCIDeviceClass::MassStorageController(MassStorageSubClass::IDEController)
         })
-        .map(PCIStandardHeaderDevice::new)
+        .map(|d| PCIStandardHeaderDevice::new(d).unwrap())
         .map(Into::<IDEController>::into)
         .expect("need an IDE controller for this to work");
 
@@ -63,7 +63,7 @@ fn test_read_first_block() {
         .find(|dev| {
             dev.class() == PCIDeviceClass::MassStorageController(MassStorageSubClass::IDEController)
         })
-        .map(PCIStandardHeaderDevice::new)
+        .map(|d| PCIStandardHeaderDevice::new(d).unwrap())
         .map(Into::<IDEController>::into)
         .expect("need an IDE controller for this to work");
 
@@ -97,7 +97,7 @@ fn test_read_first_block_offset() {
         .find(|dev| {
             dev.class() == PCIDeviceClass::MassStorageController(MassStorageSubClass::IDEController)
         })
-        .map(PCIStandardHeaderDevice::new)
+        .map(|d| PCIStandardHeaderDevice::new(d).unwrap())
         .map(Into::<IDEController>::into)
         .expect("need an IDE controller for this to work");
 

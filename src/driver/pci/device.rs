@@ -1,8 +1,11 @@
-use crate::driver::pci::{
-    read_config_word, OFFSET_BIST, OFFSET_CLASS_SUBCLASS, OFFSET_INTERRUPT_LINE,
-    OFFSET_INTERRUPT_PIN, OFFSET_PROG_IF_REVISION_ID, OFFSET_STATUS,
-};
 use bitflags::bitflags;
+
+use crate::driver::pci::Error::UnknownHeaderType;
+use crate::driver::pci::{
+    read_config_word, Error, OFFSET_BIST, OFFSET_CLASS_SUBCLASS, OFFSET_HEADER_TYPE,
+    OFFSET_INTERRUPT_LINE, OFFSET_INTERRUPT_PIN, OFFSET_PROG_IF_REVISION_ID, OFFSET_STATUS,
+};
+use crate::error;
 
 bitflags! {
     pub struct Status: u16 {
@@ -36,14 +39,16 @@ pub enum PCIHeaderType {
     CardBusBridge = 0x02,
 }
 
-impl From<u8> for PCIHeaderType {
-    fn from(v: u8) -> Self {
-        match v {
+impl TryFrom<u8> for PCIHeaderType {
+    type Error = Error;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        Ok(match value {
             0x00 => Self::Standard,
             0x01 => Self::PCI2PCIBridge,
             0x02 => Self::CardBusBridge,
-            _ => panic!("unknown header type: {:#X}", v),
-        }
+            _ => return Err(UnknownHeaderType(value)),
+        })
     }
 }
 
@@ -73,26 +78,28 @@ pub enum PCIDeviceClass {
     // UnassignedClass,
 }
 
-impl From<u16> for PCIDeviceClass {
-    fn from(v: u16) -> Self {
+impl TryFrom<u16> for PCIDeviceClass {
+    type Error = Error;
+
+    fn try_from(v: u16) -> Result<Self, Self::Error> {
         let class = (v >> 8) as u8;
         let sub = v as u8;
-        match class {
+        Ok(match class {
             0x00 => Self::Unclassified,
-            0x01 => Self::MassStorageController(MassStorageSubClass::from(sub)),
-            0x02 => Self::NetworkController(NetworkSubClass::from(sub)),
-            0x03 => Self::DisplayController(DisplaySubClass::from(sub)),
+            0x01 => Self::MassStorageController(MassStorageSubClass::try_from(sub)?),
+            0x02 => Self::NetworkController(NetworkSubClass::try_from(sub)?),
+            0x03 => Self::DisplayController(DisplaySubClass::try_from(sub)?),
             0x04 => Self::MultimediaController,
             0x05 => Self::MemoryController,
-            0x06 => Self::Bridge(BridgeSubClass::from(sub)),
+            0x06 => Self::Bridge(BridgeSubClass::try_from(sub)?),
             0x07 => Self::SimpleCommunicationController,
             0x08 => Self::BaseSystemPeripheral,
             0x09 => Self::InputDeviceController,
             0x0A => Self::DockingStation,
             0x0B => Self::Processor,
-            0x0C => Self::SerialBusController(SerialBusSubClass::from(sub)),
-            _ => panic!("unknown pci device class: {:#X}", v),
-        }
+            0x0C => Self::SerialBusController(SerialBusSubClass::try_from(sub)?),
+            _ => return Err(Error::UnknownPciDeviceClass(v)),
+        })
     }
 }
 
@@ -104,15 +111,17 @@ pub enum DisplaySubClass {
     Other,
 }
 
-impl From<u8> for DisplaySubClass {
-    fn from(v: u8) -> Self {
-        match v {
+impl TryFrom<u8> for DisplaySubClass {
+    type Error = Error;
+
+    fn try_from(v: u8) -> Result<Self, Self::Error> {
+        Ok(match v {
             0x00 => Self::VGACompatibleController,
             0x01 => Self::XGAController,
             0x02 => Self::NoVGA3DController,
             0x80 => Self::Other,
-            _ => panic!("unknown display sub class"),
-        }
+            _ => return Err(Error::UnknownDisplaySubClass(v)),
+        })
     }
 }
 
@@ -131,9 +140,11 @@ pub enum SerialBusSubClass {
     Other,
 }
 
-impl From<u8> for SerialBusSubClass {
-    fn from(v: u8) -> Self {
-        match v {
+impl TryFrom<u8> for SerialBusSubClass {
+    type Error = Error;
+
+    fn try_from(v: u8) -> Result<Self, Self::Error> {
+        Ok(match v {
             0x0 => Self::FireWireController,
             0x1 => Self::ACCESSBusController,
             0x2 => Self::SSA,
@@ -145,8 +156,8 @@ impl From<u8> for SerialBusSubClass {
             0x8 => Self::SERCOSInterface,
             0x9 => Self::CANbusController,
             0x80 => Self::Other,
-            _ => panic!("unknown serial bus sub class"),
-        }
+            _ => return Err(Error::UnknownSerialBusSubClass(v)),
+        })
     }
 }
 
@@ -164,9 +175,11 @@ pub enum MassStorageSubClass {
     Other,
 }
 
-impl From<u8> for MassStorageSubClass {
-    fn from(v: u8) -> Self {
-        match v {
+impl TryFrom<u8> for MassStorageSubClass {
+    type Error = Error;
+
+    fn try_from(v: u8) -> Result<Self, Self::Error> {
+        Ok(match v {
             0x00 => Self::SCSIBusController,
             0x01 => Self::IDEController,
             0x02 => Self::FloppyDiskController,
@@ -177,8 +190,8 @@ impl From<u8> for MassStorageSubClass {
             0x07 => Self::SerialAttachedSCSIController,
             0x08 => Self::NonVolatileMemoryController,
             0x80 => Self::Other,
-            _ => panic!("unknown mass storage sub class"),
-        }
+            _ => return Err(Error::UnknownMassStorageSubClass(v)),
+        })
     }
 }
 
@@ -196,9 +209,11 @@ pub enum NetworkSubClass {
     Other,
 }
 
-impl From<u8> for NetworkSubClass {
-    fn from(v: u8) -> Self {
-        match v {
+impl TryFrom<u8> for NetworkSubClass {
+    type Error = Error;
+
+    fn try_from(v: u8) -> Result<Self, Self::Error> {
+        Ok(match v {
             0x00 => Self::EthernetController,
             0x01 => Self::TokenRingController,
             0x02 => Self::FDDIController,
@@ -209,8 +224,8 @@ impl From<u8> for NetworkSubClass {
             0x07 => Self::InfinibandController,
             0x08 => Self::FabricController,
             0x80 => Self::Other,
-            _ => panic!("unknown network sub class"),
-        }
+            _ => return Err(Error::UnknownNetworkSubClass(v)),
+        })
     }
 }
 
@@ -229,9 +244,11 @@ pub enum BridgeSubClass {
     Other,
 }
 
-impl From<u8> for BridgeSubClass {
-    fn from(v: u8) -> Self {
-        match v {
+impl TryFrom<u8> for BridgeSubClass {
+    type Error = Error;
+
+    fn try_from(v: u8) -> Result<Self, Self::Error> {
+        Ok(match v {
             0x00 => Self::HostBridge,
             0x01 => Self::ISABridge,
             0x02 => Self::EISABridge,
@@ -243,8 +260,8 @@ impl From<u8> for BridgeSubClass {
             0x08 => Self::RACEwayBridge,
             0x0A => Self::InfiniBand2PCIBridge,
             0x80 => Self::Other,
-            _ => panic!("unknown bridge sub class"),
-        }
+            _ => return Err(Error::UnknownBridgeSubClass(v)),
+        })
     }
 }
 
@@ -257,16 +274,18 @@ pub enum InterruptPin {
     INTD,
 }
 
-impl From<u8> for InterruptPin {
-    fn from(v: u8) -> Self {
-        match v {
+impl TryFrom<u8> for InterruptPin {
+    type Error = Error;
+
+    fn try_from(v: u8) -> Result<Self, Self::Error> {
+        Ok(match v {
             0 => Self::None,
             1 => Self::INTA,
             2 => Self::INTB,
             3 => Self::INTC,
             4 => Self::INTD,
-            _ => panic!("unknown interrupt pin: {:#X}", v),
-        }
+            _ => return Err(Error::UnknownInterruptPin(v)),
+        })
     }
 }
 
@@ -278,19 +297,36 @@ pub struct PCIDevice {
     device: u16,
     header_type: PCIHeaderType,
     multi_function: bool,
+    class: PCIDeviceClass,
+    interrupt_pin: InterruptPin,
 }
 
 impl PCIDevice {
-    pub(crate) fn new(
+    /// Create a new pci device from the given parameters.
+    ///
+    /// # Safety
+    ///
+    /// Creating a new pci device is unsafe because this
+    /// reads from memory, which could have unintended
+    /// effects. Also, the caller has to ensure that this
+    /// is only called once for every combination of parameters.
+    pub unsafe fn new(
         bus: u8,
         slot: u8,
         function: u8,
         vendor: u16,
         device: u16,
-        header_type: PCIHeaderType,
-        multi_function: bool,
-    ) -> Self {
-        PCIDevice {
+    ) -> Result<Self, Error> {
+        let header_type_raw = read_config_word(bus, slot, function, OFFSET_HEADER_TYPE) as u8;
+        let header_type = PCIHeaderType::try_from(header_type_raw & ((1 << 7) - 1))?;
+        let multi_function = header_type_raw & (1 << 7) > 0;
+        let class =
+            PCIDeviceClass::try_from(read_config_word(bus, slot, function, OFFSET_CLASS_SUBCLASS))?;
+        let interrupt_pin =
+            InterruptPin::try_from(
+                read_config_word(bus, slot, function, OFFSET_INTERRUPT_PIN) as u8
+            )?;
+        let d = PCIDevice {
             bus,
             slot,
             function,
@@ -298,13 +334,14 @@ impl PCIDevice {
             device,
             header_type,
             multi_function,
-        }
+            class,
+            interrupt_pin,
+        };
+        Ok(d)
     }
 
     pub fn class(&self) -> PCIDeviceClass {
-        PCIDeviceClass::from(unsafe {
-            read_config_word(self.bus, self.slot, self.function, OFFSET_CLASS_SUBCLASS)
-        })
+        self.class
     }
 
     pub fn prog_if(&self) -> u8 {
@@ -346,15 +383,15 @@ impl PCIDevice {
         match line {
             0..=15 => Some(line),
             0xFF => None,
-            _ => panic!("unknown interrupt line: {:#X}", line),
+            _ => {
+                error!("unknown interrupt line: {:#X}", line);
+                None
+            }
         }
     }
 
     pub fn interrupt_pin(&self) -> InterruptPin {
-        (unsafe {
-            read_config_word(self.bus, self.slot, self.function, OFFSET_INTERRUPT_PIN) as u8
-        })
-        .into()
+        self.interrupt_pin
     }
 }
 
