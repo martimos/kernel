@@ -11,10 +11,11 @@ use core::{
 use spin::Mutex;
 use x86_64::instructions::interrupts::without_interrupts;
 
+use crate::collection::deltaq::DeltaQueue;
 use crate::scheduler::reschedule;
 use crate::scheduler::switch::switch;
 use crate::{
-    hlt_loop, info,
+    debug, hlt_loop, info,
     scheduler::{
         task::{ProcessStatus, Task},
         tid::Tid,
@@ -31,7 +32,7 @@ pub struct Scheduler {
     ready_queue: Mutex<VecDeque<TaskHandle>>,
     /// Finished tasks waiting for cleanup.
     finished_tasks: Mutex<VecDeque<Tid>>,
-    _sleeping_tasks: Mutex<VecDeque<TaskHandle>>,
+    sleeping_tasks: Mutex<DeltaQueue<TaskHandle>>,
     /// Tasks by their Pid.
     tasks: Mutex<BTreeMap<Tid, TaskHandle>>,
     /// The amount of running or ready tasks.
@@ -61,7 +62,7 @@ impl Scheduler {
             idle_task: Some(idle_task),
             ready_queue,
             finished_tasks: Mutex::new(VecDeque::new()),
-            _sleeping_tasks: Mutex::new(VecDeque::new()),
+            sleeping_tasks: Mutex::new(DeltaQueue::new()),
             tasks,
             task_count: AtomicU32::new(0),
             ticks: 0,
@@ -124,6 +125,21 @@ impl Scheduler {
         hlt_loop() // just hlt until this is finally collected
     }
 
+    pub fn sleep(&mut self, duration: Duration) {
+        without_interrupts(|| {
+            let mut current_task = self.current_task.borrow_mut();
+            debug!(
+                "put task {} to sleep for {}ms",
+                current_task.tid,
+                duration.as_millis()
+            );
+            current_task.sleep_ticks = (duration.as_millis() / 50) as usize; // TODO: divide by timer tick duration, 5 feels right in the test that was used while implementing this
+            current_task.status = ProcessStatus::Sleeping;
+        });
+
+        self.reschedule()
+    }
+
     /// Returns the task id (tid) of the currently running task.
     pub fn get_current_tid(&self) -> Tid {
         without_interrupts(|| self.current_task.borrow().tid)
@@ -155,18 +171,36 @@ impl Scheduler {
             let current_tid: Tid;
             let current_stack_pointer: *mut usize;
             let current_status: ProcessStatus;
+            let current_sleep_ticks: usize;
             {
                 let mut borrowed = self.current_task.borrow_mut();
                 current_tid = borrowed.tid;
                 current_stack_pointer = &mut borrowed.last_stack_pointer as *mut usize;
                 current_status = borrowed.status;
+                current_sleep_ticks = borrowed.sleep_ticks;
             }
 
             // TODO: create tests for this
-            let mut next_task = match current_status {
-                ProcessStatus::Running => self.ready_queue.lock().pop_front(),
-                _ => self.ready_queue.lock().pop_front(),
+            let mut next_task = {
+                let mut guard = self.sleeping_tasks.lock();
+                let sleeping_task_ready = match guard.front() {
+                    Some(n) => n.value == 0,
+                    None => false,
+                };
+                if sleeping_task_ready {
+                    guard.pop_front()
+                } else {
+                    self.ready_queue.lock().pop_front()
+                }
             };
+            {
+                // decrement ticks in sleeping queue
+                let mut guard = self.sleeping_tasks.lock();
+                match guard.front_mut() {
+                    None => {}
+                    Some(n) => n.value -= 1,
+                };
+            }
 
             if next_task.is_none() {
                 if self.idle_task.is_none() {
@@ -209,6 +243,10 @@ impl Scheduler {
                     // release the task later, because the stack is required
                     // to call the function "switch"
                     self.finished_tasks.lock().push_back(current_tid);
+                } else if current_status == ProcessStatus::Sleeping {
+                    self.sleeping_tasks
+                        .lock()
+                        .insert(current_sleep_ticks, self.current_task.clone());
                 }
 
                 // info!(

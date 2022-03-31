@@ -8,9 +8,9 @@ pub struct DeltaQueue<T> {
 }
 
 #[derive(Debug, Eq, PartialEq)]
-struct Node<T> {
-    value: usize,
-    elem: T,
+pub struct Node<T> {
+    pub value: usize,
+    pub elem: T,
 }
 
 impl<T> Node<T> {
@@ -61,6 +61,14 @@ impl<T> DeltaQueue<T> {
         self.data.push_back(Node::new(value - total_value, elem));
     }
 
+    pub fn front(&self) -> Option<&Node<T>> {
+        self.data.front()
+    }
+
+    pub fn front_mut(&mut self) -> Option<&mut Node<T>> {
+        self.data.front_mut()
+    }
+
     pub fn pop_front(&mut self) -> Option<T> {
         self.data.pop_front().map(|n| n.elem)
     }
@@ -75,16 +83,16 @@ impl<T> DeltaQueue<T> {
 }
 
 impl<T> Index<usize> for DeltaQueue<T> {
-    type Output = T;
+    type Output = Node<T>;
 
     fn index(&self, index: usize) -> &Self::Output {
-        &self.data.index(index).elem
+        self.data.index(index)
     }
 }
 
 impl<T> IndexMut<usize> for DeltaQueue<T> {
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
-        &mut self.data.index_mut(index).elem
+        self.data.index_mut(index)
     }
 }
 

@@ -9,6 +9,7 @@ pub enum ProcessStatus {
     Ready,
     Running,
     Blocked,
+    Sleeping,
     Finished,
 }
 
@@ -43,6 +44,7 @@ pub struct Task {
     pub tid: Tid,
     /// Status of a task, e.g. if the task is ready or blocked
     pub status: ProcessStatus,
+    pub sleep_ticks: usize,
     /// Last stack pointer before a context switch to another task
     pub last_stack_pointer: usize,
     /// Stack of the task
@@ -58,6 +60,7 @@ impl Task {
     pub fn new_idle(id: Tid) -> Task {
         Task {
             tid: id,
+            sleep_ticks: 0,
             status: ProcessStatus::Ready,
             last_stack_pointer: 0,
             stack: unsafe { &mut BOOT_STACK },
@@ -111,6 +114,7 @@ impl Task {
         Task {
             tid: id,
             status,
+            sleep_ticks: 0,
             last_stack_pointer: 0,
             stack,
             ticks: 0,

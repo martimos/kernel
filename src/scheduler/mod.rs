@@ -33,6 +33,10 @@ pub fn spawn(func: extern "C" fn()) -> Result<Tid> {
     unsafe { SCHEDULER.as_mut().unwrap().spawn(func) }
 }
 
+pub fn sleep(duration: Duration) {
+    unsafe { SCHEDULER.as_mut().unwrap().sleep(duration) }
+}
+
 /// Trigger the scheduler to switch to the next available task
 pub fn reschedule() {
     unsafe {
