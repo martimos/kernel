@@ -56,14 +56,14 @@ impl IDEChannel {
     }
 
     pub fn wait_for_ready(&mut self) {
-        while !self.status().contains(Status::READY) {}
+        self.poll_on_status(|s| s.contains(Status::READY));
     }
 
     pub fn wait_for_not_busy(&mut self) {
         for _ in 0..16 {
             let _ = self.status();
         }
-        while self.status().contains(Status::BUSY) {} // wait for !BUSY
+        self.poll_on_status(|s| !s.contains(Status::BUSY));
     }
 
     pub fn ctrlbase(&self) -> u16 {
@@ -78,9 +78,17 @@ impl IDEChannel {
     where
         F: Fn(Status) -> bool,
     {
+        self.poll(IDEChannel::status, f)
+    }
+
+    pub fn poll<P, F, T>(&mut self, p: P, f: F)
+    where
+        P: Fn(&mut Self) -> T,
+        F: Fn(T) -> bool,
+    {
         loop {
-            let status = self.status();
-            if f(status) {
+            let t = p(self);
+            if f(t) {
                 break;
             }
         }
