@@ -8,11 +8,14 @@
 extern crate alloc;
 
 use alloc::string::String;
+use alloc::vec;
 use alloc::vec::Vec;
 use core::panic::PanicInfo;
 
 use bootloader::{entry_point, BootInfo};
 
+use martim::device::block::BlockDevice;
+use martim::driver::ide::drive::IDEDrive;
 use martim::driver::ide::IDEController;
 use martim::driver::pci;
 use martim::driver::pci::classes::{MassStorageSubClass, PCIDeviceClass};
@@ -38,9 +41,8 @@ fn panic(info: &PanicInfo) -> ! {
     martim::test_panic_handler(info);
 }
 
-#[test_case]
-fn test_find_drives() {
-    let ide_controller = pci::devices()
+fn get_ide_controller() -> IDEController {
+    pci::devices()
         .iter()
         .find(|dev| {
             dev.class() == PCIDeviceClass::MassStorageController(MassStorageSubClass::IDEController)
@@ -48,9 +50,21 @@ fn test_find_drives() {
         .cloned()
         .map(|d| PCIStandardHeaderDevice::new(d).unwrap())
         .map(Into::<IDEController>::into)
-        .expect("need an IDE controller for this to work");
+        .expect("need an IDE controller for this to work")
+}
 
-    let drives = ide_controller
+fn get_ide_drive(drive_num: usize) -> IDEDrive {
+    get_ide_controller()
+        .drives()
+        .into_iter()
+        .filter(|d| d.exists())
+        .nth(drive_num)
+        .expect("require one additional drive")
+}
+
+#[test_case]
+fn test_find_drives() {
+    let drives = get_ide_controller()
         .drives()
         .into_iter()
         .filter(|d| d.exists())
@@ -61,22 +75,7 @@ fn test_find_drives() {
 
 #[test_case]
 fn test_read_first_block() {
-    let ide_controller = pci::devices()
-        .iter()
-        .find(|dev| {
-            dev.class() == PCIDeviceClass::MassStorageController(MassStorageSubClass::IDEController)
-        })
-        .cloned()
-        .map(|d| PCIStandardHeaderDevice::new(d).unwrap())
-        .map(Into::<IDEController>::into)
-        .expect("need an IDE controller for this to work");
-
-    let drive = ide_controller
-        .drives()
-        .into_iter()
-        .filter(|d| d.exists())
-        .nth(1)
-        .expect("require one additional drive");
+    let drive = get_ide_drive(1);
 
     let mut block = [0_u8; 512];
     let read_count = drive.read_at(0, &mut block).unwrap();
@@ -97,22 +96,7 @@ fn test_read_first_block() {
 
 #[test_case]
 fn test_read_first_block_offset() {
-    let ide_controller = pci::devices()
-        .iter()
-        .find(|dev| {
-            dev.class() == PCIDeviceClass::MassStorageController(MassStorageSubClass::IDEController)
-        })
-        .cloned()
-        .map(|d| PCIStandardHeaderDevice::new(d).unwrap())
-        .map(Into::<IDEController>::into)
-        .expect("need an IDE controller for this to work");
-
-    let drive = ide_controller
-        .drives()
-        .into_iter()
-        .filter(|d| d.exists())
-        .nth(1)
-        .expect("require one additional drive");
+    let drive = get_ide_drive(1);
 
     let mut block = [0_u8; 12];
     let read_count = drive.read_at(1, &mut block).unwrap();
@@ -121,4 +105,33 @@ fn test_read_first_block_offset() {
     let expected = "ello, World!"; // we read from offset 1, so the 'H' is truncated
     let data = String::from_utf8(Vec::from(&block[0..expected.len()])).unwrap();
     assert_eq!(expected, data);
+}
+
+#[test_case]
+fn test_write_first_block() {
+    let mut drive = get_ide_drive(1);
+
+    let original_block = {
+        let mut data = vec![0_u8; 512];
+        drive.read_block(0, &mut data).unwrap();
+        data
+    };
+
+    let write_data = {
+        let mut data = vec![0_u8; 512];
+        data.fill(0xDE);
+        data
+    };
+    drive.write_block(0, &write_data).unwrap();
+
+    let mut read_back = vec![0_u8; 512];
+    drive.read_block(0, &mut read_back).unwrap();
+    assert_eq!(write_data, read_back);
+
+    // write back original data
+    drive.write_block(0, &original_block).unwrap();
+
+    let mut original_read_back = vec![0_u8; 512];
+    drive.read_block(0, &mut original_read_back).unwrap();
+    assert_eq!(original_block, original_read_back); // if this fails, writing back the original block failed
 }

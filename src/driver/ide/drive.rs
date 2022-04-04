@@ -200,7 +200,38 @@ impl BlockDevice for IDEDrive {
         Ok(target.len())
     }
 
-    fn write_block(&mut self, _: u64, _: &dyn AsRef<[u8]>) -> Result<usize> {
-        todo!()
+    fn write_block(&mut self, block: u64, buf: &dyn AsRef<[u8]>) -> Result<usize> {
+        let buffer = buf.as_ref();
+        let word_buffer = unsafe { buffer.align_to::<u16>().1 };
+
+        let lba = block;
+        let sector_count = 1;
+
+        let mut channel = self.channel.lock();
+        unsafe {
+            channel
+                .ports
+                .drive_select
+                .write((0x40 + self.drive) | (((lba >> 24) & 0x0F) as u8) as u8);
+            channel.ports.features.write(0);
+            channel.ports.sector_count.write(sector_count);
+            channel.ports.lba_lo.write(lba as u8);
+            channel.ports.lba_mid.write((lba >> 8) as u8);
+            channel.ports.lba_hi.write((lba >> 16) as u8);
+            channel.write_command(Command::WriteSectors);
+            channel.disable_irq();
+            channel.wait_for_not_busy();
+            without_interrupts(|| {
+                channel.wait_for_ready();
+                while !channel.status().contains(Status::DATA_READY) {}
+                word_buffer
+                    .iter()
+                    .for_each(|&w| channel.ports.data.write(w));
+                channel.write_command(Command::FlushCache);
+            });
+            while !channel.status().contains(Status::READY) {}
+        }
+
+        Ok(buffer.len())
     }
 }
