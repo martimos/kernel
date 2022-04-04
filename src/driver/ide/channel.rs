@@ -73,6 +73,18 @@ impl IDEChannel {
     pub fn iobase(&self) -> u16 {
         self.iobase
     }
+
+    pub fn poll_on_status<F>(&mut self, f: F)
+    where
+        F: Fn(Status) -> bool,
+    {
+        loop {
+            let status = self.status();
+            if f(status) {
+                break;
+            }
+        }
+    }
 }
 
 impl Debug for IDEChannel {

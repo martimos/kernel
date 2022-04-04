@@ -191,7 +191,9 @@ impl BlockDevice for IDEDrive {
                     *b = channel.ports.data.read();
                 }
             });
-            while !channel.status().contains(Status::READY) {}
+            channel.poll_on_status(|status| {
+                status.contains(Status::READY) && !status.contains(Status::BUSY)
+            });
         }
 
         let target = buf.as_mut();
@@ -224,12 +226,14 @@ impl BlockDevice for IDEDrive {
             without_interrupts(|| {
                 channel.wait_for_ready();
                 while !channel.status().contains(Status::DATA_READY) {}
-                word_buffer
-                    .iter()
-                    .for_each(|&w| channel.ports.data.write(w));
+                for &w in word_buffer {
+                    channel.ports.data.write(w);
+                }
                 channel.write_command(Command::FlushCache);
             });
-            while !channel.status().contains(Status::READY) {}
+            channel.poll_on_status(|status| {
+                status.contains(Status::READY) && !status.contains(Status::BUSY)
+            });
         }
 
         Ok(buffer.len())
