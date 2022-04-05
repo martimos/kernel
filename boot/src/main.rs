@@ -20,11 +20,7 @@ struct Args {
     verbose: bool,
     #[clap(long, help = "Only create the bootable image, don't run it")]
     no_run: bool,
-    #[clap(
-        long,
-        help = "Run Qemu in fullscreen.",
-        conflicts_with = "no-run"
-    )]
+    #[clap(long, help = "Run Qemu in fullscreen.", conflicts_with = "no-run")]
     fullscreen: bool,
 }
 
