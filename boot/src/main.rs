@@ -22,7 +22,7 @@ struct Args {
     no_run: bool,
     #[clap(
         long,
-        help = "Run Qemu in fullscreen. No-op if the image is not run.",
+        help = "Run Qemu in fullscreen.",
         conflicts_with = "no-run"
     )]
     fullscreen: bool,
