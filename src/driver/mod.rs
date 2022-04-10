@@ -13,6 +13,7 @@ pub struct Peripherals;
 
 impl Peripherals {
     pub fn boot_time() -> &'static CMOSTime {
+        // TODO: actively call this early on
         static mut BOOT_TIME: MaybeUninit<CMOSTime> = MaybeUninit::uninit();
         static ONCE: Once = Once::new();
 

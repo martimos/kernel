@@ -43,10 +43,25 @@ jobs:
           sed -rn 's/.*\((.*)\)/\1/p' | # extract the executable files from the output
           xargs -L1 cargo run -Zbuild-std --target=$RUST_HOST --package boot ${{ matrix.mode }} -- # this is the build command from '.cargo/config.toml'
 
+  check-feature-compat:
+    name: Check feature compatibility
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          components: rustfmt, clippy, llvm-tools-preview, rust-src
+          profile: default
+      - name: Install cargo-hack
+        run: cargo install cargo-hack
+      - name: Check
+        run: cargo hack check --feature-powerset --no-dev-deps
 
   build:
     name: Build
-    needs: test
+    needs: [ test, check-feature-compat ]
 
     runs-on: ubuntu-latest
     timeout-minutes: 30
