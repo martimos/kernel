@@ -10,6 +10,7 @@ A <strike>experimental</strike> superior kernel written in Rust
 
 [Requirements](#requirements) •
 [Build and Run](#build-and-run) •
+[Changelog](CHANGELOG.md) •
 [Wiki](https://github.com/martimos/kernel/wiki)
 
 </div>
