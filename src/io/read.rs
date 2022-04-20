@@ -30,7 +30,7 @@ macro_rules! read_bytes {
         let mut buf = [0_u8; $count];
         $source
             .read_exact(&mut buf)
-            .or(Err(crate::syscall::error::Errno::EIO))?;
+            .or(Err($crate::syscall::error::Errno::EIO))?;
         buf
     }};
 }
