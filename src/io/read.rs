@@ -1,9 +1,10 @@
 use crate::syscall::error::Errno;
+use crate::Result;
 
-pub trait Read {
-    fn read(&mut self, buf: &mut dyn AsMut<[u8]>) -> crate::Result<usize>;
+pub trait Read<T> {
+    fn read(&mut self, buf: &mut dyn AsMut<[T]>) -> Result<usize>;
 
-    fn read_exact(&mut self, buf: &mut dyn AsMut<[u8]>) -> crate::Result<()> {
+    fn read_exact(&mut self, buf: &mut dyn AsMut<[T]>) -> Result<()> {
         let mut buffer = buf.as_mut();
 
         while !buffer.is_empty() {

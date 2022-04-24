@@ -56,7 +56,7 @@ dependencies = [
 [[package]]
 name = "bootloader"
 version = "0.10.12"
-source = "git+https://github.com/martimos/bootloader#d21fd7e587099fc4486234806f10a4a37711883a"
+source = "git+https://github.com/martimos/bootloader#b6e686481feeac5d3279807e23ebae2c24166940"
 
 [[package]]
 name = "bootloader-locator"
