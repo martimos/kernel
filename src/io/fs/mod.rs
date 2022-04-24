@@ -174,13 +174,13 @@ pub trait IFile: INodeBase {
     }
 }
 
-impl ReadAt for dyn IFile {
+impl ReadAt<u8> for dyn IFile {
     fn read_at(&self, offset: u64, buf: &mut dyn AsMut<[u8]>) -> Result<usize> {
         self.read_at(offset, buf)
     }
 }
 
-impl WriteAt for dyn IFile {
+impl WriteAt<u8> for dyn IFile {
     fn write_at(&mut self, offset: u64, buf: &dyn AsRef<[u8]>) -> Result<usize> {
         self.write_at(offset, buf)
     }

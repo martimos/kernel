@@ -38,7 +38,7 @@ pub struct Ext2INode {
 }
 
 impl Ext2INode {
-    pub fn decode(source: &mut impl Read) -> Result<Self> {
+    pub fn decode(source: &mut impl Read<u8>) -> Result<Self> {
         let mode = read_le_u16!(source);
         Ok(Self {
             inode_num: 0_u64.into(),
@@ -148,7 +148,7 @@ pub struct Ext2DirEntry {
 }
 
 impl Ext2DirEntry {
-    pub fn decode(source: &mut impl Read) -> Result<Self> {
+    pub fn decode(source: &mut impl Read<u8>) -> Result<Self> {
         let inode = read_le_u32!(source);
         let total_size = read_le_u16!(source);
         let name_length_lower = read_u8!(source);

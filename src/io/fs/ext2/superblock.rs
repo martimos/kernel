@@ -39,7 +39,7 @@ pub struct Superblock {
 }
 
 impl Superblock {
-    pub fn decode(source: &mut impl Read) -> Result<Self> {
+    pub fn decode(source: &mut impl Read<u8>) -> Result<Self> {
         let mut s = Self {
             num_inodes: read_le_u32!(source),
             num_blocks: read_le_u32!(source),
@@ -103,7 +103,7 @@ pub struct SuperblockExtended {
 }
 
 impl SuperblockExtended {
-    pub fn decode(source: &mut impl Read) -> Result<Self> {
+    pub fn decode(source: &mut impl Read<u8>) -> Result<Self> {
         Ok(Self {
             first_non_reserved_inode: read_le_u32!(source),
             inode_size: read_le_u16!(source),
