@@ -1,9 +1,10 @@
 use crate::syscall::error::Errno;
+use crate::Result;
 
-pub trait Read {
-    fn read(&mut self, buf: &mut dyn AsMut<[u8]>) -> crate::Result<usize>;
+pub trait Read<T> {
+    fn read(&mut self, buf: &mut dyn AsMut<[T]>) -> Result<usize>;
 
-    fn read_exact(&mut self, buf: &mut dyn AsMut<[u8]>) -> crate::Result<()> {
+    fn read_exact(&mut self, buf: &mut dyn AsMut<[T]>) -> Result<()> {
         let mut buffer = buf.as_mut();
 
         while !buffer.is_empty() {
@@ -84,4 +85,23 @@ macro_rules! read_be_u64 {
     ($source:expr) => {{
         u64::from_be_bytes(read_bytes!($source, 8))
     }};
+}
+
+#[cfg(test)]
+mod tests {
+    use alloc::vec;
+
+    use crate::io::cursor::Cursor;
+    use crate::io::read::Read;
+    use crate::io::test::SingleRead;
+
+    #[test_case]
+    fn test_read_exact() {
+        let data = vec![0_u8, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+        let r = SingleRead::new(data);
+        let mut c = Cursor::new(r);
+        let mut buf = vec![0_u8; 5];
+        c.read_exact(&mut buf).unwrap();
+        assert_eq!(vec![0_u8, 1, 2, 3, 4], buf);
+    }
 }

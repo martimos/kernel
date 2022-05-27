@@ -10,7 +10,7 @@ use crate::{read_bytes, read_le_u16, read_le_u32};
 pub struct BlockGroupDescriptorTable(Vec<BlockGroupDescriptor>);
 
 impl BlockGroupDescriptorTable {
-    pub fn decode(source: &mut impl Read, num_entries: usize) -> Result<Self> {
+    pub fn decode(source: &mut impl Read<u8>, num_entries: usize) -> Result<Self> {
         let mut entries = Vec::with_capacity(num_entries);
         for _ in 0..num_entries {
             entries.push(BlockGroupDescriptor::decode(source)?)
@@ -52,7 +52,7 @@ pub struct BlockGroupDescriptor {
 }
 
 impl BlockGroupDescriptor {
-    pub fn decode(source: &mut impl Read) -> Result<Self> {
+    pub fn decode(source: &mut impl Read<u8>) -> Result<Self> {
         let s = Self {
             block_usage_bitmap_block: read_le_u32!(source),
             inode_usage_bitmap_block: read_le_u32!(source),

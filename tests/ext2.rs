@@ -40,7 +40,7 @@ fn panic(info: &PanicInfo) -> ! {
 }
 
 #[test_case]
-fn test_create_fs() {
+fn test_hello_world() {
     let drive = get_drive();
     let fs = Ext2Fs::new(drive).unwrap();
     let root = fs.root_inode();

@@ -16,7 +16,7 @@ pub trait BlockDevice {
     fn write_block(&mut self, block: u64, buf: &dyn AsRef<[u8]>) -> Result<usize>;
 }
 
-impl<T> ReadAt for T
+impl<T> ReadAt<u8> for T
 where
     T: BlockDevice,
 {
