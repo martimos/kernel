@@ -3,7 +3,7 @@ use pic8259::ChainedPics;
 use spin;
 use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame, PageFaultErrorCode};
 
-use crate::{gdt, hlt_loop, scheduler, vga_println};
+use crate::{gdt, hlt_loop, scheduler, serial_println};
 
 // "Remapped" PICS chosen as 32 to 47
 pub const PIC_1_OFFSET: u8 = 32;
@@ -63,23 +63,51 @@ extern "x86-interrupt" fn ignore_handler(_stack_frame: InterruptStackFrame) {
     }
 }
 
+extern "x86-interrupt" fn here_handler(_stack_frame: InterruptStackFrame) {
+    panic!("here");
+}
+
 extern "x86-interrupt" fn general_protection_fault_handler(
     stack_frame: InterruptStackFrame,
     error_code: u64,
 ) {
-    crate::serial_println!(
-        "encountered a general protection fault, error code {} =",
+    serial_println!(
+        "encountered a general protection fault, error code = {}",
         error_code
     );
-    crate::serial_println!("index: {}", (error_code >> 3) & ((1 << 14) - 1));
-    crate::serial_println!("tbl: {}", (error_code >> 1) & 0b11);
-    crate::serial_println!("e: {}", error_code & 1);
+    if error_code != 0 {
+        explain_segment_selector_index(error_code);
+    }
 
     panic!("EXCEPTION: GENERAL PROTECTION FAULT\n{:#?}", stack_frame);
 }
 
+fn explain_segment_selector_index(error_code: u64) {
+    let index = (error_code >> 3) & ((1 << 14) - 1);
+    let tbl = (error_code >> 1) & 0b11;
+    serial_println!(
+        r#"error code = {}
+    Index: {} {:#X?}
+    Table: {} ({})
+    is external: {}
+    "#,
+        error_code,
+        index,
+        index,
+        tbl,
+        match tbl {
+            0b00 => "GDT",
+            0b01 => "IDT",
+            0b10 => "LDT",
+            0b11 => "IDT",
+            _ => "unknown",
+        },
+        if error_code & 1 > 0 { true } else { false }
+    );
+}
+
 extern "x86-interrupt" fn breakpoint_handler(stack_frame: InterruptStackFrame) {
-    vga_println!("EXCEPTION: BREAKPOINT\n{:#?}", stack_frame);
+    serial_println!("EXCEPTION: BREAKPOINT\n{:#?}", stack_frame);
 }
 
 extern "x86-interrupt" fn overflow_handler(stack_frame: InterruptStackFrame) {
@@ -107,28 +135,19 @@ extern "x86-interrupt" fn segment_not_present_fault_handler(
     stack_frame: InterruptStackFrame,
     error_code: u64,
 ) {
+    if error_code != 0 {
+        explain_segment_selector_index(error_code);
+    }
     panic!(
         r#"EXCEPTION: SEGMENT NOT PRESENT FAULT
-error code: {} ({:#b})
-external: {}
-table[index]: {}[{}]
 {:#?}"#,
-        error_code,
-        error_code,
-        (error_code & 1) == 1,
-        match (error_code & 0b110) >> 1 {
-            0b00 => "GDT",
-            0b01 => "IDT",
-            0b10 => "LDT",
-            0b11 => "IDT",
-            _ => "unknown",
-        },
-        ((error_code & ((1 << 14) - 1)) >> 3),
         stack_frame
     );
 }
 
 extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: InterruptStackFrame) {
+    hlt_loop();
+
     scheduler::timer_tick();
 
     unsafe {
@@ -144,10 +163,10 @@ extern "x86-interrupt" fn page_fault_handler(
 ) {
     use x86_64::registers::control::Cr2;
 
-    vga_println!("EXCEPTION: PAGE FAULT");
-    vga_println!("Accessed Address: {:?}", Cr2::read());
-    vga_println!("Error Code: {:?}", error_code);
-    vga_println!("{:#?}", stack_frame);
+    serial_println!("EXCEPTION: PAGE FAULT");
+    serial_println!("Accessed Address: {:?}", Cr2::read());
+    serial_println!("Error Code: {:?}", error_code);
+    serial_println!("{:#?}", stack_frame);
     hlt_loop();
 }
 
