@@ -7,9 +7,13 @@
 extern crate alloc;
 
 use alloc::string::ToString;
+use core::arch::asm;
 use core::panic::PanicInfo;
 
 use bootloader::{entry_point, BootInfo};
+use x86_64::registers::segmentation::{Segment, DS, ES, FS, GS};
+use x86_64::structures::gdt::SegmentSelector;
+use x86_64::PrivilegeLevel;
 
 use martim::driver::ide::IDEController;
 use martim::driver::pci::classes::{MassStorageSubClass, PCIDeviceClass};
@@ -87,16 +91,57 @@ $$ | \_/ $$ |\$$$$$$$ |$$ |       \$$$$  |$$ |$$ | $$ | $$ |
 fn main() {
     vga_println!("Hello, {}!", "World");
 
-    scheduler::spawn(just_panic).unwrap();
-    scheduler::spawn(vfs_setup).unwrap();
-    scheduler::spawn(cmos_stuff).unwrap();
-    scheduler::spawn(ide_drives).unwrap();
-    scheduler::spawn(example_tasks).unwrap();
+    // scheduler::spawn(just_panic).unwrap();
+    // scheduler::spawn(vfs_setup).unwrap();
+    // scheduler::spawn(cmos_stuff).unwrap();
+    // scheduler::spawn(ide_drives).unwrap();
+    // scheduler::spawn(example_tasks).unwrap();
+    //
+    // debug!(
+    //     "kernel task with tid {} is still running",
+    //     scheduler::get_current_tid()
+    // );
 
-    debug!(
-        "kernel task with tid {} is still running",
-        scheduler::get_current_tid()
-    );
+    usermode_stuff();
+}
+
+fn usermode_stuff() {
+    debug!("entering usermode");
+    let entry = usermode_entry as *const () as u64;
+    debug!("entry pointer: {:#X?}", entry);
+    unsafe {
+        let data_selector = SegmentSelector::new(4, PrivilegeLevel::Ring3);
+
+        let code_selector = SegmentSelector::new(3, PrivilegeLevel::Ring3);
+
+        let rsp: u64;
+        asm!("mov {rsp}, rsp", rsp = out(reg) rsp);
+        serial_println!("rsp: {:#X?}", rsp);
+
+        DS::set_reg(data_selector);
+        ES::set_reg(data_selector);
+        FS::set_reg(data_selector);
+        GS::set_reg(data_selector);
+        // prepare the stack frame for iret
+        asm!(
+            "push {data_selector}", // user data
+            "push {rsp}", // stack pointer
+            "pushfq", // eflags
+            "push {code_selector}", // user code
+            "push {entry}", // entry point / rip
+            "iretq",
+            rsp = in(reg) rsp,
+            data_selector = in(reg) data_selector.0,
+            code_selector = in(reg) code_selector.0,
+            entry = in(reg) entry,
+        );
+    }
+}
+
+fn usermode_entry() {
+    unsafe {
+        asm!("cli", options(nomem, noreturn)); // hopefully triggers a general protection fault
+    }
 }
 
 extern "C" fn vfs_setup() {

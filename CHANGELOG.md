@@ -15,3 +15,4 @@ All notable changes to this project will be documented in this file.
 * EXT2 file-system
 * in-memory file-system
 * DevFs
+* Usermode
