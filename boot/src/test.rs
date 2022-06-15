@@ -21,14 +21,14 @@ pub fn run_test_binary(test_name: String, mut run_cmd: Command) {
     let mut args: Vec<String> = config
         .all_tests
         .iter()
-        .flat_map(|s| s.split(" "))
+        .flat_map(|s| s.split(' '))
         .map(|s| s.to_string())
         .collect();
     if let Some(additional_args) = config.tests.get(&test_name) {
         info!("found additional qemu arguments for test '{}'", test_name);
         additional_args
             .iter()
-            .flat_map(|s| s.split(" "))
+            .flat_map(|s| s.split(' '))
             .for_each(|e| args.push(e.to_string()))
     }
 
