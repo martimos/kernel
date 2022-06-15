@@ -8,6 +8,7 @@ use fern::colors::{Color, ColoredLevelConfig};
 use log::{debug, info};
 
 const TEST_TIMEOUT_SECS: u64 = 30;
+const QEMU_COMMAND: &'static str = "qemu-system-x86_64";
 
 mod test;
 
@@ -22,6 +23,8 @@ struct Args {
     no_run: bool,
     #[clap(long, help = "Run Qemu in fullscreen.", conflicts_with = "no-run")]
     fullscreen: bool,
+    #[clap(long, help = "Don't use a Qemu accelerator")]
+    no_accel: bool,
 }
 
 fn main() {
@@ -39,7 +42,7 @@ fn main() {
 
     info!("booting {}", image.display());
 
-    let mut run_cmd = Command::new("qemu-system-x86_64");
+    let mut run_cmd = Command::new(QEMU_COMMAND);
     run_cmd
         .arg("-drive")
         .arg(format!("format=raw,file={}", image.display()));
@@ -69,6 +72,26 @@ fn main() {
         if args.fullscreen {
             run_args.push("-full-screen");
         }
+        if !args.no_accel {
+            // use an accelerator
+            let available_accels = get_available_accels();
+            debug!(
+                "available accelerators on this system: {:?}",
+                available_accels
+            );
+            if available_accels.contains(&"kvm".to_string()) {
+                debug!("using KVM as accelerator");
+                run_args.push("-enable-kvm");
+            } else if available_accels.contains(&"hvf".to_string()) {
+                debug!("using HVF as accelerator");
+                run_args.push("-accel");
+                run_args.push("hvf");
+            } else {
+                debug!("neither HVF nor KVM available, not using an accelerator");
+            }
+        } else {
+            debug!("not using an accelerator");
+        }
         run_cmd.args(run_args);
         debug!("{:?}\n", run_cmd);
 
@@ -77,6 +100,28 @@ fn main() {
             std::process::exit(exit_status.code().unwrap_or(1));
         }
     }
+}
+
+fn get_available_accels() -> Vec<String> {
+    let mut cmd = Command::new(QEMU_COMMAND);
+    cmd.arg("-accel").arg("help");
+    let exit_status = cmd.status().unwrap();
+    if !exit_status.success() {
+        debug!(
+            "unable to list qemu accelerators: exit code {}",
+            exit_status
+        );
+        return Vec::new();
+    }
+
+    let mut accelerators = Vec::new();
+    let output = cmd.output().unwrap();
+    let output_string = String::from_utf8_lossy(&output.stdout);
+    let output_lines = output_string.lines();
+    output_lines
+        .skip(1) // skip the first line, accelerators start from the second line
+        .for_each(|line| accelerators.push(line.to_string()));
+    accelerators
 }
 
 fn configure_logging(verbose: bool) {
