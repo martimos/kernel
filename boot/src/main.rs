@@ -1,3 +1,4 @@
+use std::process::Stdio;
 use std::{
     path::{Path, PathBuf},
     process::Command,
@@ -8,7 +9,7 @@ use fern::colors::{Color, ColoredLevelConfig};
 use log::{debug, info};
 
 const TEST_TIMEOUT_SECS: u64 = 30;
-const QEMU_COMMAND: &'static str = "qemu-system-x86_64";
+const QEMU_COMMAND: &str = "qemu-system-x86_64";
 
 mod test;
 
@@ -55,7 +56,7 @@ fn main() {
             .to_str()
             .unwrap()
             .to_string()
-            .rsplit_once("-")
+            .rsplit_once('-')
             .expect("should be of form <image>-<random>")
             .0
             .to_string();
@@ -72,7 +73,9 @@ fn main() {
         if args.fullscreen {
             run_args.push("-full-screen");
         }
-        if !args.no_accel {
+        if args.no_accel {
+            debug!("not using an accelerator");
+        } else {
             // use an accelerator
             let available_accels = get_available_accels();
             debug!(
@@ -89,8 +92,6 @@ fn main() {
             } else {
                 debug!("neither HVF nor KVM available, not using an accelerator");
             }
-        } else {
-            debug!("not using an accelerator");
         }
         run_cmd.args(run_args);
         debug!("{:?}\n", run_cmd);
@@ -104,6 +105,7 @@ fn main() {
 
 fn get_available_accels() -> Vec<String> {
     let mut cmd = Command::new(QEMU_COMMAND);
+    cmd.stdout(Stdio::piped());
     cmd.arg("-accel").arg("help");
     let exit_status = cmd.status().unwrap();
     if !exit_status.success() {
