@@ -35,6 +35,6 @@ impl Peripherals {
                 .as_mut_ptr()
                 .write(Rc::new(Mutex::new(CMOS::new())));
         });
-        unsafe { (&*CMOS_UNINIT.as_ptr()).clone() }
+        unsafe { (*CMOS_UNINIT.as_ptr()).clone() }
     }
 }
