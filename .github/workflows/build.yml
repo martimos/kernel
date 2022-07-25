@@ -84,10 +84,10 @@ jobs:
             cargo build --release
             
             # create the bios image
-            cargo run -Zbuild-std --target=$RUST_HOST --package boot --release -- target/x86_64-martim/release/martim --no-run
+            cargo run -Zbuild-std --target=$RUST_HOST --package boot --release -- target/x86_64-unknown-none/release/martim --no-run
 
       - name: Archive
         uses: actions/upload-artifact@v3
         with:
           name: kernel-image-bios
-          path: target/x86_64-martim/release/boot-bios-martim.img
+          path: target/x86_64-unknown-none/release/boot-bios-martim.img
