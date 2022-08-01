@@ -302,7 +302,7 @@ mod tests {
 
         // actual testing
         assert_eq!(Err(Error::NotFound), d.lookup(&"foobar"));
-        assert!(d.lookup(&"file.txt").is_ok());
+        let _ = d.lookup(&"file.txt").unwrap();
     }
 
     #[test_case]

@@ -391,7 +391,7 @@ mod tests {
         assert_eq!(Syscall::GetThreadArea, 211_usize.try_into().unwrap());
         assert_eq!(Syscall::FinitModule, 313_usize.try_into().unwrap());
 
-        assert!(TryInto::<Syscall>::try_into(314_usize).is_err());
-        assert!(TryInto::<Syscall>::try_into(999_usize).is_err());
+        TryInto::<Syscall>::try_into(314_usize).unwrap_err();
+        TryInto::<Syscall>::try_into(999_usize).unwrap_err();
     }
 }
