@@ -1,13 +1,13 @@
 use alloc::borrow::ToOwned;
 
-use spin::{Mutex, Once};
+use kstd::sync::{Mutex, Once};
 
+use crate::info;
 use crate::io::fs::path::components::Component;
 use crate::io::fs::path::Path;
 use crate::io::fs::rootdir::RootDir;
 use crate::io::fs::{IFileHandle, INode, INodeBase, Stat};
-use crate::syscall::error::Errno;
-use crate::{info, Result};
+use kstd::io::{Error, Result};
 
 static mut VFS: Option<Mutex<Vfs>> = None;
 static VFS_INIT: Once = Once::new();
@@ -39,7 +39,7 @@ pub fn open(p: &dyn AsRef<Path>) -> Result<IFileHandle> {
     let node = find_inode(p)?;
     match node {
         INode::File(f) => Ok(f),
-        INode::Dir(_) => Err(Errno::EISDIR),
+        INode::Dir(_) => Err(Error::IsDir),
     }
 }
 
@@ -66,7 +66,7 @@ impl Vfs {
             Err(e) => return Err(e),
         };
         let dir = match target_node {
-            INode::File(_) => return Err(Errno::ENOTDIR),
+            INode::File(_) => return Err(Error::IsFile),
             INode::Dir(d) => d,
         };
         let mut guard = dir.write();
@@ -81,10 +81,10 @@ impl Vfs {
         let first = components.next();
         if first != Some(Component::RootDir) {
             info!("path must be absolute, but was '{}'", path);
-            return Err(Errno::ENOENT);
+            return Err(Error::NotFound);
         } else if first.is_none() {
             info!("path can't be empty");
-            return Err(Errno::ENOENT);
+            return Err(Error::NotFound);
         }
 
         // walk the tree and find the node
@@ -101,13 +101,13 @@ impl Vfs {
                 Component::CurrentDir | Component::ParentDir => panic!("path is not canonical"), // shouldn't happen with an OwnedPath
                 Component::Normal(v) => {
                     let current_dir = match current {
-                        INode::File(_) => return Err(Errno::ENOENT),
+                        INode::File(_) => return Err(Error::NotFound),
                         INode::Dir(d) => d,
                     };
                     let next_element = current_dir.read().lookup(&v);
                     let new_current = match next_element {
                         Ok(node) => node,
-                        Err(_) => return Err(Errno::ENOENT),
+                        Err(_) => return Err(Error::NotFound),
                     };
                     current = new_current;
                 }
@@ -149,7 +149,7 @@ mod tests {
             .create(&name, typ, Permission::user_rwx())
             .unwrap();
         let mut r = RootDir::new("/".into(), Stat::default());
-        assert_eq!(Err(Errno::ENOENT), r.lookup(&name));
+        assert_eq!(Err(Error::NotFound), r.lookup(&name));
 
         r.mount(inode).unwrap();
         let res = r.lookup(&name);

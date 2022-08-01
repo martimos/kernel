@@ -2,9 +2,9 @@ use alloc::vec::Vec;
 use core::ops::{Index, IndexMut};
 use core::slice::SliceIndex;
 
-use crate::io::read::Read;
-use crate::Result;
-use crate::{read_bytes, read_le_u16, read_le_u32};
+use kstd::io::read::Read;
+use kstd::io::Result;
+use kstd::{read_bytes, read_le_u16, read_le_u32};
 
 #[derive(Debug)]
 pub struct BlockGroupDescriptorTable(Vec<BlockGroupDescriptor>);

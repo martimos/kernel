@@ -1,8 +1,8 @@
 use core::fmt;
 
 use bootloader::boot_info::{FrameBuffer, FrameBufferInfo, PixelFormat};
+use kstd::sync::Mutex;
 use noto_sans_mono_bitmap::{get_bitmap, BitmapHeight, FontWeight};
-use spin::Mutex;
 
 static WRITER: Mutex<Writer> = Mutex::new(Writer::new());
 

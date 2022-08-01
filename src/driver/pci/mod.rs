@@ -1,7 +1,7 @@
 use alloc::vec::Vec;
 use core::mem::MaybeUninit;
 
-use spin::Once;
+use kstd::sync::Once;
 
 use device::PCIDevice;
 

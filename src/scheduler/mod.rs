@@ -1,6 +1,6 @@
 use core::time::Duration;
 
-use spin::Once;
+use kstd::sync::Once;
 
 use crate::{scheduler::tid::Tid, Result};
 

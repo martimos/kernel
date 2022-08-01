@@ -1,19 +1,18 @@
 use alloc::rc::Rc;
 use alloc::vec;
 
-use spin::RwLock;
+use kstd::sync::RwLock;
 
 use dir::Ext2Dir;
 
-use crate::device::block::BlockDevice;
-use crate::io::cursor::Cursor;
 use crate::io::fs::ext2::block_group::BlockGroupDescriptorTable;
 use crate::io::fs::ext2::inode::Ext2INode;
 use crate::io::fs::ext2::superblock::Superblock;
 use crate::io::fs::{Fs, INode};
-use crate::io::ReadAt;
-use crate::syscall::error::Errno;
-use crate::Result;
+use kstd::io::cursor::Cursor;
+use kstd::io::device::block::BlockDevice;
+use kstd::io::Result;
+use kstd::io::{Error, ReadAt};
 
 mod base;
 mod block_group;
@@ -64,7 +63,7 @@ where
             let chck2 = (superblock.num_inodes + superblock.inodes_per_group - 1)
                 / superblock.inodes_per_group;
             if chck1 != chck2 {
-                return Err(Errno::EIO);
+                return Err(Error::IncoherentData);
             }
             chck1
         };

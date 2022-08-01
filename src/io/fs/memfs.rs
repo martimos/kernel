@@ -5,12 +5,11 @@ use alloc::vec;
 use alloc::vec::Vec;
 use core::sync::atomic::{AtomicU64, Ordering};
 
-use spin::RwLock;
+use kstd::sync::RwLock;
 
 use crate::io::fs::perm::Permission;
 use crate::io::fs::{Fs, IDir, IFile, INode, INodeBase, INodeNum, INodeType, Stat};
-use crate::syscall::error::Errno;
-use crate::Result;
+use kstd::io::{Error, Result};
 
 pub struct MemFs {
     #[allow(dead_code)] // TODO: inner is read by tests, but remove it anyways
@@ -121,11 +120,8 @@ impl IFile for MemFile {
     }
 
     fn truncate(&mut self, size: u64) -> Result<()> {
-        let new_size = TryInto::<usize>::try_into(size);
-        match new_size {
-            Ok(sz) => self.data.resize(sz, 0),
-            Err(_) => return Err(Errno::EFBIG),
-        };
+        let new_size = TryInto::<usize>::try_into(size).unwrap(); // u64 -> usize is valid on x86_64
+        self.data.resize(new_size, 0);
         self.base.stat.size = self.data.len() as u64;
         Ok(())
     }
@@ -134,7 +130,7 @@ impl IFile for MemFile {
         let buffer = buf.as_mut();
         let length = buffer.len();
         if offset as usize + length > self.data.len() {
-            return Err(Errno::ESPIPE);
+            return Err(Error::InvalidOffset);
         }
         buffer.copy_from_slice(&self.data[offset as usize..offset as usize + length]);
         Ok(length)
@@ -144,7 +140,7 @@ impl IFile for MemFile {
         let buffer = buf.as_ref();
         let length = buffer.len();
         if offset as usize + length > self.data.len() {
-            return Err(Errno::ESPIPE);
+            return Err(Error::InvalidOffset);
         }
         self.data[offset as usize..offset as usize + length].copy_from_slice(buffer);
         Ok(length)
@@ -196,7 +192,7 @@ impl IDir for MemDir {
             .filter_map(|n| guard.nodes.get(n))
             .find(|n| n.name() == needle)
         {
-            None => Err(Errno::ENOENT),
+            None => Err(Error::NotFound),
             Some(n) => Ok(n.clone()),
         }
     }
@@ -305,7 +301,7 @@ mod tests {
         fs.inner.write().nodes.insert(f_inode_num, inode);
 
         // actual testing
-        assert_eq!(Err(Errno::ENOENT), d.lookup(&"foobar"));
+        assert_eq!(Err(Error::NotFound), d.lookup(&"foobar"));
         assert!(d.lookup(&"file.txt").is_ok());
     }
 

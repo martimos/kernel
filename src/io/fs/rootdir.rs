@@ -4,8 +4,7 @@ use alloc::vec::Vec;
 
 use crate::io::fs::perm::Permission;
 use crate::io::fs::{IDir, INode, INodeBase, INodeNum, INodeType, Stat};
-use crate::syscall::error::Errno;
-use crate::Result;
+use kstd::io::{Error, Result};
 
 /// A container that implements [`IDir`], but with a few restrictions.
 /// * non-modifiable stat
@@ -46,7 +45,7 @@ impl IDir for RootDir {
         if let Some(inode) = self.children.get(name.as_ref()) {
             return Ok(inode.clone());
         }
-        Err(Errno::ENOENT)
+        Err(Error::NotFound)
     }
 
     fn create(
@@ -55,7 +54,7 @@ impl IDir for RootDir {
         _typ: INodeType,
         _permission: Permission,
     ) -> Result<INode> {
-        Err(Errno::ENOSYS)
+        Err(Error::NotImplemented)
     }
 
     fn children(&self) -> Result<Vec<INode>> {
@@ -64,7 +63,7 @@ impl IDir for RootDir {
 
     fn mount(&mut self, node: INode) -> Result<()> {
         if self.children.get(&node.name()).is_some() {
-            return Err(Errno::EEXIST);
+            return Err(Error::ExistsButShouldNot);
         }
         self.children.insert(node.name(), node);
         Ok(())

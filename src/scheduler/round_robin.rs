@@ -8,7 +8,7 @@ use core::{
     sync::atomic::{AtomicU32, Ordering},
 };
 
-use spin::Mutex;
+use kstd::sync::Mutex;
 use x86_64::instructions::interrupts::without_interrupts;
 
 use crate::scheduler::reschedule;

@@ -4,7 +4,7 @@ use bootloader::{
     boot_info::{MemoryRegionKind, MemoryRegions, Optional},
     BootInfo,
 };
-use spin::Mutex;
+use kstd::sync::Mutex;
 use x86_64::{
     structures::paging::{
         mapper::TranslateResult, FrameAllocator, OffsetPageTable, PageTable, PhysFrame, Size4KiB,
