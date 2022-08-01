@@ -15,7 +15,6 @@ pub mod devfs;
 pub mod ext2;
 pub mod flags;
 pub mod memfs;
-pub mod path;
 pub mod perm;
 pub mod rootdir;
 pub mod vfs;

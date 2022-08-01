@@ -3,11 +3,11 @@ use alloc::borrow::ToOwned;
 use kstd::sync::{Mutex, Once};
 
 use crate::info;
-use crate::io::fs::path::components::Component;
-use crate::io::fs::path::Path;
 use crate::io::fs::rootdir::RootDir;
 use crate::io::fs::{IFileHandle, INode, INodeBase, Stat};
 use kstd::io::{Error, Result};
+use kstd::path::components::Component;
+use kstd::path::Path;
 
 static mut VFS: Option<Mutex<Vfs>> = None;
 static VFS_INIT: Once = Once::new();
