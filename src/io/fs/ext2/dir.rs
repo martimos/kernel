@@ -3,18 +3,18 @@ use alloc::string::String;
 use alloc::vec;
 use alloc::vec::Vec;
 
-use spin::RwLock;
+use kstd::sync::RwLock;
 
-use crate::device::block::BlockDevice;
-use crate::io::cursor::Cursor;
 use crate::io::fs::ext2::base::Ext2NodeBase;
 use crate::io::fs::ext2::file::Ext2File;
 use crate::io::fs::ext2::inode::{Ext2DirEntry, Ext2INode, Ext2INodeType};
 use crate::io::fs::ext2::{Ext2INodeAddress, Inner};
+use crate::io::fs::perm::Permission;
 use crate::io::fs::{IDir, INode, INodeBase, INodeNum, INodeType, Stat};
-use crate::io::ReadAt;
-use crate::syscall::error::Errno;
-use crate::Result;
+use kstd::io::cursor::Cursor;
+use kstd::io::device::block::BlockDevice;
+use kstd::io::Result;
+use kstd::io::{Error, ReadAt};
 
 pub struct Ext2Dir<D>
 where
@@ -102,29 +102,34 @@ where
             .into_iter()
             .find(|e| e.name == name.as_ref())
         {
-            None => Err(Errno::ENOENT),
+            None => Err(Error::NotFound),
             Some(e) => Ok(e),
         }?;
-        let inode_address = Ext2INodeAddress::try_from(entry.inode).or(Err(Errno::EFAULT))?;
+        let inode_address = Ext2INodeAddress::try_from(entry.inode).or(Err(Error::BadAddress))?;
         let ext2_inode = self.base.fs().read().read_inode(inode_address)?;
         let inode = self.create_inode(ext2_inode, entry.name)?;
         Ok(inode)
     }
 
-    fn create(&mut self, _name: &dyn AsRef<str>, _typ: INodeType) -> Result<INode> {
+    fn create(
+        &mut self,
+        _name: &dyn AsRef<str>,
+        _typ: INodeType,
+        _permission: Permission,
+    ) -> Result<INode> {
         todo!()
     }
 
     fn children(&self) -> Result<Vec<INode>> {
-        let entries = self.list_dir_entries()?;
-        let mut result = Vec::with_capacity(entries.len());
-        for entry in entries {
-            let inode_address = Ext2INodeAddress::try_from(entry.inode).unwrap();
+        let mut children = Vec::new();
+        for entry in self.list_dir_entries()? {
+            let inode_address =
+                Ext2INodeAddress::try_from(entry.inode).or(Err(Error::BadAddress))?;
             let ext2_inode = self.base.fs().read().read_inode(inode_address)?;
             let inode = self.create_inode(ext2_inode, entry.name)?;
-            result.push(inode);
+            children.push(inode);
         }
-        Ok(result)
+        Ok(children)
     }
 
     fn mount(&mut self, _node: INode) -> Result<()> {
@@ -144,7 +149,7 @@ where
             Ext2INodeType::RegularFile => {
                 INode::new_file(Ext2File::new(self.base.fs().clone(), ext2_inode, name))
             }
-            _ => return Err(Errno::ENOSYS),
+            _ => return Err(Error::NotImplemented),
         };
         Ok(inode)
     }

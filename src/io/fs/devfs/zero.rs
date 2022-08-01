@@ -2,8 +2,7 @@ use alloc::string::String;
 
 use crate::io::fs::devfs::DevFsNodeBase;
 use crate::io::fs::{IFile, INodeBase, INodeNum, Stat};
-use crate::syscall::error::Errno;
-use crate::Result;
+use kstd::io::{Error, Result};
 
 pub struct Zero {
     base: DevFsNodeBase,
@@ -43,7 +42,7 @@ impl IFile for Zero {
     }
 
     fn truncate(&mut self, _: u64) -> Result<()> {
-        Err(Errno::ENOSYS)
+        Err(Error::NotImplemented)
     }
 
     fn read_at(&self, _: u64, buf: &mut dyn AsMut<[u8]>) -> Result<usize> {
@@ -53,6 +52,6 @@ impl IFile for Zero {
     }
 
     fn write_at(&mut self, _: u64, _: &dyn AsRef<[u8]>) -> Result<usize> {
-        Err(Errno::ENOSYS)
+        Err(Error::NotImplemented)
     }
 }

@@ -1,11 +1,11 @@
 use alloc::rc::Rc;
 use alloc::string::String;
 
-use spin::RwLock;
+use kstd::sync::RwLock;
 
-use crate::device::block::BlockDevice;
 use crate::io::fs::ext2::inode::Ext2INode;
 use crate::io::fs::ext2::Inner;
+use kstd::io::device::block::BlockDevice;
 
 pub struct Ext2NodeBase<D>
 where

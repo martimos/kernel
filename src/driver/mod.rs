@@ -1,7 +1,6 @@
 use alloc::rc::Rc;
 use core::mem::MaybeUninit;
-
-use spin::{Mutex, Once};
+use kstd::sync::{Mutex, Once};
 
 use crate::driver::cmos::{CMOSTime, CMOS};
 

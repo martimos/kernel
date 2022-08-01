@@ -8,10 +8,9 @@ use core::{
     sync::atomic::{AtomicU32, Ordering},
 };
 
-use spin::Mutex;
+use kstd::sync::Mutex;
 use x86_64::instructions::interrupts::without_interrupts;
 
-use crate::collection::deltaq::DeltaQueue;
 use crate::scheduler::reschedule;
 use crate::scheduler::switch::switch;
 use crate::{
@@ -22,6 +21,7 @@ use crate::{
     },
     Result,
 };
+use kstd::collections::deltaq::DeltaQueue;
 
 type TaskHandle = Rc<RefCell<Task>>;
 

@@ -3,10 +3,9 @@ use core::fmt::Debug;
 
 use bitflags::bitflags;
 
-use crate::io::read::Read;
-use crate::syscall::error::Errno;
-use crate::{read_bytes, read_le_u16, read_le_u32, read_null_terminated_string};
-use crate::{read_u8, Result};
+use kstd::io::read::Read;
+use kstd::io::{Error, Result};
+use kstd::{read_bytes, read_le_u16, read_le_u32, read_null_terminated_string, read_u8};
 
 #[derive(Debug)]
 pub struct Superblock {
@@ -69,7 +68,7 @@ impl Superblock {
             extended: None,
         };
         if s.magic_number != 0xEF53 {
-            return Err(Errno::EIO);
+            return Err(Error::InvalidMagicNumber);
         }
         if s.version_major >= 1 {
             s.extended = Some(SuperblockExtended::decode(source)?);

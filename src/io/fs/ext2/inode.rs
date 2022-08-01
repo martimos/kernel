@@ -5,9 +5,9 @@ use bitflags::bitflags;
 
 use crate::io::fs::perm::Permission;
 use crate::io::fs::INodeNum;
-use crate::io::read::Read;
-use crate::syscall::error::Errno;
-use crate::{read_bytes, read_le_u16, read_le_u32, read_u8, Result};
+use kstd::io::read::Read;
+use kstd::io::{Error, Result};
+use kstd::{read_bytes, read_le_u16, read_le_u32, read_u8};
 
 #[derive(Debug)]
 pub struct Ext2INode {
@@ -43,7 +43,7 @@ impl Ext2INode {
         Ok(Self {
             inode_num: 0_u64.into(),
 
-            node_type: Ext2INodeType::try_from(mode >> 12).or(Err(Errno::EIO))?,
+            node_type: Ext2INodeType::try_from(mode >> 12).or(Err(Error::DecodeError))?,
             permissions: Permission::from_bits_truncate(mode & 0x0FFF),
             uid: read_le_u16!(source),
             lower_size: read_le_u32!(source),
@@ -152,7 +152,8 @@ impl Ext2DirEntry {
         let inode = read_le_u32!(source);
         let total_size = read_le_u16!(source);
         let name_length_lower = read_u8!(source);
-        let type_indicator = Ext2IDirEntryType::try_from(read_u8!(source)).or(Err(Errno::EIO))?;
+        let type_indicator =
+            Ext2IDirEntryType::try_from(read_u8!(source)).or(Err(Error::DecodeError))?;
         let mut name_data = vec![0_u8; total_size as usize - 8];
         source.read_exact(&mut name_data)?;
         let name = String::from_utf8_lossy(&name_data[0..name_length_lower as usize]).to_string();

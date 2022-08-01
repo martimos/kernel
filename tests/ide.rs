@@ -14,13 +14,13 @@ use core::panic::PanicInfo;
 
 use bootloader::{entry_point, BootInfo};
 
-use martim::device::block::BlockDevice;
+use kstd::io::device::block::BlockDevice;
+use kstd::io::ReadAt;
 use martim::driver::ide::drive::IDEDrive;
 use martim::driver::ide::IDEController;
 use martim::driver::pci;
 use martim::driver::pci::classes::{MassStorageSubClass, PCIDeviceClass};
 use martim::driver::pci::header::PCIStandardHeaderDevice;
-use martim::io::ReadAt;
 use martim::scheduler;
 
 entry_point!(main);

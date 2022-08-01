@@ -2,13 +2,13 @@ use alloc::format;
 use alloc::sync::Arc;
 use core::fmt::{Debug, Formatter};
 
-use spin::Mutex;
+use kstd::sync::Mutex;
 use x86_64::instructions::interrupts::without_interrupts;
 
-use crate::device::block::BlockDevice;
 use crate::driver::ide::channel::IDEChannel;
 use crate::driver::ide::{is_bit_set, Command, Status, UDMAMode};
-use crate::Result;
+use kstd::io::device::block::BlockDevice;
+use kstd::io::Result;
 
 pub struct IDEDrive {
     channel: Arc<Mutex<IDEChannel>>,

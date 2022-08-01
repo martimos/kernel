@@ -4,7 +4,7 @@ use alloc::vec::Vec;
 use core::fmt::{Debug, Formatter};
 
 use bitflags::bitflags;
-use spin::Mutex;
+use kstd::sync::Mutex;
 
 use crate::driver::ide::channel::IDEChannel;
 use crate::driver::ide::drive::IDEDrive;

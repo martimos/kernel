@@ -4,18 +4,17 @@ use alloc::vec;
 use alloc::vec::Vec;
 use core::fmt::{Debug, Display, Formatter};
 
-use spin::RwLock;
+use crate::io::fs::perm::Permission;
+use kstd::sync::RwLock;
 
-use crate::io::ReadAt;
-use crate::io::WriteAt;
-use crate::syscall::error::Errno;
-use crate::Result;
+use kstd::io::ReadAt;
+use kstd::io::Result;
+use kstd::io::WriteAt;
 
 pub mod devfs;
 pub mod ext2;
 pub mod flags;
 pub mod memfs;
-pub mod path;
 pub mod perm;
 pub mod rootdir;
 pub mod vfs;
@@ -167,7 +166,7 @@ pub trait IFile: INodeBase {
     fn write_at(&mut self, offset: u64, buf: &dyn AsRef<[u8]>) -> Result<usize>;
 
     fn read_full(&self) -> Result<Vec<u8>> {
-        let size = TryInto::<usize>::try_into(self.size()).or(Err(Errno::EFBIG))?;
+        let size = TryInto::<usize>::try_into(self.size()).unwrap(); // u64 -> usize is valid on x86_64
         let mut data = vec![0_u8; size];
         self.read_at(0, &mut data)?;
         Ok(data)
@@ -197,7 +196,12 @@ pub trait IDir: INodeBase {
 
     /// Creates a new [`INode`] of the given type. The operation may fail if a type
     /// is not supported.
-    fn create(&mut self, name: &dyn AsRef<str>, typ: INodeType) -> Result<INode>;
+    fn create(
+        &mut self,
+        name: &dyn AsRef<str>,
+        typ: INodeType,
+        permission: Permission,
+    ) -> Result<INode>;
 
     /// Returns a vec of [`INodes`] that are contained within this directory.
     fn children(&self) -> Result<Vec<INode>>;

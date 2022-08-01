@@ -1,7 +1,7 @@
 use alloc::rc::Rc;
 
 use bitflags::bitflags;
-use spin::RwLock;
+use kstd::sync::RwLock;
 
 use crate::driver::pci::classes::{InterruptPin, PCIDeviceClass};
 use crate::driver::pci::raw::{

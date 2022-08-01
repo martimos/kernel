@@ -5,9 +5,9 @@ use core::sync::atomic::{AtomicU64, Ordering};
 
 use crate::io::fs::devfs::null::Null;
 use crate::io::fs::devfs::zero::Zero;
+use crate::io::fs::perm::Permission;
 use crate::io::fs::{Fs, IDir, INode, INodeBase, INodeNum, INodeType, Stat};
-use crate::syscall::error::Errno;
-use crate::Result;
+use kstd::io::{Error, Result};
 
 mod null;
 mod zero;
@@ -103,13 +103,18 @@ impl INodeBase for DevDir {
 impl IDir for DevDir {
     fn lookup(&self, name: &dyn AsRef<str>) -> Result<INode> {
         match self.children.get(name.as_ref()) {
-            None => Err(Errno::ENOENT),
+            None => Err(Error::NotFound),
             Some(n) => Ok(n.clone()),
         }
     }
 
-    fn create(&mut self, _: &dyn AsRef<str>, _: INodeType) -> Result<INode> {
-        Err(Errno::ENOSYS)
+    fn create(
+        &mut self,
+        _name: &dyn AsRef<str>,
+        _typ: INodeType,
+        _permission: Permission,
+    ) -> Result<INode> {
+        Err(Error::NotImplemented)
     }
 
     fn children(&self) -> Result<Vec<INode>> {
@@ -119,7 +124,7 @@ impl IDir for DevDir {
     fn mount(&mut self, node: INode) -> Result<()> {
         let name = node.name();
         if self.lookup(&name).is_ok() {
-            return Err(Errno::EEXIST);
+            return Err(Error::ExistsButShouldNot);
         }
         self.children.insert(name, node);
         Ok(())
