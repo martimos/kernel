@@ -4,10 +4,10 @@ use alloc::vec::Vec;
 
 use spin::{Mutex, RwLock};
 
-use crate::collection::lru::LruCache;
 use crate::device::block::BlockDevice;
 use crate::syscall::error::Errno;
 use crate::Result;
+use kstd::collections::lru::LruCache;
 
 struct Block<D>
 where

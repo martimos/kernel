@@ -242,6 +242,11 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "078e285eafdfb6c4b434e0d31e8cfcb5115b651496faca5749b88fafd4f23bfd"
 
 [[package]]
+name = "kstd"
+version = "0.1.0"
+source = "git+https://github.com/martimos/kstd#c1bae37527162c38de8c4f9a1443a58f2a539e43"
+
+[[package]]
 name = "lazy_static"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -309,6 +314,7 @@ dependencies = [
  "conquer-once",
  "crossbeam-queue",
  "futures-util",
+ "kstd",
  "lazy_static",
  "linked_list_allocator",
  "noto-sans-mono-bitmap",
