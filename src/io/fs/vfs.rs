@@ -122,6 +122,7 @@ impl Vfs {
 #[cfg(test)]
 mod tests {
     use crate::io::fs::memfs::MemFs;
+    use crate::io::fs::perm::Permission;
     use crate::io::fs::rootdir::RootDir;
     use crate::io::fs::{Fs, IDir, INodeType};
 
@@ -145,7 +146,7 @@ mod tests {
             .dir()
             .unwrap()
             .write()
-            .create(&name, typ)
+            .create(&name, typ, Permission::user_rwx())
             .unwrap();
         let mut r = RootDir::new("/".into(), Stat::default());
         assert_eq!(Err(Errno::ENOENT), r.lookup(&name));

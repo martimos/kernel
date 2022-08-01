@@ -317,7 +317,7 @@ mod tests {
             .dir()
             .expect("root must be a dir")
             .write()
-            .create(&"file.txt", INodeType::File)
+            .create(&"file.txt", INodeType::File, Permission::user_rwx())
             .expect("creating a file should not fail")
             .file()
             .expect("created inode must be a file");
