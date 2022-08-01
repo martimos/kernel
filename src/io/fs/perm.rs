@@ -18,6 +18,32 @@ bitflags! {
     }
 }
 
+impl Permission {
+    pub fn user_rwx() -> Self {
+        let mut perm = Self::empty();
+        perm.set_readable(Triad::User, true);
+        perm.set_writable(Triad::User, true);
+        perm.set_executable(Triad::User, true);
+        perm
+    }
+
+    pub fn group_rwx() -> Self {
+        let mut perm = Self::empty();
+        perm.set_readable(Triad::Group, true);
+        perm.set_writable(Triad::Group, true);
+        perm.set_executable(Triad::Group, true);
+        perm
+    }
+
+    pub fn other_rwx() -> Self {
+        let mut perm = Self::empty();
+        perm.set_readable(Triad::Other, true);
+        perm.set_writable(Triad::Other, true);
+        perm.set_executable(Triad::Other, true);
+        perm
+    }
+}
+
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub enum Triad {
     User,

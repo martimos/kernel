@@ -2,6 +2,7 @@ use alloc::collections::BTreeMap;
 use alloc::string::String;
 use alloc::vec::Vec;
 
+use crate::io::fs::perm::Permission;
 use crate::io::fs::{IDir, INode, INodeBase, INodeNum, INodeType, Stat};
 use crate::syscall::error::Errno;
 use crate::Result;
@@ -48,7 +49,12 @@ impl IDir for RootDir {
         Err(Errno::ENOENT)
     }
 
-    fn create(&mut self, _: &dyn AsRef<str>, _: INodeType) -> Result<INode> {
+    fn create(
+        &mut self,
+        _name: &dyn AsRef<str>,
+        _typ: INodeType,
+        _permission: Permission,
+    ) -> Result<INode> {
         Err(Errno::ENOSYS)
     }
 

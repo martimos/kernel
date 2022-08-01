@@ -11,6 +11,7 @@ use crate::io::fs::ext2::base::Ext2NodeBase;
 use crate::io::fs::ext2::file::Ext2File;
 use crate::io::fs::ext2::inode::{Ext2DirEntry, Ext2INode, Ext2INodeType};
 use crate::io::fs::ext2::{Ext2INodeAddress, Inner};
+use crate::io::fs::perm::Permission;
 use crate::io::fs::{IDir, INode, INodeBase, INodeNum, INodeType, Stat};
 use crate::io::ReadAt;
 use crate::syscall::error::Errno;
@@ -111,20 +112,24 @@ where
         Ok(inode)
     }
 
-    fn create(&mut self, _name: &dyn AsRef<str>, _typ: INodeType) -> Result<INode> {
+    fn create(
+        &mut self,
+        _name: &dyn AsRef<str>,
+        _typ: INodeType,
+        _permission: Permission,
+    ) -> Result<INode> {
         todo!()
     }
 
     fn children(&self) -> Result<Vec<INode>> {
-        let entries = self.list_dir_entries()?;
-        let mut result = Vec::with_capacity(entries.len());
-        for entry in entries {
-            let inode_address = Ext2INodeAddress::try_from(entry.inode).unwrap();
+        let mut children = Vec::new();
+        for entry in self.list_dir_entries()? {
+            let inode_address = Ext2INodeAddress::try_from(entry.inode).or(Err(Errno::EFAULT))?;
             let ext2_inode = self.base.fs().read().read_inode(inode_address)?;
             let inode = self.create_inode(ext2_inode, entry.name)?;
-            result.push(inode);
+            children.push(inode);
         }
-        Ok(result)
+        Ok(children)
     }
 
     fn mount(&mut self, _node: INode) -> Result<()> {

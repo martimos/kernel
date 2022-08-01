@@ -7,6 +7,7 @@ use core::sync::atomic::{AtomicU64, Ordering};
 
 use spin::RwLock;
 
+use crate::io::fs::perm::Permission;
 use crate::io::fs::{Fs, IDir, IFile, INode, INodeBase, INodeNum, INodeType, Stat};
 use crate::syscall::error::Errno;
 use crate::Result;
@@ -200,7 +201,12 @@ impl IDir for MemDir {
         }
     }
 
-    fn create(&mut self, name: &dyn AsRef<str>, typ: INodeType) -> Result<INode> {
+    fn create(
+        &mut self,
+        name: &dyn AsRef<str>,
+        typ: INodeType,
+        _permission: Permission,
+    ) -> Result<INode> {
         let name = name.as_ref().to_string();
         let inode_num = self.base.fs.read().get_unused_inode_num();
         let inode = match typ {

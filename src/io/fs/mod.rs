@@ -4,6 +4,7 @@ use alloc::vec;
 use alloc::vec::Vec;
 use core::fmt::{Debug, Display, Formatter};
 
+use crate::io::fs::perm::Permission;
 use spin::RwLock;
 
 use crate::io::ReadAt;
@@ -197,7 +198,12 @@ pub trait IDir: INodeBase {
 
     /// Creates a new [`INode`] of the given type. The operation may fail if a type
     /// is not supported.
-    fn create(&mut self, name: &dyn AsRef<str>, typ: INodeType) -> Result<INode>;
+    fn create(
+        &mut self,
+        name: &dyn AsRef<str>,
+        typ: INodeType,
+        permission: Permission,
+    ) -> Result<INode>;
 
     /// Returns a vec of [`INodes`] that are contained within this directory.
     fn children(&self) -> Result<Vec<INode>>;
