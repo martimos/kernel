@@ -9,7 +9,7 @@ use crate::io::fs::ext2::base::Ext2NodeBase;
 use crate::io::fs::ext2::inode::{Ext2INode, Ext2INodeType};
 use crate::io::fs::ext2::Inner;
 use crate::io::fs::{IFile, INodeBase, INodeNum, Stat};
-use kstd::io::device::block::BlockDevice;
+use kstd::io::block::BlockDevice;
 use kstd::io::ReadAt;
 use kstd::io::Result;
 

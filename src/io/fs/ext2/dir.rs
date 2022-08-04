@@ -11,8 +11,8 @@ use crate::io::fs::ext2::inode::{Ext2DirEntry, Ext2INode, Ext2INodeType};
 use crate::io::fs::ext2::{Ext2INodeAddress, Inner};
 use crate::io::fs::perm::Permission;
 use crate::io::fs::{IDir, INode, INodeBase, INodeNum, INodeType, Stat};
+use kstd::io::block::BlockDevice;
 use kstd::io::cursor::Cursor;
-use kstd::io::device::block::BlockDevice;
 use kstd::io::Result;
 use kstd::io::{Error, ReadAt};
 

@@ -14,7 +14,7 @@ use core::panic::PanicInfo;
 
 use bootloader::{entry_point, BootInfo};
 
-use kstd::io::device::block::BlockDevice;
+use kstd::io::block::BlockDevice;
 use kstd::io::ReadAt;
 use martim::driver::ide::drive::IDEDrive;
 use martim::driver::ide::IDEController;

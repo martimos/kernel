@@ -5,7 +5,7 @@ use kstd::sync::RwLock;
 
 use crate::io::fs::ext2::inode::Ext2INode;
 use crate::io::fs::ext2::Inner;
-use kstd::io::device::block::BlockDevice;
+use kstd::io::block::BlockDevice;
 
 pub struct Ext2NodeBase<D>
 where

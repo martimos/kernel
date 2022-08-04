@@ -9,8 +9,8 @@ use crate::io::fs::ext2::block_group::BlockGroupDescriptorTable;
 use crate::io::fs::ext2::inode::Ext2INode;
 use crate::io::fs::ext2::superblock::Superblock;
 use crate::io::fs::{Fs, INode};
+use kstd::io::block::BlockDevice;
 use kstd::io::cursor::Cursor;
-use kstd::io::device::block::BlockDevice;
 use kstd::io::Result;
 use kstd::io::{Error, ReadAt};
 

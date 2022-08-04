@@ -7,7 +7,7 @@ use x86_64::instructions::interrupts::without_interrupts;
 
 use crate::driver::ide::channel::IDEChannel;
 use crate::driver::ide::{is_bit_set, Command, Status, UDMAMode};
-use kstd::io::device::block::BlockDevice;
+use kstd::io::block::BlockDevice;
 use kstd::io::Result;
 
 pub struct IDEDrive {
