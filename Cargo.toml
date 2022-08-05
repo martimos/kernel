@@ -57,15 +57,3 @@ features = ["spin_no_std"]
 map-physical-memory = true
 map-framebuffer = true
 framebuffer-address = 0xb8000
-
-#[package.metadata.bootimage]
-#test-args = [
-#    "-device", "isa-debug-exit,iobase=0xf4,iosize=0x04",
-#    "-serial", "stdio",
-#    "-display", "none"
-#]
-#run-args = [
-#    "-serial", "stdio",
-#]
-#test-success-exit-code = 33 # (0x10 << 1) | 1
-#test-timeout = 300 # 5 minutes
