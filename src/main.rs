@@ -18,7 +18,7 @@ use martim::driver::{pci, Peripherals};
 use martim::io::fs::devfs::DevFs;
 use martim::io::fs::memfs::MemFs;
 use martim::io::fs::{vfs, Fs};
-use martim::{debug, hlt_loop};
+use martim::{debug, hlt_loop, info};
 use martim::{
     scheduler, serial_print, serial_println,
     task::{executor::Executor, keyboard, Task},
@@ -57,6 +57,7 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     martim::memory::init_heap(boot_info);
     scheduler::init();
     vfs::init();
+    let _ = Peripherals::boot_time(); // initialize boot time
     serial_println!("done");
 
     vga_clear!();
@@ -87,9 +88,20 @@ $$ | \_/ $$ |\$$$$$$$ |$$ |       \$$$$  |$$ |$$ | $$ | $$ |
 fn main() {
     vga_println!("Hello, {}!", "World");
 
+    let boot_time = Peripherals::boot_time();
+    info!(
+        "Boot time: {:02}{:02}-{:02}-{:02}, {:02}:{:02}:{:02}",
+        boot_time.century.unwrap(),
+        boot_time.year,
+        boot_time.month,
+        boot_time.day_of_month,
+        boot_time.hours,
+        boot_time.minutes,
+        boot_time.seconds,
+    );
+
     scheduler::spawn(just_panic).unwrap();
     scheduler::spawn(vfs_setup).unwrap();
-    scheduler::spawn(cmos_stuff).unwrap();
     scheduler::spawn(ide_drives).unwrap();
     scheduler::spawn(example_tasks).unwrap();
 
@@ -100,26 +112,22 @@ fn main() {
 }
 
 extern "C" fn vfs_setup() {
-    let memfs = MemFs::new("mem".to_string());
-    vfs::mount(&"/", memfs.root_inode()).unwrap();
     let devfs = DevFs::new("dev".to_string());
     vfs::mount(&"/", devfs.root_inode()).unwrap();
-}
 
-extern "C" fn cmos_stuff() {
-    let cmos = Peripherals::cmos();
-    let mut guard = cmos.lock();
-    let time = guard.read_time();
-    vga_println!(
-        "CMOS time: {:02}{:02}-{:02}-{:02}, {:02}:{:02}:{:02}",
-        time.century.unwrap(),
-        time.year,
-        time.month,
-        time.day_of_month,
-        time.hours,
-        time.minutes,
-        time.seconds
-    );
+    let memfs = MemFs::new("mem".to_string());
+    vfs::mount(&"/dev", memfs.root_inode()).unwrap();
+
+    vfs::find_inode(&"/dev/serial")
+        .expect("/dev/serial not found")
+        .file()
+        .expect("/dev/serial is not a file")
+        .write()
+        .write_at(
+            0,
+            b"This was written to serial port via the file /dev/serial!\n",
+        )
+        .expect("failed to write to /dev/serial");
 }
 
 extern "C" fn ide_drives() {

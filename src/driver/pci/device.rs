@@ -83,7 +83,7 @@ impl PCIDevice {
     /// reads from memory, which could have unintended
     /// effects. Also, the caller has to ensure that this
     /// is only called once for every combination of parameters.
-    pub unsafe fn new(
+    pub(in crate::driver::pci) unsafe fn new(
         bus: u8,
         slot: u8,
         function: u8,

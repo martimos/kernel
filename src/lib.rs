@@ -18,7 +18,7 @@ use core::panic::PanicInfo;
 use bootloader::{entry_point, BootInfo};
 
 // re-export Result<T, E = syscall::error::Errno>
-pub use syscall::error::Result;
+pub use syscall::Result;
 
 pub mod allocator;
 pub mod driver;

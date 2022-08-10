@@ -4,12 +4,14 @@ use alloc::vec::Vec;
 use core::sync::atomic::{AtomicU64, Ordering};
 
 use crate::io::fs::devfs::null::Null;
+use crate::io::fs::devfs::serial::Serial;
 use crate::io::fs::devfs::zero::Zero;
 use crate::io::fs::perm::Permission;
 use crate::io::fs::{Fs, IDir, INode, INodeBase, INodeNum, INodeType, Stat};
 use kstd::io::{Error, Result};
 
 mod null;
+mod serial;
 mod zero;
 
 pub struct DevFs {
@@ -24,6 +26,7 @@ impl DevFs {
         let mut root = DevDir::new(next(), root_node_name);
         root.mount(INode::new_file(Zero::new(next()))).unwrap();
         root.mount(INode::new_file(Null::new(next()))).unwrap();
+        root.mount(INode::new_file(Serial::new(next()))).unwrap();
 
         Self {
             root: INode::new_dir(root),

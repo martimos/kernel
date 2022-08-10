@@ -23,7 +23,7 @@ fn get_vfs() -> &'static Mutex<Vfs> {
 }
 
 pub fn mount(p: &dyn AsRef<Path>, node: INode) -> Result<()> {
-    info!("mounting inode '{}' at '{}'", node.name(), p.as_ref());
+    info!("mounting inode '{}' in '{}'", node.name(), p.as_ref());
     get_vfs().lock().mount(p, node)
 }
 
