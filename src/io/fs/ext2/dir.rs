@@ -10,7 +10,7 @@ use crate::io::fs::ext2::file::Ext2File;
 use crate::io::fs::ext2::inode::{Ext2DirEntry, Ext2INode, Ext2INodeType};
 use crate::io::fs::ext2::{Ext2INodeAddress, Inner};
 use crate::io::fs::perm::Permission;
-use crate::io::fs::{IDir, INode, INodeBase, INodeNum, INodeType, Stat};
+use crate::io::fs::{CreateNodeType, IDir, INode, INodeBase, INodeNum, Stat};
 use kstd::io::block::BlockDevice;
 use kstd::io::cursor::Cursor;
 use kstd::io::Result;
@@ -114,7 +114,7 @@ where
     fn create(
         &mut self,
         _name: &dyn AsRef<str>,
-        _typ: INodeType,
+        _typ: CreateNodeType,
         _permission: Permission,
     ) -> Result<INode> {
         todo!()
@@ -123,6 +123,9 @@ where
     fn children(&self) -> Result<Vec<INode>> {
         let mut children = Vec::new();
         for entry in self.list_dir_entries()? {
+            if entry.name.is_empty() || entry.name == "." || entry.name == ".." {
+                continue;
+            }
             let inode_address =
                 Ext2INodeAddress::try_from(entry.inode).or(Err(Error::BadAddress))?;
             let ext2_inode = self.base.fs().read().read_inode(inode_address)?;

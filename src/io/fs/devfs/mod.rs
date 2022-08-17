@@ -7,7 +7,7 @@ use crate::io::fs::devfs::null::Null;
 use crate::io::fs::devfs::serial::Serial;
 use crate::io::fs::devfs::zero::Zero;
 use crate::io::fs::perm::Permission;
-use crate::io::fs::{Fs, IDir, INode, INodeBase, INodeNum, INodeType, Stat};
+use crate::io::fs::{CreateNodeType, Fs, IDir, INode, INodeBase, INodeNum, Stat};
 use kstd::io::{Error, Result};
 
 mod null;
@@ -114,7 +114,7 @@ impl IDir for DevDir {
     fn create(
         &mut self,
         _name: &dyn AsRef<str>,
-        _typ: INodeType,
+        _typ: CreateNodeType,
         _permission: Permission,
     ) -> Result<INode> {
         Err(Error::NotImplemented)

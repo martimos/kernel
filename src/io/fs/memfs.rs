@@ -8,7 +8,7 @@ use core::sync::atomic::{AtomicU64, Ordering};
 use kstd::sync::RwLock;
 
 use crate::io::fs::perm::Permission;
-use crate::io::fs::{Fs, IDir, IFile, INode, INodeBase, INodeNum, INodeType, Stat};
+use crate::io::fs::{CreateNodeType, Fs, IDir, IFile, INode, INodeBase, INodeNum, Stat};
 use kstd::io::{Error, Result};
 
 pub struct MemFs {
@@ -200,23 +200,22 @@ impl IDir for MemDir {
     fn create(
         &mut self,
         name: &dyn AsRef<str>,
-        typ: INodeType,
+        typ: CreateNodeType,
         _permission: Permission,
     ) -> Result<INode> {
         let name = name.as_ref().to_string();
         let inode_num = self.base.fs.read().get_unused_inode_num();
         let inode = match typ {
-            INodeType::File => {
+            CreateNodeType::File => {
                 let f = MemFile::new(self.base.fs.clone(), name, inode_num, vec![]);
                 INode::new_file(f)
             }
-            INodeType::Dir => {
+            CreateNodeType::Dir => {
                 let d = MemDir::new(self.base.fs.clone(), name, inode_num);
                 INode::new_dir(d)
             }
         };
-        self.base.fs.write().nodes.insert(inode_num, inode.clone());
-        self.children.push(inode_num);
+        self.mount(inode.clone())?;
         Ok(inode)
     }
 
@@ -230,8 +229,11 @@ impl IDir for MemDir {
             .collect())
     }
 
-    fn mount(&mut self, _node: INode) -> Result<()> {
-        todo!()
+    fn mount(&mut self, node: INode) -> Result<()> {
+        let inode_num = node.num();
+        self.base.fs.write().nodes.insert(inode_num, node);
+        self.children.push(inode_num);
+        Ok(())
     }
 }
 
@@ -313,7 +315,7 @@ mod tests {
             .dir()
             .expect("root must be a dir")
             .write()
-            .create(&"file.txt", INodeType::File, Permission::user_rwx())
+            .create(&"file.txt", CreateNodeType::File, Permission::user_rwx())
             .expect("creating a file should not fail")
             .file()
             .expect("created inode must be a file");

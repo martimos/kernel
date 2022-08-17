@@ -3,7 +3,7 @@ use alloc::string::String;
 use alloc::vec::Vec;
 
 use crate::io::fs::perm::Permission;
-use crate::io::fs::{IDir, INode, INodeBase, INodeNum, INodeType, Stat};
+use crate::io::fs::{CreateNodeType, IDir, INode, INodeBase, INodeNum, Stat};
 use kstd::io::{Error, Result};
 
 /// A container that implements [`IDir`], but with a few restrictions.
@@ -51,7 +51,7 @@ impl IDir for RootDir {
     fn create(
         &mut self,
         _name: &dyn AsRef<str>,
-        _typ: INodeType,
+        _typ: CreateNodeType,
         _permission: Permission,
     ) -> Result<INode> {
         Err(Error::NotImplemented)

@@ -1,5 +1,5 @@
-use alloc::rc::Rc;
 use alloc::string::String;
+use alloc::sync::Arc;
 use alloc::vec;
 use alloc::vec::Vec;
 use core::fmt::{Debug, Display, Formatter};
@@ -7,11 +7,12 @@ use core::fmt::{Debug, Display, Formatter};
 use crate::io::fs::perm::Permission;
 use kstd::sync::RwLock;
 
-use kstd::io::ReadAt;
 use kstd::io::Result;
 use kstd::io::WriteAt;
+use kstd::io::{Error, ReadAt};
 
 pub mod devfs;
+pub mod device;
 pub mod ext2;
 pub mod flags;
 pub mod memfs;
@@ -62,13 +63,15 @@ pub struct Stat {
     pub blocks: u32,
 }
 
-pub type IFileHandle = Rc<RwLock<dyn IFile>>;
-pub type IDirHandle = Rc<RwLock<dyn IDir>>;
+pub type IBlockDeviceHandle = Arc<RwLock<dyn IBlockDeviceFile>>;
+pub type IDirHandle = Arc<RwLock<dyn IDir>>;
+pub type IFileHandle = Arc<RwLock<dyn IFile>>;
 
 #[derive(Clone)]
 pub enum INode {
-    File(IFileHandle),
+    BlockDevice(IBlockDeviceHandle),
     Dir(IDirHandle),
+    File(IFileHandle),
 }
 
 impl PartialEq for INode {
@@ -82,14 +85,21 @@ impl INode {
     where
         F: 'static + IFile,
     {
-        Self::File(Rc::new(RwLock::new(f)))
+        Self::File(Arc::new(RwLock::new(f)))
+    }
+
+    pub fn new_block_device_file<F>(f: F) -> Self
+    where
+        F: 'static + IBlockDeviceFile,
+    {
+        Self::BlockDevice(Arc::new(RwLock::new(f)))
     }
 
     pub fn new_dir<D>(d: D) -> Self
     where
         D: 'static + IDir,
     {
-        Self::Dir(Rc::new(RwLock::new(d)))
+        Self::Dir(Arc::new(RwLock::new(d)))
     }
 
     pub fn file(&self) -> Option<IFileHandle> {
@@ -104,6 +114,25 @@ impl INode {
             INode::Dir(d) => Some(d.clone()),
             _ => None,
         }
+    }
+
+    pub fn block_device_file(&self) -> Option<IBlockDeviceHandle> {
+        match self {
+            INode::BlockDevice(d) => Some(d.clone()),
+            _ => None,
+        }
+    }
+
+    pub fn is_file(&self) -> bool {
+        matches!(self, INode::File(_))
+    }
+
+    pub fn is_dir(&self) -> bool {
+        matches!(self, INode::Dir(_))
+    }
+
+    pub fn is_block_device_file(&self) -> bool {
+        matches!(self, INode::BlockDevice(_))
     }
 }
 
@@ -121,6 +150,7 @@ impl Debug for INode {
                 &match self {
                     INode::File(_) => "File",
                     INode::Dir(_) => "Dir",
+                    INode::BlockDevice(_) => "BlockDevice",
                 },
             )
             .field("inode_num", &self.num())
@@ -134,6 +164,7 @@ impl INodeBase for INode {
         match self {
             INode::File(file) => file.read().num(),
             INode::Dir(dir) => dir.read().num(),
+            INode::BlockDevice(dev) => dev.read().num(),
         }
     }
 
@@ -141,6 +172,7 @@ impl INodeBase for INode {
         match self {
             INode::File(file) => file.read().name(),
             INode::Dir(dir) => dir.read().name(),
+            INode::BlockDevice(dev) => dev.read().name(),
         }
     }
 
@@ -148,8 +180,21 @@ impl INodeBase for INode {
         match self {
             INode::File(file) => file.read().stat(),
             INode::Dir(dir) => dir.read().stat(),
+            INode::BlockDevice(dev) => dev.read().stat(),
         }
     }
+}
+
+pub trait IBlockDeviceFile: INodeBase {
+    fn block_count(&self) -> usize;
+
+    fn block_size(&self) -> usize;
+
+    fn read_block(&self, block: u64, buf: &mut dyn AsMut<[u8]>) -> Result<()>;
+
+    fn read_at(&self, offset: u64, buf: &mut dyn AsMut<[u8]>) -> Result<usize>;
+
+    fn write_at(&mut self, offset: u64, buf: &dyn AsRef<[u8]>) -> Result<usize>;
 }
 
 pub trait IFile: INodeBase {
@@ -167,9 +212,25 @@ pub trait IFile: INodeBase {
 
     fn read_full(&self) -> Result<Vec<u8>> {
         let size = TryInto::<usize>::try_into(self.size()).unwrap(); // u64 -> usize is valid on x86_64
-        let mut data = vec![0_u8; size];
-        self.read_at(0, &mut data)?;
-        Ok(data)
+        let mut buffer_vec = vec![0_u8; size];
+        let mut buffer = buffer_vec.as_mut_slice();
+        let mut offset = 0;
+
+        while !buffer.is_empty() {
+            match self.read_at(offset, &mut buffer) {
+                Ok(0) => break,
+                Ok(n) => {
+                    offset += n as u64;
+                    buffer = &mut buffer[n..];
+                }
+                Err(e) => return Err(e),
+            }
+        }
+        if buffer.is_empty() {
+            Ok(buffer_vec)
+        } else {
+            Err(Error::PrematureEndOfInput)
+        }
     }
 }
 
@@ -185,7 +246,7 @@ impl WriteAt<u8> for dyn IFile {
     }
 }
 
-pub enum INodeType {
+pub enum CreateNodeType {
     File,
     Dir,
 }
@@ -199,7 +260,7 @@ pub trait IDir: INodeBase {
     fn create(
         &mut self,
         name: &dyn AsRef<str>,
-        typ: INodeType,
+        typ: CreateNodeType,
         permission: Permission,
     ) -> Result<INode>;
 

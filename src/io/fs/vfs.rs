@@ -3,7 +3,7 @@ use alloc::borrow::ToOwned;
 use kstd::sync::{Mutex, Once};
 
 use crate::io::fs::rootdir::RootDir;
-use crate::io::fs::{IFileHandle, INode, INodeBase, Stat};
+use crate::io::fs::{IBlockDeviceHandle, IFileHandle, INode, INodeBase, Stat};
 use crate::{debug, info};
 use kstd::io::{Error, Result};
 use kstd::path::components::Component;
@@ -29,6 +29,13 @@ pub fn mount(p: &dyn AsRef<Path>, node: INode) -> Result<()> {
     get_vfs().lock().mount(p, node)
 }
 
+pub fn walk_tree<F>(p: &dyn AsRef<Path>, f: F) -> Result<()>
+where
+    F: Fn(usize, INode),
+{
+    get_vfs().lock().walk_tree(p, f)
+}
+
 pub fn find_inode(p: &dyn AsRef<Path>) -> Result<INode> {
     get_vfs().lock().find_inode(p)
 }
@@ -37,11 +44,17 @@ pub fn root() -> INode {
     get_vfs().lock().root.clone()
 }
 
-pub fn open(p: &dyn AsRef<Path>) -> Result<IFileHandle> {
+pub enum OpenResult {
+    File(IFileHandle),
+    BlockDevice(IBlockDeviceHandle),
+}
+
+pub fn open(p: &dyn AsRef<Path>) -> Result<OpenResult> {
     let node = find_inode(p)?;
     match node {
-        INode::File(f) => Ok(f),
+        INode::File(f) => Ok(OpenResult::File(f)),
         INode::Dir(_) => Err(Error::IsDir),
+        INode::BlockDevice(f) => Ok(OpenResult::BlockDevice(f)),
     }
 }
 
@@ -62,6 +75,31 @@ impl Vfs {
         }
     }
 
+    fn walk_tree<F>(&self, p: &dyn AsRef<Path>, f: F) -> Result<()>
+    where
+        F: Fn(usize, INode),
+    {
+        let node = self.find_inode(p)?;
+        self.walk_node(0, node, &f)
+    }
+
+    fn walk_node<F>(&self, current_depth: usize, node: INode, f: &F) -> Result<()>
+    where
+        F: Fn(usize, INode),
+    {
+        f(current_depth, node.clone());
+        match node {
+            INode::BlockDevice(_) => {}
+            INode::Dir(dir) => {
+                for child in dir.read().children()?.into_iter() {
+                    self.walk_node(current_depth + 1, child.clone(), f)?;
+                }
+            }
+            INode::File(_) => {}
+        }
+        Ok(())
+    }
+
     fn mount(&mut self, p: &dyn AsRef<Path>, node: INode) -> Result<()> {
         let target_node = match self.find_inode(p) {
             Ok(n) => n,
@@ -70,6 +108,7 @@ impl Vfs {
         let dir = match target_node {
             INode::File(_) => return Err(Error::IsFile),
             INode::Dir(d) => d,
+            INode::BlockDevice(_) => return Err(Error::IsFile),
         };
         let mut guard = dir.write();
         guard.mount(node)
@@ -105,6 +144,7 @@ impl Vfs {
                     let current_dir = match current {
                         INode::File(_) => return Err(Error::NotFound),
                         INode::Dir(d) => d,
+                        INode::BlockDevice(_) => return Err(Error::NotFound),
                     };
                     let next_element = current_dir.read().lookup(&v);
                     let new_current = match next_element {
@@ -126,21 +166,21 @@ mod tests {
     use crate::io::fs::memfs::MemFs;
     use crate::io::fs::perm::Permission;
     use crate::io::fs::rootdir::RootDir;
-    use crate::io::fs::{Fs, IDir, INodeType};
+    use crate::io::fs::{CreateNodeType, Fs, IDir};
 
     use super::*;
 
     #[test_case]
     fn test_root_mount_and_lookup_file() {
-        test_root_mount_with_node_type(INodeType::File)
+        test_root_mount_with_node_type(CreateNodeType::File)
     }
 
     #[test_case]
     fn test_root_mount_and_lookup_dir() {
-        test_root_mount_with_node_type(INodeType::Dir)
+        test_root_mount_with_node_type(CreateNodeType::Dir)
     }
 
-    fn test_root_mount_with_node_type(typ: INodeType) {
+    fn test_root_mount_with_node_type(typ: CreateNodeType) {
         let name = "hello";
         let fs = MemFs::new("mem".into());
         let inode = fs
