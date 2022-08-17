@@ -1,12 +1,9 @@
 use alloc::collections::{BTreeMap, VecDeque};
 use alloc::sync::Arc;
+use core::sync::atomic::{AtomicU32, Ordering};
 use core::time::Duration;
-use core::{
-    cell::RefCell,
-    sync::atomic::{AtomicU32, Ordering},
-};
 
-use kstd::sync::Mutex;
+use kstd::sync::{Mutex, RwLock};
 use x86_64::instructions::interrupts::without_interrupts;
 
 use crate::scheduler::reschedule;
@@ -21,7 +18,7 @@ use crate::{
 };
 use kstd::collections::deltaq::DeltaQueue;
 
-type TaskHandle = Arc<RefCell<Task>>;
+type TaskHandle = Arc<RwLock<Task>>;
 
 pub struct Scheduler {
     current_task: TaskHandle,
@@ -44,10 +41,10 @@ impl !Default for Scheduler {}
 impl Scheduler {
     pub fn new() -> Self {
         let current_tid = Tid::new();
-        let current_task = Arc::new(RefCell::new(Task::new_for_current(current_tid)));
+        let current_task = Arc::new(RwLock::new(Task::new_for_current(current_tid)));
 
         let tid = Tid::new();
-        let idle_task = Arc::new(RefCell::new(Task::new_idle(tid)));
+        let idle_task = Arc::new(RwLock::new(Task::new_idle(tid)));
 
         let tasks = Mutex::new(BTreeMap::new());
         tasks.lock().insert(tid, idle_task.clone());
@@ -76,9 +73,9 @@ impl Scheduler {
         without_interrupts(|| {
             // Create the new task.
             let tid = Tid::new();
-            let task = Arc::new(RefCell::new(Task::new(tid, ProcessStatus::Ready)));
+            let task = Arc::new(RwLock::new(Task::new(tid, ProcessStatus::Ready)));
 
-            task.borrow_mut().allocate_stack(func);
+            task.write().allocate_stack(func);
 
             // Add it to the task lists.
             self.ready_queue.lock().push_back(task.clone());
@@ -91,7 +88,7 @@ impl Scheduler {
 
     pub fn cpu_time(&mut self) -> Duration {
         // TODO: currently, it feels like the interrupts occur in 100ms intervals, so use that, but it's probably inaccurate
-        Duration::from_millis(self.current_task.borrow().ticks * 100)
+        Duration::from_millis(self.current_task.read().ticks * 100)
     }
 
     pub fn join(&mut self, tid: Tid) {
@@ -113,9 +110,9 @@ impl Scheduler {
         without_interrupts(|| {
             // serial_println!(
             //     "marking task {} to be finished",
-            //     self.current_task.borrow().tid
+            //     self.current_task.read().tid
             // );
-            self.current_task.borrow_mut().status = ProcessStatus::Finished;
+            self.current_task.write().status = ProcessStatus::Finished;
             self.task_count.fetch_sub(1, Ordering::SeqCst);
         });
 
@@ -125,7 +122,7 @@ impl Scheduler {
 
     pub fn sleep(&mut self, duration: Duration) {
         without_interrupts(|| {
-            let mut current_task = self.current_task.borrow_mut();
+            let mut current_task = self.current_task.write();
             debug!(
                 "put task {} to sleep for {}ms",
                 current_task.tid,
@@ -140,7 +137,7 @@ impl Scheduler {
 
     /// Returns the task id (tid) of the currently running task.
     pub fn get_current_tid(&self) -> Tid {
-        without_interrupts(|| self.current_task.borrow().tid)
+        without_interrupts(|| self.current_task.read().tid)
     }
 
     pub fn total_ticks(&self) -> u64 {
@@ -171,7 +168,7 @@ impl Scheduler {
             let current_status: ProcessStatus;
             let current_sleep_ticks: usize;
             {
-                let mut borrowed = self.current_task.borrow_mut();
+                let mut borrowed = self.current_task.write();
                 current_tid = borrowed.tid;
                 current_stack_pointer = &mut borrowed.last_stack_pointer as *mut usize;
                 current_status = borrowed.status;
@@ -209,17 +206,17 @@ impl Scheduler {
             }
 
             if let Some(task) = next_task {
-                task.borrow_mut().ticks += 1; // increment the tick count by 1
+                task.write().ticks += 1; // increment the tick count by 1
 
                 // extract the Tid and the stack pointer from the next task
                 let (new_id, new_stack_pointer) = {
-                    let mut borrowed = task.borrow_mut();
+                    let mut borrowed = task.write();
                     borrowed.status = ProcessStatus::Running;
                     (borrowed.tid, borrowed.last_stack_pointer)
                 };
 
                 // if the next task is the idle task, do nothing
-                if let Some(tid) = self.idle_task.as_ref().map(|t| t.borrow().tid) {
+                if let Some(tid) = self.idle_task.as_ref().map(|t| t.read().tid) {
                     if tid == new_id {
                         /*
                         We don't need to hlt() here.
@@ -233,11 +230,11 @@ impl Scheduler {
 
                 if current_status == ProcessStatus::Running {
                     // info!("task {} is ready", current_tid);
-                    self.current_task.borrow_mut().status = ProcessStatus::Ready;
+                    self.current_task.write().status = ProcessStatus::Ready;
                     self.ready_queue.lock().push_back(self.current_task.clone());
                 } else if current_status == ProcessStatus::Finished {
                     // info!("task {} is finished", current_tid);
-                    self.current_task.borrow_mut().status = ProcessStatus::Invalid;
+                    self.current_task.write().status = ProcessStatus::Invalid;
                     // release the task later, because the stack is required
                     // to call the function "switch"
                     self.finished_tasks.lock().push_back(current_tid);
