@@ -193,7 +193,14 @@ impl Scheduler {
                 let mut guard = self.sleeping_tasks.lock();
                 match guard.front_mut() {
                     None => {}
-                    Some(n) => n.value -= 1,
+                    Some(n) => {
+                        // Only decrement if the front value is not already zero.
+                        // If it is, then the task is already ready to be scheduled.
+                        // This shifts the whole queue back by one tick.
+                        if n.value >= 0 {
+                            n.value -= 1
+                        }
+                    }
                 };
             }
 
