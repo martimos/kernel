@@ -1,7 +1,5 @@
-use alloc::{
-    collections::{BTreeMap, VecDeque},
-    rc::Rc,
-};
+use alloc::collections::{BTreeMap, VecDeque};
+use alloc::sync::Arc;
 use core::time::Duration;
 use core::{
     cell::RefCell,
@@ -23,7 +21,7 @@ use crate::{
 };
 use kstd::collections::deltaq::DeltaQueue;
 
-type TaskHandle = Rc<RefCell<Task>>;
+type TaskHandle = Arc<RefCell<Task>>;
 
 pub struct Scheduler {
     current_task: TaskHandle,
@@ -46,10 +44,10 @@ impl !Default for Scheduler {}
 impl Scheduler {
     pub fn new() -> Self {
         let current_tid = Tid::new();
-        let current_task = Rc::new(RefCell::new(Task::new_for_current(current_tid)));
+        let current_task = Arc::new(RefCell::new(Task::new_for_current(current_tid)));
 
         let tid = Tid::new();
-        let idle_task = Rc::new(RefCell::new(Task::new_idle(tid)));
+        let idle_task = Arc::new(RefCell::new(Task::new_idle(tid)));
 
         let tasks = Mutex::new(BTreeMap::new());
         tasks.lock().insert(tid, idle_task.clone());
@@ -78,7 +76,7 @@ impl Scheduler {
         without_interrupts(|| {
             // Create the new task.
             let tid = Tid::new();
-            let task = Rc::new(RefCell::new(Task::new(tid, ProcessStatus::Ready)));
+            let task = Arc::new(RefCell::new(Task::new(tid, ProcessStatus::Ready)));
 
             task.borrow_mut().allocate_stack(func);
 

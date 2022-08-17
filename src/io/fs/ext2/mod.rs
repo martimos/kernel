@@ -1,4 +1,5 @@
 use alloc::rc::Rc;
+use alloc::string::ToString;
 use alloc::vec;
 
 use kstd::sync::RwLock;
@@ -50,6 +51,10 @@ where
     D: BlockDevice,
 {
     pub fn new(device: D) -> Result<Self> {
+        Self::new_with_named_root(device, "/")
+    }
+
+    pub fn new_with_named_root(device: D, root_name: &str) -> Result<Self> {
         let superblock = {
             let mut superblock_buf = vec![0_u8; 1024];
             device.read_at(1024, &mut superblock_buf)?;
@@ -83,7 +88,11 @@ where
         }));
 
         let root_inode = inner.read().read_inode(2_u32.try_into().unwrap()).unwrap();
-        let inner_root_inode = INode::new_dir(Ext2Dir::new(inner.clone(), root_inode, "/".into()));
+        let inner_root_inode = INode::new_dir(Ext2Dir::new(
+            inner.clone(),
+            root_inode,
+            root_name.to_string(),
+        ));
         inner.write().root = Some(inner_root_inode);
 
         Ok(Self { inner })

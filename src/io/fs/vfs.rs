@@ -2,9 +2,9 @@ use alloc::borrow::ToOwned;
 
 use kstd::sync::{Mutex, Once};
 
-use crate::info;
 use crate::io::fs::rootdir::RootDir;
 use crate::io::fs::{IFileHandle, INode, INodeBase, Stat};
+use crate::{debug, info};
 use kstd::io::{Error, Result};
 use kstd::path::components::Component;
 use kstd::path::Path;
@@ -22,8 +22,10 @@ fn get_vfs() -> &'static Mutex<Vfs> {
     unsafe { VFS.as_ref().expect("vfs is not initialized") }
 }
 
+/// Attempts to locate the inode referenced by the given path, and mount the given node
+/// as a child of the inode.
 pub fn mount(p: &dyn AsRef<Path>, node: INode) -> Result<()> {
-    info!("mounting inode '{}' in '{}'", node.name(), p.as_ref());
+    debug!("mounting inode '{}' in '{}'", node.name(), p.as_ref());
     get_vfs().lock().mount(p, node)
 }
 

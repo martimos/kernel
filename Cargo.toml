@@ -37,7 +37,7 @@ default-features = false
 features = ["regular", "size_14"]
 
 [dependencies.futures-util]
-version = "0.3.21"
+version = "0.3.23"
 default-features = false
 features = ["alloc"]
 

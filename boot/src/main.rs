@@ -69,6 +69,8 @@ fn main() {
             "-s", // -gdb tcp::1234
             "-monitor",
             "telnet::45454,server,nowait",
+            "-drive",
+            "file=disk/test_ext2.img,if=ide,format=raw",
         ];
         if args.fullscreen {
             run_args.push("-full-screen");

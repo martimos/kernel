@@ -6,18 +6,13 @@
 
 extern crate alloc;
 
-use alloc::string::ToString;
 use core::panic::PanicInfo;
 
 use bootloader::{entry_point, BootInfo};
 
-use martim::driver::ide::IDEController;
-use martim::driver::pci::classes::{MassStorageSubClass, PCIDeviceClass};
-use martim::driver::pci::header::PCIStandardHeaderDevice;
-use martim::driver::{pci, Peripherals};
-use martim::io::fs::devfs::DevFs;
-use martim::io::fs::memfs::MemFs;
-use martim::io::fs::{vfs, Fs};
+use martim::driver::Peripherals;
+use martim::io::fs::vfs;
+use martim::vfs_setup::init_vfs;
 use martim::{debug, hlt_loop, info};
 use martim::{
     scheduler, serial_print, serial_println,
@@ -101,54 +96,13 @@ fn main() {
     );
 
     scheduler::spawn(just_panic).unwrap();
-    scheduler::spawn(vfs_setup).unwrap();
-    scheduler::spawn(ide_drives).unwrap();
+    scheduler::spawn(init_vfs).unwrap();
     scheduler::spawn(example_tasks).unwrap();
 
     debug!(
         "kernel task with tid {} is still running",
         scheduler::get_current_tid()
     );
-}
-
-extern "C" fn vfs_setup() {
-    let devfs = DevFs::new("dev".to_string());
-    vfs::mount(&"/", devfs.root_inode()).unwrap();
-
-    let memfs = MemFs::new("mem".to_string());
-    vfs::mount(&"/dev", memfs.root_inode()).unwrap();
-
-    vfs::find_inode(&"/dev/serial")
-        .expect("/dev/serial not found")
-        .file()
-        .expect("/dev/serial is not a file")
-        .write()
-        .write_at(
-            0,
-            b"This was written to serial port via the file /dev/serial!\n",
-        )
-        .expect("failed to write to /dev/serial");
-}
-
-extern "C" fn ide_drives() {
-    let ide_controller = pci::devices()
-        .iter()
-        .find(|dev| {
-            dev.class() == PCIDeviceClass::MassStorageController(MassStorageSubClass::IDEController)
-        })
-        .cloned()
-        .map(|d| PCIStandardHeaderDevice::new(d).unwrap())
-        .map(Into::<IDEController>::into)
-        .expect("need an IDE controller for this to work");
-
-    for drive in ide_controller.drives().iter().filter(|d| d.exists()) {
-        vga_println!(
-            "found IDE drive at ctrlbase={:#X} iobase={:#X} drive={:#X}",
-            drive.ctrlbase(),
-            drive.iobase(),
-            drive.drive_num()
-        );
-    }
 }
 
 async fn async_number() -> u32 {

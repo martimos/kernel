@@ -39,33 +39,61 @@ pub struct Superblock {
 
 impl Superblock {
     pub fn decode(source: &mut impl Read<u8>) -> Result<Self> {
+        let num_inodes = read_le_u32!(source);
+        let num_blocks = read_le_u32!(source);
+        let num_superuser_reserved_blocks = read_le_u32!(source);
+        let num_unallocated_blocks = read_le_u32!(source);
+        let num_unallocated_inodes = read_le_u32!(source);
+        let superblock_block_number = read_le_u32!(source);
+        let log2_block_size = read_le_u32!(source);
+        let block_size = u32::checked_shl(1024, log2_block_size).ok_or(Error::DecodeError)?;
+        let log2_fragment_size = read_le_u32!(source);
+        let fragment_size = u32::checked_shl(1024, log2_fragment_size).ok_or(Error::DecodeError)?;
+        let blocks_per_group = read_le_u32!(source);
+        let fragments_per_group = read_le_u32!(source);
+        let inodes_per_group = read_le_u32!(source);
+        let last_mount_time = read_le_u32!(source);
+        let last_written_time = read_le_u32!(source);
+        let mounts_since_fsck = read_le_u16!(source);
+        let mounts_allowed_before_fsck = read_le_u16!(source);
+        let magic_number = read_le_u16!(source);
+        let state = State::from_bits_truncate(read_le_u16!(source));
+        let error_policy = ErrorPolicy::from_bits_truncate(read_le_u16!(source));
+        let version_minor = read_le_u16!(source);
+        let last_fsck = read_le_u32!(source);
+        let fsck_force_interval = read_le_u32!(source);
+        let os_id = read_le_u32!(source);
+        let version_major = read_le_u32!(source);
+        let uid_for_reserved_blocks = read_le_u16!(source);
+        let gid_for_reserved_blocks = read_le_u16!(source);
+        let extended = None;
         let mut s = Self {
-            num_inodes: read_le_u32!(source),
-            num_blocks: read_le_u32!(source),
-            num_superuser_reserved_blocks: read_le_u32!(source),
-            num_unallocated_blocks: read_le_u32!(source),
-            num_unallocated_inodes: read_le_u32!(source),
-            superblock_block_number: read_le_u32!(source),
-            block_size: 1024 << read_le_u32!(source),
-            fragment_size: 1024 << read_le_u32!(source),
-            blocks_per_group: read_le_u32!(source),
-            fragments_per_group: read_le_u32!(source),
-            inodes_per_group: read_le_u32!(source),
-            last_mount_time: read_le_u32!(source),
-            last_written_time: read_le_u32!(source),
-            mounts_since_fsck: read_le_u16!(source),
-            mounts_allowed_before_fsck: read_le_u16!(source),
-            magic_number: read_le_u16!(source),
-            state: State::from_bits_truncate(read_le_u16!(source)),
-            error_policy: ErrorPolicy::from_bits_truncate(read_le_u16!(source)),
-            version_minor: read_le_u16!(source),
-            last_fsck: read_le_u32!(source),
-            fsck_force_interval: read_le_u32!(source),
-            os_id: read_le_u32!(source),
-            version_major: read_le_u32!(source),
-            uid_for_reserved_blocks: read_le_u16!(source),
-            gid_for_reserved_blocks: read_le_u16!(source),
-            extended: None,
+            num_inodes,
+            num_blocks,
+            num_superuser_reserved_blocks,
+            num_unallocated_blocks,
+            num_unallocated_inodes,
+            superblock_block_number,
+            block_size,
+            fragment_size,
+            blocks_per_group,
+            fragments_per_group,
+            inodes_per_group,
+            last_mount_time,
+            last_written_time,
+            mounts_since_fsck,
+            mounts_allowed_before_fsck,
+            magic_number,
+            state,
+            error_policy,
+            version_minor,
+            last_fsck,
+            fsck_force_interval,
+            os_id,
+            version_major,
+            uid_for_reserved_blocks,
+            gid_for_reserved_blocks,
+            extended,
         };
         if s.magic_number != 0xEF53 {
             return Err(Error::InvalidMagicNumber);

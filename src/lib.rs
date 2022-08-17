@@ -31,6 +31,7 @@ pub mod scheduler;
 pub mod serial;
 pub mod syscall;
 pub mod task;
+pub mod vfs_setup;
 pub mod vga_buffer;
 
 pub fn init() {

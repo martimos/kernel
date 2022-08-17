@@ -1,6 +1,6 @@
 use alloc::format;
 use alloc::sync::Arc;
-use core::fmt::{Debug, Formatter};
+use core::fmt::{Debug, Display, Formatter};
 
 use kstd::sync::Mutex;
 use x86_64::instructions::interrupts::without_interrupts;
@@ -13,6 +13,8 @@ use kstd::io::Result;
 pub struct IDEDrive {
     channel: Arc<Mutex<IDEChannel>>,
 
+    ctrlbase: u16,
+    iobase: u16,
     drive: u8,
 
     exists: bool,
@@ -23,6 +25,16 @@ pub struct IDEDrive {
     supported_udma_modes: UDMAMode,
     active_udma_mode: UDMAMode,
     sector_count: u64,
+}
+
+impl Display for IDEDrive {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        write!(
+            f,
+            "IDEDrive[ctrlbase={:#X} iobase={:#X} drive={:#X}]",
+            self.ctrlbase, self.iobase, self.drive
+        )
+    }
 }
 
 impl Debug for IDEDrive {
@@ -40,8 +52,12 @@ impl Debug for IDEDrive {
 
 impl IDEDrive {
     pub fn new(channel: Arc<Mutex<IDEChannel>>, drive: u8) -> Self {
+        let ctrlbase = channel.lock().ctrlbase();
+        let iobase = channel.lock().iobase();
         let mut drive = IDEDrive {
             channel,
+            ctrlbase,
+            iobase,
             drive,
             exists: false,
             identify_sector: [0; 256],
