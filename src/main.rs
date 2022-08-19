@@ -51,8 +51,8 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     martim::init();
     martim::memory::init_heap(boot_info);
     scheduler::init();
-    vfs::init();
     let _ = Peripherals::boot_time(); // initialize boot time
+    vfs::init();
     serial_println!("done");
 
     vga_clear!();
