@@ -2,7 +2,7 @@ use alloc::string::String;
 
 use crate::io::fs::devfs::DevFsNodeBase;
 use crate::io::fs::{ICharacterDeviceFile, INodeBase, INodeNum, Stat};
-use kstd::io::{Error, Result};
+use kstd::io::Result;
 
 pub struct Serial {
     base: DevFsNodeBase,
@@ -39,7 +39,7 @@ impl INodeBase for Serial {
 impl ICharacterDeviceFile for Serial {
     fn read_at(&self, _: u64, buf: &mut dyn AsMut<[u8]>) -> Result<usize> {
         let mut serial = crate::serial::SERIAL1.lock();
-        let mut buffer = buf.as_mut();
+        let buffer = buf.as_mut();
         buffer.iter_mut().for_each(|b| *b = serial.receive());
         Ok(buffer.len())
     }
