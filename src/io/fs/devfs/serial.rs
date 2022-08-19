@@ -47,6 +47,6 @@ impl ICharacterDeviceFile for Serial {
         for &b in buffer {
             serial.send(b);
         }
-        Ok(buf.as_ref().len())
+        Ok(buffer.len())
     }
 }
