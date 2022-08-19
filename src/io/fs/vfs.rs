@@ -1,4 +1,5 @@
 use alloc::borrow::ToOwned;
+use alloc::vec::Vec;
 
 use kstd::sync::{Mutex, Once};
 
@@ -27,6 +28,12 @@ fn get_vfs() -> &'static Mutex<Vfs> {
 pub fn mount(p: &dyn AsRef<Path>, node: INode) -> Result<()> {
     debug!("mounting inode '{}' in '{}'", node.name(), p.as_ref());
     get_vfs().lock().mount(p, node)
+}
+
+/// Locates the given node and attempts to read it as regular file.
+/// Will return an error if the node is not a regular file.
+pub fn read_file_node(p: &dyn AsRef<Path>) -> Result<Vec<u8>> {
+    get_vfs().lock().read_file_node(p)
 }
 
 pub fn walk_tree<F>(p: &dyn AsRef<Path>, f: F) -> Result<()>
@@ -72,6 +79,15 @@ impl Vfs {
                     ..Default::default()
                 },
             )),
+        }
+    }
+
+    fn read_file_node(&self, p: &dyn AsRef<Path>) -> Result<Vec<u8>> {
+        let node = self.find_inode(p)?;
+        match node {
+            INode::File(f) => f.read().read_full(),
+            INode::Dir(_) => Err(Error::IsDir),
+            INode::BlockDevice(_) => Err(Error::InvalidArgument),
         }
     }
 
@@ -166,7 +182,7 @@ mod tests {
     use crate::io::fs::memfs::MemFs;
     use crate::io::fs::perm::Permission;
     use crate::io::fs::rootdir::RootDir;
-    use crate::io::fs::{CreateNodeType, Fs, IDir};
+    use crate::io::fs::{CreateNodeType, Fs, IDir, INodeBase};
 
     use super::*;
 

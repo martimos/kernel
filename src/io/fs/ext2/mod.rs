@@ -173,6 +173,10 @@ where
     }
 
     fn get_block_address(&self, block: u32) -> u64 {
+        assert_ne!(
+            block, 0,
+            "a block address of 0 means the address is invalid"
+        );
         (1024 + (block - 1) * self.superblock.block_size) as u64
     }
 }

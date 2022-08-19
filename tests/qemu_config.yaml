@@ -11,4 +11,4 @@ tests:
   ide:
     - '-drive file=tests/resources/disk.img,if=ide,format=raw'
   ext2:
-    - '-drive file=tests/resources/img.ext2,if=ide,format=raw'
+    - '-drive file=tests/resources/ext2_fs.img,if=ide,format=raw'
