@@ -1,7 +1,7 @@
 use alloc::string::String;
 
 use crate::io::fs::devfs::DevFsNodeBase;
-use crate::io::fs::{IFile, INodeBase, INodeNum, Stat};
+use crate::io::fs::{ICharacterDeviceFile, INodeBase, INodeNum, Stat};
 use kstd::io::{Error, Result};
 
 pub struct Serial {
@@ -36,15 +36,7 @@ impl INodeBase for Serial {
     }
 }
 
-impl IFile for Serial {
-    fn size(&self) -> u64 {
-        0
-    }
-
-    fn truncate(&mut self, _: u64) -> Result<()> {
-        Ok(())
-    }
-
+impl ICharacterDeviceFile for Serial {
     fn read_at(&self, _: u64, _: &mut dyn AsMut<[u8]>) -> Result<usize> {
         Err(Error::NotImplemented)
     }

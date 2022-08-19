@@ -64,12 +64,14 @@ pub struct Stat {
 }
 
 pub type IBlockDeviceHandle = Arc<RwLock<dyn IBlockDeviceFile>>;
+pub type ICharacterDeviceHandle = Arc<RwLock<dyn ICharacterDeviceFile>>;
 pub type IDirHandle = Arc<RwLock<dyn IDir>>;
 pub type IFileHandle = Arc<RwLock<dyn IFile>>;
 
 #[derive(Clone)]
 pub enum INode {
     BlockDevice(IBlockDeviceHandle),
+    CharacterDevice(ICharacterDeviceHandle),
     Dir(IDirHandle),
     File(IFileHandle),
 }
@@ -93,6 +95,13 @@ impl INode {
         F: 'static + IBlockDeviceFile,
     {
         Self::BlockDevice(Arc::new(RwLock::new(f)))
+    }
+
+    pub fn new_character_device_file<F>(f: F) -> Self
+    where
+        F: 'static + ICharacterDeviceFile,
+    {
+        Self::CharacterDevice(Arc::new(RwLock::new(f)))
     }
 
     pub fn new_dir<D>(d: D) -> Self
@@ -134,6 +143,10 @@ impl INode {
     pub fn is_block_device_file(&self) -> bool {
         matches!(self, INode::BlockDevice(_))
     }
+
+    pub fn is_character_device_file(&self) -> bool {
+        matches!(self, INode::CharacterDevice(_))
+    }
 }
 
 impl Display for INode {
@@ -151,6 +164,7 @@ impl Debug for INode {
                     INode::File(_) => "File",
                     INode::Dir(_) => "Dir",
                     INode::BlockDevice(_) => "BlockDevice",
+                    INode::CharacterDevice(_) => "CharacterDevice",
                 },
             )
             .field("inode_num", &self.num())
@@ -165,6 +179,7 @@ impl INodeBase for INode {
             INode::File(file) => file.read().num(),
             INode::Dir(dir) => dir.read().num(),
             INode::BlockDevice(dev) => dev.read().num(),
+            INode::CharacterDevice(dev) => dev.read().num(),
         }
     }
 
@@ -173,6 +188,7 @@ impl INodeBase for INode {
             INode::File(file) => file.read().name(),
             INode::Dir(dir) => dir.read().name(),
             INode::BlockDevice(dev) => dev.read().name(),
+            INode::CharacterDevice(dev) => dev.read().name(),
         }
     }
 
@@ -181,6 +197,7 @@ impl INodeBase for INode {
             INode::File(file) => file.read().stat(),
             INode::Dir(dir) => dir.read().stat(),
             INode::BlockDevice(dev) => dev.read().stat(),
+            INode::CharacterDevice(dev) => dev.read().stat(),
         }
     }
 }
@@ -192,6 +209,12 @@ pub trait IBlockDeviceFile: INodeBase {
 
     fn read_block(&self, block: u64, buf: &mut dyn AsMut<[u8]>) -> Result<()>;
 
+    fn read_at(&self, offset: u64, buf: &mut dyn AsMut<[u8]>) -> Result<usize>;
+
+    fn write_at(&mut self, offset: u64, buf: &dyn AsRef<[u8]>) -> Result<usize>;
+}
+
+pub trait ICharacterDeviceFile: INodeBase {
     fn read_at(&self, offset: u64, buf: &mut dyn AsMut<[u8]>) -> Result<usize>;
 
     fn write_at(&mut self, offset: u64, buf: &dyn AsRef<[u8]>) -> Result<usize>;

@@ -29,6 +29,7 @@ pub extern "C" fn init_vfs() {
                 INode::File(f) => format!("file, {} bytes", f.read().size()),
                 INode::Dir(_) => "dir".to_string(),
                 INode::BlockDevice(_) => "block device".to_string(),
+                INode::CharacterDevice(_) => "character device".to_string(),
             }
         );
     }) {

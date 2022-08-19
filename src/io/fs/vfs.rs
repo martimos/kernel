@@ -4,7 +4,9 @@ use alloc::vec::Vec;
 use kstd::sync::{Mutex, Once};
 
 use crate::io::fs::rootdir::RootDir;
-use crate::io::fs::{IBlockDeviceHandle, IFileHandle, INode, INodeBase, Stat};
+use crate::io::fs::{
+    IBlockDeviceHandle, ICharacterDeviceHandle, IFileHandle, INode, INodeBase, Stat,
+};
 use crate::{debug, info};
 use kstd::io::{Error, Result};
 use kstd::path::components::Component;
@@ -54,6 +56,7 @@ pub fn root() -> INode {
 pub enum OpenResult {
     File(IFileHandle),
     BlockDevice(IBlockDeviceHandle),
+    CharacterDevice(ICharacterDeviceHandle),
 }
 
 pub fn open(p: &dyn AsRef<Path>) -> Result<OpenResult> {
@@ -62,6 +65,7 @@ pub fn open(p: &dyn AsRef<Path>) -> Result<OpenResult> {
         INode::File(f) => Ok(OpenResult::File(f)),
         INode::Dir(_) => Err(Error::IsDir),
         INode::BlockDevice(f) => Ok(OpenResult::BlockDevice(f)),
+        INode::CharacterDevice(f) => Ok(OpenResult::CharacterDevice(f)),
     }
 }
 
@@ -88,6 +92,7 @@ impl Vfs {
             INode::File(f) => f.read().read_full(),
             INode::Dir(_) => Err(Error::IsDir),
             INode::BlockDevice(_) => Err(Error::InvalidArgument),
+            INode::CharacterDevice(_) => Err(Error::InvalidArgument),
         }
     }
 
@@ -106,6 +111,7 @@ impl Vfs {
         f(current_depth, node.clone());
         match node {
             INode::BlockDevice(_) => {}
+            INode::CharacterDevice(_) => {}
             INode::Dir(dir) => {
                 for child in dir.read().children()?.into_iter() {
                     self.walk_node(current_depth + 1, child.clone(), f)?;
@@ -125,6 +131,7 @@ impl Vfs {
             INode::File(_) => return Err(Error::IsFile),
             INode::Dir(d) => d,
             INode::BlockDevice(_) => return Err(Error::IsFile),
+            INode::CharacterDevice(_) => return Err(Error::IsFile),
         };
         let mut guard = dir.write();
         guard.mount(node)
@@ -161,6 +168,7 @@ impl Vfs {
                         INode::File(_) => return Err(Error::NotFound),
                         INode::Dir(d) => d,
                         INode::BlockDevice(_) => return Err(Error::NotFound),
+                        INode::CharacterDevice(_) => return Err(Error::NotFound),
                     };
                     let next_element = current_dir.read().lookup(&v);
                     let new_current = match next_element {

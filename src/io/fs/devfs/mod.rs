@@ -26,7 +26,8 @@ impl DevFs {
         let mut root = DevDir::new(next(), root_node_name);
         root.mount(INode::new_file(Zero::new(next()))).unwrap();
         root.mount(INode::new_file(Null::new(next()))).unwrap();
-        root.mount(INode::new_file(Serial::new(next()))).unwrap();
+        root.mount(INode::new_character_device_file(Serial::new(next())))
+            .unwrap();
 
         Self {
             root: INode::new_dir(root),
