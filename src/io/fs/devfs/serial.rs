@@ -37,8 +37,11 @@ impl INodeBase for Serial {
 }
 
 impl ICharacterDeviceFile for Serial {
-    fn read_at(&self, _: u64, _: &mut dyn AsMut<[u8]>) -> Result<usize> {
-        Err(Error::NotImplemented)
+    fn read_at(&self, _: u64, buf: &mut dyn AsMut<[u8]>) -> Result<usize> {
+        let mut serial = crate::serial::SERIAL1.lock();
+        let mut buffer = buf.as_mut();
+        buffer.iter_mut().for_each(|b| *b = serial.receive());
+        Ok(buffer.len())
     }
 
     fn write_at(&mut self, _: u64, buf: &dyn AsRef<[u8]>) -> Result<usize> {
