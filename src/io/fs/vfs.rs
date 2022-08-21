@@ -4,9 +4,9 @@ use alloc::vec::Vec;
 use kstd::sync::{Mutex, Once};
 
 use crate::io::fs::rootdir::RootDir;
-use crate::io::fs::{
-    IBlockDeviceHandle, ICharacterDeviceHandle, IFileHandle, INode, INodeBase, Stat,
-};
+#[cfg(debug_assertions)]
+use crate::io::fs::INodeBase;
+use crate::io::fs::{IBlockDeviceHandle, ICharacterDeviceHandle, IFileHandle, INode, Stat};
 use crate::{debug, info};
 use kstd::io::{Error, Result};
 use kstd::path::components::Component;

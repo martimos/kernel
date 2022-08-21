@@ -108,7 +108,8 @@ unsafe impl GlobalAlloc for Locked<FixedSizeBlockAllocator> {
                 allocator.list_heads[index] = Some(&mut *new_node_ptr);
             }
             None => {
-                let ptr = NonNull::new(ptr).unwrap();
+                let ptr = NonNull::new(ptr)
+                    .unwrap_or_else(|| panic!("invalid pointer {:p} passed to deallocate", ptr));
                 allocator.fallback_allocator.deallocate(ptr, layout);
             }
         }

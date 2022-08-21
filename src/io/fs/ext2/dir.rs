@@ -1,5 +1,5 @@
-use alloc::rc::Rc;
 use alloc::string::String;
+use alloc::sync::Arc;
 use alloc::vec;
 use alloc::vec::Vec;
 
@@ -29,7 +29,7 @@ impl<D> Ext2Dir<D>
 where
     D: 'static + BlockDevice,
 {
-    pub fn new(fs: Rc<RwLock<Inner<D>>>, ext2_inode: Ext2INode, name: String) -> Self {
+    pub fn new(fs: Arc<RwLock<Inner<D>>>, ext2_inode: Ext2INode, name: String) -> Self {
         if ext2_inode.node_type != Ext2INodeType::Directory {
             panic!(
                 "root inode is not a directory, but a {:?}",

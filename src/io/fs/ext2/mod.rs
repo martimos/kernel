@@ -1,5 +1,5 @@
-use alloc::rc::Rc;
 use alloc::string::ToString;
+use alloc::sync::Arc;
 use alloc::vec;
 
 use kstd::sync::RwLock;
@@ -44,7 +44,7 @@ pub struct Ext2Fs<D>
 where
     D: 'static + BlockDevice,
 {
-    inner: Rc<RwLock<Inner<D>>>,
+    inner: Arc<RwLock<Inner<D>>>,
 }
 
 impl<D> Ext2Fs<D>
@@ -81,7 +81,7 @@ where
             BlockGroupDescriptorTable::decode(&mut cursor, number_of_block_groups as usize)?
         };
 
-        let inner = Rc::new(RwLock::new(Inner {
+        let inner = Arc::new(RwLock::new(Inner {
             device,
             superblock,
             block_group_descriptor_table,

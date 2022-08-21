@@ -1,5 +1,5 @@
-use alloc::rc::Rc;
 use alloc::string::String;
+use alloc::sync::Arc;
 
 use kstd::io::block::BlockDevice;
 use kstd::io::Result;
@@ -21,7 +21,7 @@ impl<D> Ext2Symlink<D>
 where
     D: 'static + BlockDevice,
 {
-    pub fn new(fs: Rc<RwLock<Inner<D>>>, ext2_inode: Ext2INode, name: String) -> Self {
+    pub fn new(fs: Arc<RwLock<Inner<D>>>, ext2_inode: Ext2INode, name: String) -> Self {
         if ext2_inode.node_type != Ext2INodeType::SymbolicLink {
             panic!(
                 "root inode is not a symlink, but a {:?}",

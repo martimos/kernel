@@ -1,5 +1,5 @@
-use alloc::rc::Rc;
 use alloc::string::String;
+use alloc::sync::Arc;
 
 use kstd::sync::RwLock;
 
@@ -11,7 +11,7 @@ pub struct Ext2NodeBase<D>
 where
     D: BlockDevice,
 {
-    fs: Rc<RwLock<Inner<D>>>,
+    fs: Arc<RwLock<Inner<D>>>,
     inode: Ext2INode,
     name: String,
 }
@@ -20,11 +20,11 @@ impl<D> Ext2NodeBase<D>
 where
     D: BlockDevice,
 {
-    pub fn new(fs: Rc<RwLock<Inner<D>>>, inode: Ext2INode, name: String) -> Self {
+    pub fn new(fs: Arc<RwLock<Inner<D>>>, inode: Ext2INode, name: String) -> Self {
         Self { fs, inode, name }
     }
 
-    pub fn fs(&self) -> &Rc<RwLock<Inner<D>>> {
+    pub fn fs(&self) -> &Arc<RwLock<Inner<D>>> {
         &self.fs
     }
 
