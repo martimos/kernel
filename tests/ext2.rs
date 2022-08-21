@@ -40,7 +40,7 @@ fn root_node() -> IDirHandle {
     // the path is not only used here, use search and replace on this file if you want to change this
     vfs::find_inode(&"/mnt/block_device0")
         .expect("root node not found at /mnt/ide1")
-        .dir()
+        .as_dir()
         .expect("mount root node is not a directory")
 }
 
@@ -51,7 +51,7 @@ fn test_filenames() {
         .read()
         .lookup(&"filenames")
         .expect("not found")
-        .dir()
+        .as_dir()
         .expect("not a directory");
     let guard = filenames_node.read();
     for filename in &[
@@ -144,7 +144,7 @@ fn test_filecontent_4kib() {
 fn test_filecontent_64kib() {
     let file = vfs::find_inode(&"/mnt/block_device0/filecontent/64KiB_bytes.dat")
         .expect("not found")
-        .file()
+        .as_file()
         .expect("not a file");
     let guard = file.read();
 
@@ -159,7 +159,7 @@ fn test_filecontent_64kib() {
 fn test_filecontent_256kib() {
     let file = vfs::find_inode(&"/mnt/block_device0/filecontent/256KiB_bytes.dat")
         .expect("not found")
-        .file()
+        .as_file()
         .expect("not a file");
     let guard = file.read();
 
@@ -168,4 +168,34 @@ fn test_filecontent_256kib() {
         assert_eq!(buf.len(), guard.read_at(i * 1024, &mut buf).unwrap());
         assert_eq!(&[120_u8; 1024], &buf);
     }
+}
+
+#[test_case]
+fn test_symlinks_same_level() {
+    let root = root_node();
+    let symlinks_node = root
+        .read()
+        .lookup(&"symlinks")
+        .expect("not found")
+        .as_dir()
+        .expect("not a directory");
+    macro_rules! assert_symlink_points_to {
+        ($target:expr, $symlink_path:expr) => {
+            assert_eq!(
+                $target,
+                symlinks_node
+                    .read()
+                    .lookup(&$symlink_path)
+                    .expect("not found")
+                    .as_symlink()
+                    .expect("not a symlink")
+                    .read()
+                    .target()
+                    .unwrap()
+            );
+        };
+    }
+    assert_symlink_points_to!("target_file", "symlink_file");
+    assert_symlink_points_to!("target_folder", "symlink_folder");
+    assert_symlink_points_to!("target_folder/cough.txt", "symlink_folder_file");
 }

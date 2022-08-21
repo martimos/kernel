@@ -312,12 +312,12 @@ mod tests {
         let fs = MemFs::new("mem".into());
         let file = fs
             .root_inode()
-            .dir()
+            .as_dir()
             .expect("root must be a dir")
             .write()
             .create(&"file.txt", CreateNodeType::File, Permission::user_rwx())
             .expect("creating a file should not fail")
-            .file()
+            .as_file()
             .expect("created inode must be a file");
         assert_eq!(0, file.read().size());
 

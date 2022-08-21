@@ -59,6 +59,9 @@ pub enum OpenResult {
     CharacterDevice(ICharacterDeviceHandle),
 }
 
+/// Attempts to open the given path and return the result as a handle.
+/// Symlinks can't be opened and will be dereferenced. If that's not possible, an
+/// Err value will be returned.
 pub fn open(p: &dyn AsRef<Path>) -> Result<OpenResult> {
     let node = find_inode(p)?;
     match node {
@@ -66,6 +69,11 @@ pub fn open(p: &dyn AsRef<Path>) -> Result<OpenResult> {
         INode::Dir(_) => Err(Error::IsDir),
         INode::BlockDevice(f) => Ok(OpenResult::BlockDevice(f)),
         INode::CharacterDevice(f) => Ok(OpenResult::CharacterDevice(f)),
+        INode::Symlink(symlink) => {
+            let guard = symlink.read();
+            let target = guard.target_path()?;
+            open(&target.as_path()) // recursion takes care of symlink chains
+        }
     }
 }
 
@@ -93,6 +101,11 @@ impl Vfs {
             INode::Dir(_) => Err(Error::IsDir),
             INode::BlockDevice(_) => Err(Error::InvalidArgument),
             INode::CharacterDevice(_) => Err(Error::InvalidArgument),
+            INode::Symlink(link) => {
+                let guard = link.read();
+                let target = guard.target_path()?;
+                self.read_file_node(&target.as_path())
+            }
         }
     }
 
@@ -118,6 +131,7 @@ impl Vfs {
                 }
             }
             INode::File(_) => {}
+            INode::Symlink(_) => {} // don't follow symlinks
         }
         Ok(())
     }
@@ -127,14 +141,75 @@ impl Vfs {
             Ok(n) => n,
             Err(e) => return Err(e),
         };
-        let dir = match target_node {
+        let dir = match target_node.clone() {
             INode::File(_) => return Err(Error::IsFile),
             INode::Dir(d) => d,
             INode::BlockDevice(_) => return Err(Error::IsFile),
             INode::CharacterDevice(_) => return Err(Error::IsFile),
+            INode::Symlink(link) => {
+                let guard = link.read();
+                let target_path = guard.target_path()?;
+                let symlink_target_node =
+                    self.find_inode_from(&target_path.as_path(), target_node)?;
+                if !matches!(symlink_target_node, INode::Dir(_)) {
+                    return Err(Error::IsFile);
+                }
+                symlink_target_node.as_dir().unwrap()
+            }
         };
         let mut guard = dir.write();
         guard.mount(node)
+    }
+
+    fn find_inode_from(&self, p: &dyn AsRef<Path>, starting_point: INode) -> Result<INode> {
+        let path = p.as_ref().to_owned(); // OwnedPaths are always canonical
+        let components = path.components();
+
+        let mut current = starting_point;
+        let mut seen_root = false;
+        for component in components {
+            match component {
+                Component::RootDir => {
+                    if seen_root {
+                        panic!("unexpected root dir in the middle of a path");
+                    }
+                    seen_root = true;
+                }
+                Component::CurrentDir => {} // do nothing
+                Component::ParentDir => {
+                    todo!("parent dir");
+                }
+                Component::Normal(v) => {
+                    let current_dir = match current.clone() {
+                        INode::File(_) => return Err(Error::NotFound),
+                        INode::Dir(d) => d,
+                        INode::BlockDevice(_) => return Err(Error::NotFound),
+                        INode::CharacterDevice(_) => return Err(Error::NotFound),
+                        INode::Symlink(link) => {
+                            let guard = link.read();
+                            let target_path = guard.target_path()?;
+                            debug!("symlink {} -> {:?}", current.name(), target_path);
+                            let target_node =
+                                self.find_inode_from(&target_path.as_path(), current)?;
+                            if !matches!(target_node, INode::Dir(_)) {
+                                return Err(Error::NotFound);
+                            }
+                            current = target_node;
+                            continue; // try again with the resolved symlink as current node
+                        }
+                    };
+                    let next_element = current_dir.read().lookup(&v);
+                    let new_current = match next_element {
+                        Ok(node) => node,
+                        Err(_) => return Err(Error::NotFound),
+                    };
+                    current = new_current;
+                }
+            };
+        }
+
+        // we found the vnode
+        Ok(current)
     }
 
     fn find_inode(&self, p: &dyn AsRef<Path>) -> Result<INode> {
@@ -151,37 +226,7 @@ impl Vfs {
             return Err(Error::NotFound);
         }
 
-        // walk the tree and find the node
-        let mut current = self.root.clone();
-        let mut seen_root = false;
-        for component in components {
-            match component {
-                Component::RootDir => {
-                    if seen_root {
-                        panic!("unexpected root dir in the middle of a path");
-                    }
-                    seen_root = true;
-                }
-                Component::CurrentDir | Component::ParentDir => panic!("path is not canonical"), // shouldn't happen with an OwnedPath
-                Component::Normal(v) => {
-                    let current_dir = match current {
-                        INode::File(_) => return Err(Error::NotFound),
-                        INode::Dir(d) => d,
-                        INode::BlockDevice(_) => return Err(Error::NotFound),
-                        INode::CharacterDevice(_) => return Err(Error::NotFound),
-                    };
-                    let next_element = current_dir.read().lookup(&v);
-                    let new_current = match next_element {
-                        Ok(node) => node,
-                        Err(_) => return Err(Error::NotFound),
-                    };
-                    current = new_current;
-                }
-            };
-        }
-
-        // we found the vnode
-        Ok(current)
+        self.find_inode_from(p, self.root.clone())
     }
 }
 
@@ -209,7 +254,7 @@ mod tests {
         let fs = MemFs::new("mem".into());
         let inode = fs
             .root_inode()
-            .dir()
+            .as_dir()
             .unwrap()
             .write()
             .create(&name, typ, Permission::user_rwx())

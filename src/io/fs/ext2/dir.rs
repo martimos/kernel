@@ -5,9 +5,11 @@ use alloc::vec::Vec;
 
 use kstd::sync::RwLock;
 
+use crate::debug;
 use crate::io::fs::ext2::base::Ext2NodeBase;
 use crate::io::fs::ext2::file::Ext2File;
 use crate::io::fs::ext2::inode::{Ext2DirEntry, Ext2INode, Ext2INodeType};
+use crate::io::fs::ext2::symlink::Ext2Symlink;
 use crate::io::fs::ext2::{Ext2INodeAddress, Inner};
 use crate::io::fs::perm::Permission;
 use crate::io::fs::{CreateNodeType, IDir, INode, INodeBase, INodeNum, Stat};
@@ -152,7 +154,16 @@ where
             Ext2INodeType::RegularFile => {
                 INode::new_file(Ext2File::new(self.base.fs().clone(), ext2_inode, name))
             }
-            _ => return Err(Error::NotImplemented),
+            Ext2INodeType::SymbolicLink => {
+                INode::new_symlink(Ext2Symlink::new(self.base.fs().clone(), ext2_inode, name))
+            }
+            _ => {
+                debug!(
+                    "encountered unsupported inode type {:?}",
+                    ext2_inode.node_type
+                );
+                return Err(Error::NotImplemented);
+            }
         };
         Ok(inode)
     }

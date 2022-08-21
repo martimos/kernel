@@ -21,6 +21,7 @@ mod dir;
 mod file;
 mod inode;
 mod superblock;
+mod symlink;
 
 #[derive(Debug)]
 struct Ext2INodeAddress(u32);

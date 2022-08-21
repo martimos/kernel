@@ -10,6 +10,7 @@ use kstd::sync::RwLock;
 use kstd::io::Result;
 use kstd::io::WriteAt;
 use kstd::io::{Error, ReadAt};
+use kstd::path::owned::OwnedPath;
 
 pub mod devfs;
 pub mod device;
@@ -67,6 +68,7 @@ pub type IBlockDeviceHandle = Arc<RwLock<dyn IBlockDeviceFile>>;
 pub type ICharacterDeviceHandle = Arc<RwLock<dyn ICharacterDeviceFile>>;
 pub type IDirHandle = Arc<RwLock<dyn IDir>>;
 pub type IFileHandle = Arc<RwLock<dyn IFile>>;
+pub type ISymlinkHandle = Arc<RwLock<dyn ISymlink>>;
 
 #[derive(Clone)]
 pub enum INode {
@@ -74,6 +76,7 @@ pub enum INode {
     CharacterDevice(ICharacterDeviceHandle),
     Dir(IDirHandle),
     File(IFileHandle),
+    Symlink(ISymlinkHandle),
 }
 
 impl PartialEq for INode {
@@ -111,23 +114,44 @@ impl INode {
         Self::Dir(Arc::new(RwLock::new(d)))
     }
 
-    pub fn file(&self) -> Option<IFileHandle> {
+    pub fn new_symlink<S>(s: S) -> Self
+    where
+        S: 'static + ISymlink,
+    {
+        Self::Symlink(Arc::new(RwLock::new(s)))
+    }
+
+    pub fn as_file(&self) -> Option<IFileHandle> {
         match self {
             INode::File(f) => Some(f.clone()),
             _ => None,
         }
     }
 
-    pub fn dir(&self) -> Option<IDirHandle> {
+    pub fn as_dir(&self) -> Option<IDirHandle> {
         match self {
             INode::Dir(d) => Some(d.clone()),
             _ => None,
         }
     }
 
-    pub fn block_device_file(&self) -> Option<IBlockDeviceHandle> {
+    pub fn as_block_device_file(&self) -> Option<IBlockDeviceHandle> {
         match self {
             INode::BlockDevice(d) => Some(d.clone()),
+            _ => None,
+        }
+    }
+
+    pub fn as_character_device_file(&self) -> Option<ICharacterDeviceHandle> {
+        match self {
+            INode::CharacterDevice(d) => Some(d.clone()),
+            _ => None,
+        }
+    }
+
+    pub fn as_symlink(&self) -> Option<ISymlinkHandle> {
+        match self {
+            INode::Symlink(d) => Some(d.clone()),
             _ => None,
         }
     }
@@ -147,6 +171,10 @@ impl INode {
     pub fn is_character_device_file(&self) -> bool {
         matches!(self, INode::CharacterDevice(_))
     }
+
+    pub fn is_symlink(&self) -> bool {
+        matches!(self, INode::Symlink(_))
+    }
 }
 
 impl Display for INode {
@@ -165,6 +193,7 @@ impl Debug for INode {
                     INode::Dir(_) => "Dir",
                     INode::BlockDevice(_) => "BlockDevice",
                     INode::CharacterDevice(_) => "CharacterDevice",
+                    INode::Symlink(_) => "Symlink",
                 },
             )
             .field("inode_num", &self.num())
@@ -180,6 +209,7 @@ impl INodeBase for INode {
             INode::Dir(dir) => dir.read().num(),
             INode::BlockDevice(dev) => dev.read().num(),
             INode::CharacterDevice(dev) => dev.read().num(),
+            INode::Symlink(symlink) => symlink.read().num(),
         }
     }
 
@@ -189,6 +219,7 @@ impl INodeBase for INode {
             INode::Dir(dir) => dir.read().name(),
             INode::BlockDevice(dev) => dev.read().name(),
             INode::CharacterDevice(dev) => dev.read().name(),
+            INode::Symlink(symlink) => symlink.read().name(),
         }
     }
 
@@ -198,6 +229,7 @@ impl INodeBase for INode {
             INode::Dir(dir) => dir.read().stat(),
             INode::BlockDevice(dev) => dev.read().stat(),
             INode::CharacterDevice(dev) => dev.read().stat(),
+            INode::Symlink(symlink) => symlink.read().stat(),
         }
     }
 }
@@ -294,4 +326,12 @@ pub trait IDir: INodeBase {
     /// means, that the given [`INode`] does not necessarily belong to the same file
     /// system or device as this node.
     fn mount(&mut self, node: INode) -> Result<()>;
+}
+
+pub trait ISymlink: INodeBase {
+    fn target(&self) -> Result<String>;
+
+    fn target_path(&self) -> Result<OwnedPath> {
+        Ok(OwnedPath::from(self.target()?))
+    }
 }

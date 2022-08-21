@@ -30,10 +30,11 @@ pub extern "C" fn init_vfs() {
                 INode::Dir(_) => "dir".to_string(),
                 INode::BlockDevice(_) => "block device".to_string(),
                 INode::CharacterDevice(_) => "character device".to_string(),
+                INode::Symlink(link) => format!("-> {}", link.read().target().unwrap()),
             }
         );
     }) {
-        error!("{}", e);
+        error!("error while walking tree: {}", e);
     }
 }
 
@@ -82,13 +83,13 @@ fn mount_ext2() {
 
     vfs::find_inode(&"/dev")
         .expect("no /dev directory")
-        .dir()
+        .as_dir()
         .expect("/dev should be a directory")
         .read()
         .children()
         .unwrap()
         .into_iter()
-        .filter_map(|node| node.block_device_file())
+        .filter_map(|node| node.as_block_device_file())
         .filter(|file| {
             let mut buf = [0_u8; 2];
             file.read().read_at(1080, &mut buf).unwrap();

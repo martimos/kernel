@@ -1,13 +1,15 @@
 use alloc::string::{String, ToString};
 use alloc::vec;
+use alloc::vec::Vec;
 
 use bitflags::bitflags;
 
 use crate::io::fs::perm::Permission;
 use crate::io::fs::INodeNum;
+use kstd::io::cursor::Cursor;
 use kstd::io::read::Read;
 use kstd::io::{Error, Result};
-use kstd::{read_bytes, read_le_u16, read_le_u32, read_u8};
+use kstd::{read_bytes, read_le_u16, read_le_u32, read_null_terminated_string, read_u8};
 
 #[derive(Debug)]
 pub struct Ext2INode {
@@ -26,6 +28,7 @@ pub struct Ext2INode {
     pub num_disk_sectors: u32,
     pub flags: Ext2INodeFlags,
     pub os_specific_1: u32,
+    pub symlink_short_name: String,
     pub direct_pointers: [u32; 12],
     pub singly_indirect_pointer: u32,
     pub doubly_indirect_pointer: u32,
@@ -40,44 +43,75 @@ pub struct Ext2INode {
 impl Ext2INode {
     pub fn decode(source: &mut impl Read<u8>) -> Result<Self> {
         let mode = read_le_u16!(source);
+        let node_type = Ext2INodeType::try_from(mode >> 12).or(Err(Error::DecodeError))?;
+        let permissions = Permission::from_bits_truncate(mode & 0x0FFF);
+        let uid = read_le_u16!(source);
+        let lower_size = read_le_u32!(source);
+        let last_access_time = read_le_u32!(source);
+        let creation_time = read_le_u32!(source);
+        let last_modification_time = read_le_u32!(source);
+        let deletion_time = read_le_u32!(source);
+        let gid = read_le_u16!(source);
+        let num_hard_links = read_le_u16!(source);
+        let num_disk_sectors = read_le_u32!(source);
+        let flags = Ext2INodeFlags::from_bits_truncate(read_le_u32!(source));
+        let os_specific_1 = read_le_u32!(source);
+
+        let symlink_name_and_pointer_data_area = read_bytes!(source, 60);
+
+        let mut symlink_short_name_data =
+            Cursor::new(Vec::from(symlink_name_and_pointer_data_area));
+        let symlink_short_name = read_null_terminated_string!(symlink_short_name_data, 60);
+
+        let mut pointer_data = Cursor::new(Vec::from(symlink_name_and_pointer_data_area));
+        let direct_pointers = [
+            read_le_u32!(pointer_data),
+            read_le_u32!(pointer_data),
+            read_le_u32!(pointer_data),
+            read_le_u32!(pointer_data),
+            read_le_u32!(pointer_data),
+            read_le_u32!(pointer_data),
+            read_le_u32!(pointer_data),
+            read_le_u32!(pointer_data),
+            read_le_u32!(pointer_data),
+            read_le_u32!(pointer_data),
+            read_le_u32!(pointer_data),
+            read_le_u32!(pointer_data),
+        ];
+        let singly_indirect_pointer = read_le_u32!(pointer_data);
+        let doubly_indirect_pointer = read_le_u32!(pointer_data);
+        let triply_indirect_pointer = read_le_u32!(pointer_data);
+        let generation_number = read_le_u32!(source);
+        let extended_attribute_block = read_le_u32!(source);
+        let upper_size_or_dir_acl = read_le_u32!(source);
+        let fragment_block_address = read_le_u32!(source);
+        let os_specific_2 = read_bytes!(source, 12);
         Ok(Self {
             inode_num: 0_u64.into(),
 
-            node_type: Ext2INodeType::try_from(mode >> 12).or(Err(Error::DecodeError))?,
-            permissions: Permission::from_bits_truncate(mode & 0x0FFF),
-            uid: read_le_u16!(source),
-            lower_size: read_le_u32!(source),
-            last_access_time: read_le_u32!(source),
-            creation_time: read_le_u32!(source),
-            last_modification_time: read_le_u32!(source),
-            deletion_time: read_le_u32!(source),
-            gid: read_le_u16!(source),
-            num_hard_links: read_le_u16!(source),
-            num_disk_sectors: read_le_u32!(source),
-            flags: Ext2INodeFlags::from_bits_truncate(read_le_u32!(source)),
-            os_specific_1: read_le_u32!(source),
-            direct_pointers: [
-                read_le_u32!(source),
-                read_le_u32!(source),
-                read_le_u32!(source),
-                read_le_u32!(source),
-                read_le_u32!(source),
-                read_le_u32!(source),
-                read_le_u32!(source),
-                read_le_u32!(source),
-                read_le_u32!(source),
-                read_le_u32!(source),
-                read_le_u32!(source),
-                read_le_u32!(source),
-            ],
-            singly_indirect_pointer: read_le_u32!(source),
-            doubly_indirect_pointer: read_le_u32!(source),
-            triply_indirect_pointer: read_le_u32!(source),
-            generation_number: read_le_u32!(source),
-            extended_attribute_block: read_le_u32!(source),
-            upper_size_or_dir_acl: read_le_u32!(source),
-            fragment_block_address: read_le_u32!(source),
-            os_specific_2: read_bytes!(source, 12),
+            node_type,
+            permissions,
+            uid,
+            lower_size,
+            last_access_time,
+            creation_time,
+            last_modification_time,
+            deletion_time,
+            gid,
+            num_hard_links,
+            num_disk_sectors,
+            flags,
+            os_specific_1,
+            symlink_short_name,
+            direct_pointers,
+            singly_indirect_pointer,
+            doubly_indirect_pointer,
+            triply_indirect_pointer,
+            generation_number,
+            extended_attribute_block,
+            upper_size_or_dir_acl,
+            fragment_block_address,
+            os_specific_2,
         })
     }
 
