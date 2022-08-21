@@ -312,9 +312,9 @@ source = "git+https://github.com/martimos/kernel_constants#3f061142ae7b97d2f20f7
 
 [[package]]
 name = "kstd"
-version = "0.0.3"
+version = "0.0.4-rc.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a98656e2c27fab5be9b34debdb8dedba4068fee80c4c38602f4496f25a19ad16"
+checksum = "0e6f68bad5915ef021a8b97627fba0f98006a02b58303641c33b85e6c6406942"
 dependencies = [
  "derive_more",
  "spin 0.9.4",

@@ -59,7 +59,7 @@ where
             let mut cursor = Cursor::new(data);
 
             // read all dir entries in this block
-            while cursor.offset() < data_len as u64 {
+            while cursor.position() < data_len as u64 {
                 entries.push(Ext2DirEntry::decode(&mut cursor)?);
             }
         }
