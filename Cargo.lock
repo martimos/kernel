@@ -247,6 +247,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "gimli"
+version = "0.26.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "22030e2c5a68ec659fde1e949a745124b48e6fa8b045b7ed5bd1fe4ccc5c4e5d"
+
+[[package]]
 name = "hashbrown"
 version = "0.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -396,6 +402,7 @@ dependencies = [
  "pc-keyboard",
  "pic8259",
  "uart_16550",
+ "unwinding",
  "volatile",
  "x86_64",
 ]
@@ -681,6 +688,15 @@ name = "unicode-ident"
 version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c4f5b37a154999a8f3f98cc23a628d850e154479cd94decf3414696e12e31aaf"
+
+[[package]]
+name = "unwinding"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "76b094d871608c32cdc2cc06ade39d8dc8c99ce95cbc528c1dcf7434319a1faf"
+dependencies = [
+ "gimli",
+]
 
 [[package]]
 name = "version_check"

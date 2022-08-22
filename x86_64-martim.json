@@ -8,8 +8,16 @@
   "os": "none",
   "executables": true,
   "linker-flavor": "ld.lld",
+  "pre-link-args": {
+    "ld.lld": [
+      "--defsym",
+      "__etext=.",
+      "--defsym",
+      "__eh_frame=."
+    ]
+  },
   "linker": "rust-lld",
-  "panic-strategy": "abort",
+  "panic-strategy": "unwind",
   "disable-redzone": true,
   "features": "-mmx,-sse,+soft-float"
 }

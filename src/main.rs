@@ -6,6 +6,8 @@
 
 extern crate alloc;
 
+use alloc::boxed::Box;
+use alloc::string::ToString;
 use core::panic::PanicInfo;
 
 use bootloader::{entry_point, BootInfo};
@@ -24,6 +26,8 @@ use martim::{
 #[cfg(not(test))]
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
+    unwinding::panic::begin_panic(Box::new(info.to_string()));
+
     martim::info!(
         "terminating task {}: {}",
         scheduler::get_current_tid(),
@@ -72,7 +76,19 @@ $$ | \_/ $$ |\$$$$$$$ |$$ |       \$$$$  |$$ |$$ | $$ | $$ |
     );
 
     #[cfg(not(test))]
-    main();
+    {
+        let main_res = unwinding::panic::catch_unwind(|| {
+            main();
+        });
+        match main_res {
+            Ok(_) => {
+                info!("main() returned");
+            }
+            Err(err) => {
+                info!("main() panicked: {:?}", err);
+            }
+        }
+    }
 
     #[cfg(test)]
     test_main();

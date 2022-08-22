@@ -12,6 +12,7 @@
 #![reexport_test_harness_main = "test_main"]
 
 extern crate alloc;
+extern crate unwinding;
 
 use core::panic::PanicInfo;
 
