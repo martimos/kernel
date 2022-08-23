@@ -3,7 +3,7 @@ use lazy_static::lazy_static;
 use pic8259::ChainedPics;
 use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame, PageFaultErrorCode};
 
-use crate::{gdt, hlt_loop, scheduler, vga_println};
+use crate::{gdt, scheduler, serial_println, vga_println};
 
 // "Remapped" PICS chosen as 32 to 47
 pub const PIC_1_OFFSET: u8 = 32;
@@ -67,13 +67,13 @@ extern "x86-interrupt" fn general_protection_fault_handler(
     stack_frame: InterruptStackFrame,
     error_code: u64,
 ) {
-    crate::serial_println!(
+    serial_println!(
         "encountered a general protection fault, error code {} =",
         error_code
     );
-    crate::serial_println!("index: {}", (error_code >> 3) & ((1 << 14) - 1));
-    crate::serial_println!("tbl: {}", (error_code >> 1) & 0b11);
-    crate::serial_println!("e: {}", error_code & 1);
+    serial_println!("index: {}", (error_code >> 3) & ((1 << 14) - 1));
+    serial_println!("tbl: {}", (error_code >> 1) & 0b11);
+    serial_println!("e: {}", error_code & 1);
 
     panic!("EXCEPTION: GENERAL PROTECTION FAULT\n{:#?}", stack_frame);
 }
@@ -144,11 +144,12 @@ extern "x86-interrupt" fn page_fault_handler(
 ) {
     use x86_64::registers::control::Cr2;
 
-    vga_println!("EXCEPTION: PAGE FAULT");
-    vga_println!("Accessed Address: {:?}", Cr2::read());
-    vga_println!("Error Code: {:?}", error_code);
-    vga_println!("{:#?}", stack_frame);
-    hlt_loop();
+    panic!(
+        "EXCEPTION: PAGE FAULT\nAccessed Address: {:?}\nError Code: {:?}\n{:#?}",
+        Cr2::read(),
+        error_code,
+        stack_frame
+    );
 }
 
 extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: InterruptStackFrame) {
