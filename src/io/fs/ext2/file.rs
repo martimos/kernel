@@ -95,7 +95,7 @@ where
         let start_block = offset as u32 / block_size as u32;
         let end_block = (offset as u32 + buffer.len() as u32) / block_size as u32;
         let relative_offset = offset as usize % block_size;
-        let block_count = if relative_offset == 0 && start_block != end_block {
+        let block_count = if buffer.len() % block_size == 0 {
             end_block - start_block
         } else {
             end_block - start_block + 1

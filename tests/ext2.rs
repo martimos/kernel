@@ -133,6 +133,14 @@ fn test_filecontent_1kib() {
 }
 
 #[test_case]
+fn test_filecontent_2089_bytes() {
+    assert_eq!(
+        &[0x78_u8; 2089],
+        filecontent_read_file("2089_bytes.dat").unwrap().as_slice()
+    );
+}
+
+#[test_case]
 fn test_filecontent_4kib() {
     assert_eq!(
         &[4_u8; 4 * 1024],
@@ -148,10 +156,10 @@ fn test_filecontent_64kib() {
         .expect("not a file");
     let guard = file.read();
 
-    let mut buf = [0_u8; 1024];
-    for i in 0_u64..64 {
-        assert_eq!(buf.len(), guard.read_at(i * 1024, &mut buf).unwrap());
-        assert_eq!(&[15_u8; 1024], &buf);
+    let mut buf = [0_u8; 4096];
+    for i in 0_u64..16 {
+        assert_eq!(buf.len(), guard.read_at(i * 4096, &mut buf).unwrap());
+        assert_eq!(&[15_u8; 4096], &buf);
     }
 }
 
@@ -163,10 +171,10 @@ fn test_filecontent_256kib() {
         .expect("not a file");
     let guard = file.read();
 
-    let mut buf = [0_u8; 1024];
-    for i in 0_u64..256 {
-        assert_eq!(buf.len(), guard.read_at(i * 1024, &mut buf).unwrap());
-        assert_eq!(&[120_u8; 1024], &buf);
+    let mut buf = [0_u8; 4096];
+    for i in 0_u64..64 {
+        assert_eq!(buf.len(), guard.read_at(i * 4096, &mut buf).unwrap());
+        assert_eq!(&[120_u8; 4096], &buf);
     }
 }
 
