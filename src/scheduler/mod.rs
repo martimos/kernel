@@ -12,13 +12,13 @@ pub mod tid;
 pub const NUM_PRIORITIES: usize = 32;
 pub const STACK_SIZE: usize = 0x8000;
 
-static mut SCHEDULER: Option<round_robin::Scheduler> = None;
+static mut SCHEDULER: Option<round_robin::RoundRobin> = None;
 static SCHEDULER_INIT: Once = Once::new();
 
 /// Initialise module, must be called once, and only once
 pub fn init() {
     SCHEDULER_INIT.call_once(|| unsafe {
-        SCHEDULER = Some(round_robin::Scheduler::new());
+        SCHEDULER = Some(round_robin::RoundRobin::new());
     });
 }
 

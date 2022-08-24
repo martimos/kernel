@@ -16,7 +16,7 @@ use crate::{
 };
 use kstd::collections::deltaq::DeltaQueue;
 
-pub struct Scheduler {
+pub struct RoundRobin {
     current_task: Task,
     /// Tasks that are ready to be scheduled.
     ready_queue: VecDeque<Task>,
@@ -29,9 +29,9 @@ pub struct Scheduler {
     ticks: u64,
 }
 
-impl !Default for Scheduler {}
+impl !Default for RoundRobin {}
 
-impl Scheduler {
+impl RoundRobin {
     pub fn new() -> Self {
         let current_task = Task::new_for_current(Tid::new());
 
