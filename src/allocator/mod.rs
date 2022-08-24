@@ -13,7 +13,7 @@ pub mod fixed_size_block;
 pub mod linked_list;
 
 pub const HEAP_START: *mut u8 = 0x4444_4444_0000_usize as *mut u8;
-pub const HEAP_SIZE: usize = 128 * 1024; // 128 KiB
+pub const HEAP_SIZE: usize = 1024 * 1024; // 1 MiB
 
 #[global_allocator]
 static ALLOCATOR: Locked<FixedSizeBlockAllocator> = Locked::new(FixedSizeBlockAllocator::new());
