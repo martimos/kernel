@@ -15,6 +15,7 @@ pub static PICS: Mutex<ChainedPics> =
 lazy_static! {
     static ref IDT: InterruptDescriptorTable = {
         let mut idt = InterruptDescriptorTable::new();
+        idt.divide_error.set_handler_fn(divide_error_handler);
         idt.breakpoint.set_handler_fn(breakpoint_handler);
         idt.page_fault.set_handler_fn(page_fault_handler);
         idt.overflow.set_handler_fn(overflow_handler);
@@ -55,6 +56,10 @@ impl InterruptIndex {
     fn as_usize(self) -> usize {
         usize::from(self.as_u8())
     }
+}
+
+extern "x86-interrupt" fn divide_error_handler(stack_frame: InterruptStackFrame) {
+    panic!("EXCEPTION: DIVIDE ERROR\n{:#?}", stack_frame);
 }
 
 extern "x86-interrupt" fn ignore_handler(_stack_frame: InterruptStackFrame) {
@@ -109,10 +114,12 @@ extern "x86-interrupt" fn segment_not_present_fault_handler(
 ) {
     panic!(
         r#"EXCEPTION: SEGMENT NOT PRESENT FAULT
+instruction pointer: {:p}
 error code: {} ({:#b})
 external: {}
 table[index]: {}[{}]
 {:#?}"#,
+        stack_frame.instruction_pointer.as_u64() as *const u8,
         error_code,
         error_code,
         (error_code & 1) == 1,

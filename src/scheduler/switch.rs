@@ -47,13 +47,23 @@ macro_rules! pop_context {
 			pop rcx
 			pop rax
 			popfq
-			ret
 			"#
         )
     };
 }
 
 /// Perform a context switch.
+///
+/// `_old_stack` is the pointer where the current stack pointer will be written to.
+/// ```notrust
+/// *_old_stack = $rsp;
+/// ```
+/// `_new_stack` is the stack pointer that we want to switch to.
+/// ```notrust
+/// $rsp = _new_stack;
+/// ```
+///
+/// Notice that `_old_stack` is being dereferenced, while `_new_stack` is not.
 ///
 /// # Safety
 ///
@@ -63,14 +73,17 @@ macro_rules! pop_context {
 /// that _old_stack and _new_stack are valid pointers to
 /// a task stack.
 #[naked]
-pub unsafe extern "C" fn switch(_old_stack: *mut usize, _new_stack: usize) {
+pub unsafe extern "C" fn switch(_old_stack: *mut usize, _new_stack: *const usize) {
     // _old_stack is located in $rdi, _new_stack is in $rsi
 
     asm!(
+        "cli",
         push_context!(),
-        "mov [rdi], rsp",
-        "mov rsp, rsi",
+        "mov [rdi], rsp", // write the stack pointer rsp at *_old_stack
+        "mov rsp, rsi",   // write _new_stack into rsp
         pop_context!(),
+        "sti",
+        "ret",
         options(noreturn)
     );
 }

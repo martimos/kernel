@@ -36,6 +36,8 @@ pub extern "C" fn init_vfs() {
     }) {
         error!("error while walking tree: {}", e);
     }
+
+    info!("vfs initialized");
 }
 
 fn mount_devfs() {
@@ -59,14 +61,15 @@ fn mount_ide_drive_files() {
         .map(Into::<IDEController>::into)
         .expect("need an IDE controller for this to work");
 
-    for (count, drive) in ide_controller
-        .drives()
-        .into_iter()
-        .filter(|d| d.exists())
-        .enumerate()
-    {
+    let drives = ide_controller.drives();
+    let mut i = 0;
+    for drive in drives {
+        if !drive.exists() {
+            continue;
+        }
         let display_string = format!("{}", drive);
-        let block_device_file = BlockDeviceFile::new(drive, 0_u64.into(), format!("ide{}", count));
+        let block_device_file = BlockDeviceFile::new(drive, 0_u64.into(), format!("ide{}", i));
+        i += 1;
         let block_device_node = INode::new_block_device_file(block_device_file);
         info!(
             "mount {} at /dev/{}",

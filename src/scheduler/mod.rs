@@ -10,7 +10,7 @@ pub mod task;
 pub mod tid;
 
 pub const NUM_PRIORITIES: usize = 32;
-pub const STACK_SIZE: usize = 0x2000;
+pub const STACK_SIZE: usize = 0x8000;
 
 static mut SCHEDULER: Option<round_robin::Scheduler> = None;
 static SCHEDULER_INIT: Once = Once::new();
@@ -20,11 +20,6 @@ pub fn init() {
     SCHEDULER_INIT.call_once(|| unsafe {
         SCHEDULER = Some(round_robin::Scheduler::new());
     });
-}
-
-#[cfg(debug_assertions)]
-pub fn disable_idle_task() {
-    unsafe { SCHEDULER.as_mut().unwrap().disable_idle_task() }
 }
 
 /// Create a new kernel task
@@ -49,14 +44,6 @@ pub fn reschedule() {
 
 pub fn cpu_time() -> Duration {
     unsafe { SCHEDULER.as_mut().unwrap().cpu_time() }
-}
-
-/// Returns once the task with the given [`Tid`] is done.
-/// If the [`Tid`] does not exist, this returns immediately.
-pub fn join(tid: Tid) {
-    unsafe {
-        SCHEDULER.as_mut().unwrap().join(tid);
-    }
 }
 
 /// Terminate the current running task

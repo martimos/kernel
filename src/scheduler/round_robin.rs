@@ -1,15 +1,13 @@
-use alloc::collections::{BTreeMap, VecDeque};
-use alloc::sync::Arc;
+use alloc::collections::VecDeque;
+use core::mem::swap;
 use core::sync::atomic::{AtomicU32, Ordering};
 use core::time::Duration;
 
-use kstd::sync::{Mutex, RwLock};
 use x86_64::instructions::interrupts::without_interrupts;
 
-use crate::scheduler::reschedule;
 use crate::scheduler::switch::switch;
 use crate::{
-    debug, hlt_loop, info,
+    debug, hlt_loop,
     scheduler::{
         task::{ProcessStatus, Task},
         tid::Tid,
@@ -18,18 +16,13 @@ use crate::{
 };
 use kstd::collections::deltaq::DeltaQueue;
 
-type TaskHandle = Arc<RwLock<Task>>;
-
 pub struct Scheduler {
-    current_task: TaskHandle,
-    idle_task: Option<TaskHandle>,
+    current_task: Task,
     /// Tasks that are ready to be scheduled.
-    ready_queue: Mutex<VecDeque<TaskHandle>>,
+    ready_queue: VecDeque<Task>,
     /// Finished tasks waiting for cleanup.
-    finished_tasks: Mutex<VecDeque<Tid>>,
-    sleeping_tasks: Mutex<DeltaQueue<TaskHandle>>,
-    /// Tasks by their Pid.
-    tasks: Mutex<BTreeMap<Tid, TaskHandle>>,
+    finished_tasks: VecDeque<Task>,
+    sleeping_tasks: DeltaQueue<Task>,
     /// The amount of running or ready tasks.
     /// Finished tasks are not included.
     task_count: AtomicU32,
@@ -40,46 +33,28 @@ impl !Default for Scheduler {}
 
 impl Scheduler {
     pub fn new() -> Self {
-        let current_tid = Tid::new();
-        let current_task = Arc::new(RwLock::new(Task::new_for_current(current_tid)));
-
-        let tid = Tid::new();
-        let idle_task = Arc::new(RwLock::new(Task::new_idle(tid)));
-
-        let tasks = Mutex::new(BTreeMap::new());
-        tasks.lock().insert(tid, idle_task.clone());
-        tasks.lock().insert(current_tid, current_task.clone());
-
-        let ready_queue = Mutex::new(VecDeque::new());
+        let current_task = Task::new_for_current(Tid::new());
 
         Self {
             current_task,
-            idle_task: Some(idle_task),
-            ready_queue,
-            finished_tasks: Mutex::new(VecDeque::new()),
-            sleeping_tasks: Mutex::new(DeltaQueue::new()),
-            tasks,
-            task_count: AtomicU32::new(0),
+            ready_queue: VecDeque::new(),
+            finished_tasks: VecDeque::new(),
+            sleeping_tasks: DeltaQueue::new(),
+            task_count: AtomicU32::new(1), // 1 since the current_task already exists
             ticks: 0,
         }
-    }
-
-    #[cfg(debug_assertions)]
-    pub fn disable_idle_task(&mut self) {
-        self.idle_task = None;
     }
 
     pub fn spawn(&mut self, func: extern "C" fn()) -> Result<Tid> {
         without_interrupts(|| {
             // Create the new task.
             let tid = Tid::new();
-            let task = Arc::new(RwLock::new(Task::new(tid, ProcessStatus::Ready)));
+            let mut task = Task::new(tid, ProcessStatus::Ready);
 
-            task.write().allocate_stack(func);
+            task.allocate_stack(func);
 
             // Add it to the task lists.
-            self.ready_queue.lock().push_back(task.clone());
-            self.tasks.lock().insert(tid, task);
+            self.ready_queue.push_back(task);
             self.task_count.fetch_add(1, Ordering::SeqCst);
 
             Ok(tid)
@@ -88,41 +63,21 @@ impl Scheduler {
 
     pub fn cpu_time(&mut self) -> Duration {
         // TODO: currently, it feels like the interrupts occur in 100ms intervals, so use that, but it's probably inaccurate
-        Duration::from_millis(self.current_task.read().ticks * 100)
-    }
-
-    pub fn join(&mut self, tid: Tid) {
-        without_interrupts(|| {
-            if tid == self.get_current_tid() {
-                // don't deadlock ourselves
-                return;
-            }
-
-            while self.tasks.lock().contains_key(&tid) {
-                reschedule();
-            }
-        })
+        Duration::from_millis(self.current_task.ticks * 100)
     }
 
     /// Terminates the currently running task and reschedules,
     /// so that the next available task will be run.
     pub fn exit(&mut self) -> ! {
-        without_interrupts(|| {
-            // serial_println!(
-            //     "marking task {} to be finished",
-            //     self.current_task.read().tid
-            // );
-            self.current_task.write().status = ProcessStatus::Finished;
-            self.task_count.fetch_sub(1, Ordering::SeqCst);
-        });
+        self.current_task.status = ProcessStatus::Finished;
+        self.task_count.fetch_sub(1, Ordering::SeqCst);
 
-        self.reschedule();
         hlt_loop() // just hlt until this is finally collected
     }
 
     pub fn sleep(&mut self, duration: Duration) {
         without_interrupts(|| {
-            let mut current_task = self.current_task.write();
+            let current_task = &mut self.current_task;
             debug!(
                 "put task {} to sleep for {}ms",
                 current_task.tid,
@@ -137,7 +92,7 @@ impl Scheduler {
 
     /// Returns the task id (tid) of the currently running task.
     pub fn get_current_tid(&self) -> Tid {
-        without_interrupts(|| self.current_task.read().tid)
+        self.current_task.tid
     }
 
     pub fn total_ticks(&self) -> u64 {
@@ -153,45 +108,28 @@ impl Scheduler {
         // One task cleanup per schedule should on average be enough (hopefully)
         // to not accumulate a whole pile of finished, not cleaned up, tasks.
 
-        let mut switch_args: Option<(*mut usize, usize)> = None;
+        let mut switch_args: Option<(*mut usize, *const usize)> = None;
 
         without_interrupts(|| {
-            while let Some(id) = self.finished_tasks.lock().pop_front() {
-                self.tasks
-                    .lock()
-                    .remove(&id)
-                    .expect("finished task must be part of the task list");
-            }
-
-            let current_tid: Tid;
-            let current_stack_pointer: *mut usize;
-            let current_status: ProcessStatus;
-            let current_sleep_ticks: usize;
-            {
-                let mut borrowed = self.current_task.write();
-                current_tid = borrowed.tid;
-                current_stack_pointer = &mut borrowed.last_stack_pointer as *mut usize;
-                current_status = borrowed.status;
-                current_sleep_ticks = borrowed.sleep_ticks;
+            while let Some(task) = self.finished_tasks.pop_front() {
+                drop(task);
             }
 
             // TODO: create tests for this
-            let mut next_task = {
-                let mut guard = self.sleeping_tasks.lock();
-                let sleeping_task_ready = match guard.front() {
+            let maybe_next_task = {
+                let sleeping_task_ready = match self.sleeping_tasks.front() {
                     Some(n) => n.value == 0,
                     None => false,
                 };
                 if sleeping_task_ready {
-                    guard.pop_front()
+                    self.sleeping_tasks.pop_front()
                 } else {
-                    self.ready_queue.lock().pop_front()
+                    self.ready_queue.pop_front()
                 }
             };
             {
                 // decrement ticks in sleeping queue
-                let mut guard = self.sleeping_tasks.lock();
-                match guard.front_mut() {
+                match self.sleeping_tasks.front_mut() {
                     None => {}
                     Some(n) => {
                         // Only decrement if the front value is not already zero.
@@ -204,71 +142,54 @@ impl Scheduler {
                 };
             }
 
-            if next_task.is_none() {
-                if self.idle_task.is_none() {
-                    info!("no more tasks to run (not even an idle task)");
-                    return;
-                }
-                next_task = Some(self.idle_task.as_ref().unwrap().clone());
+            if maybe_next_task.is_none() {
+                // this is basically the idle implementation - do nothing and return (probably into
+                // the timer interrupt handler)
+                return;
             }
 
-            if let Some(task) = next_task {
-                task.write().ticks += 1; // increment the tick count by 1
+            let mut next_task = maybe_next_task.unwrap();
+            next_task.ticks += 1; // increment the tick count by 1
+            next_task.status = ProcessStatus::Running;
 
-                // extract the Tid and the stack pointer from the next task
-                let (new_id, new_stack_pointer) = {
-                    let mut borrowed = task.write();
-                    borrowed.status = ProcessStatus::Running;
-                    (borrowed.tid, borrowed.last_stack_pointer)
-                };
+            let new_stack_pointer = next_task.last_stack_pointer;
+            let mut old_task = self.exchange_current_task(next_task);
 
-                // if the next task is the idle task, do nothing
-                if let Some(tid) = self.idle_task.as_ref().map(|t| t.read().tid) {
-                    if tid == new_id {
-                        /*
-                        We don't need to hlt() here.
-                        If this was called from an interrupt handler, it will return into that
-                        handler, and that's it. If this was called from somewhere else, the caller
-                        immediately continues to execute code.
-                         */
-                        return;
-                    }
+            let task_ref = match old_task.status {
+                ProcessStatus::Running => {
+                    old_task.status = ProcessStatus::Ready;
+                    self.ready_queue.push_back(old_task);
+                    self.ready_queue.back_mut().unwrap()
                 }
-
-                if current_status == ProcessStatus::Running {
-                    // info!("task {} is ready", current_tid);
-                    self.current_task.write().status = ProcessStatus::Ready;
-                    self.ready_queue.lock().push_back(self.current_task.clone());
-                } else if current_status == ProcessStatus::Finished {
-                    // info!("task {} is finished", current_tid);
-                    self.current_task.write().status = ProcessStatus::Invalid;
-                    // release the task later, because the stack is required
-                    // to call the function "switch"
-                    self.finished_tasks.lock().push_back(current_tid);
-                } else if current_status == ProcessStatus::Sleeping {
-                    self.sleeping_tasks
-                        .lock()
-                        .insert(current_sleep_ticks, self.current_task.clone());
+                ProcessStatus::Finished => {
+                    old_task.status = ProcessStatus::Invalid;
+                    self.finished_tasks.push_back(old_task);
+                    self.finished_tasks.back_mut().unwrap()
                 }
+                ProcessStatus::Sleeping => {
+                    self.sleeping_tasks.insert(old_task.sleep_ticks, old_task)
+                }
+                _ => panic!("unexpected process status: {:?}", old_task.status),
+            };
+            let old_task_last_stack_pointer_ref = &mut task_ref.last_stack_pointer as *mut usize;
 
-                // info!(
-                //     "switch from tid:{} to tid:{} (*stack: {:#X}, {:#X})",
-                //     current_tid,
-                //     new_id,
-                //     unsafe { *current_stack_pointer },
-                //     new_stack_pointer,
-                // );
-
-                self.current_task = task;
-
-                switch_args = Some((current_stack_pointer, new_stack_pointer));
-            }
+            switch_args = Some((
+                old_task_last_stack_pointer_ref,
+                new_stack_pointer as *const usize,
+            ));
         });
 
-        if let Some(args) = switch_args {
+        if let Some((old_stack, new_stack)) = switch_args {
             unsafe {
-                switch(args.0, args.1);
+                switch(old_stack, new_stack);
             }
         }
+    }
+
+    /// Replaces the current task with the given new task and returns the old one.
+    fn exchange_current_task(&mut self, new_task: Task) -> Task {
+        let mut tmp = new_task;
+        swap(&mut tmp, &mut self.current_task);
+        tmp
     }
 }

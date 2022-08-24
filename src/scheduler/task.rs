@@ -1,3 +1,4 @@
+use crate::debug;
 use alloc::alloc::{alloc, dealloc};
 use core::{alloc::Layout, mem::size_of, ptr::write_bytes};
 
@@ -45,65 +46,44 @@ pub struct Task {
     /// Status of a task, e.g. if the task is ready or blocked
     pub status: ProcessStatus,
     pub sleep_ticks: usize,
-    /// Last stack pointer before a context switch to another task
+    /// This field contains the rsp during the context switch. This is set by the
+    /// asm! block in the context switch function via pointer location.
     pub last_stack_pointer: usize,
     /// Stack of the task
     pub stack: *mut Stack,
     /// The amount of timer ticks that this task has been
     /// executed on the cpu.
     pub ticks: u64,
+    /// Whether this task is the idle task. With a better architecture
+    /// of the scheduler, we should be able to get rid of this field.
+    pub is_idle: bool,
 }
 
 impl Task {
-    /// Creates a new task that has status=ready with the BOOT_STACK, but
-    /// without a stack pointer.
-    pub fn new_idle(id: Tid) -> Task {
-        Task {
-            tid: id,
-            sleep_ticks: 0,
-            status: ProcessStatus::Ready,
-            last_stack_pointer: 0,
-            stack: unsafe { &mut BOOT_STACK },
-            ticks: 0,
-        }
-    }
-
     /// Creates a Task that represents the currently running code, aka. the kernel.
     pub fn new_for_current(id: Tid) -> Task {
-        let mut task = Self::new(id, ProcessStatus::Running); // current task is (of course) running
-        unsafe {
-            // copied and adapted from [`Task::allocate_stack`]
-
-            let mut stack: *mut u64 = ((*task.stack).top()) as *mut u64;
-
-            write_bytes((*task.stack).bottom() as *mut u8, 0xCD, STACK_SIZE);
-
-            *stack = 0xCAFEBABEu64;
-            stack = (stack as usize - size_of::<u64>()) as *mut u64;
-
-            /* the first-function-to-be-called's arguments, ... */
-            //TODO: add arguments
-
-            *stack = (leave_task as *const ()) as u64;
-            stack = (stack as usize - size_of::<State>()) as *mut u64;
-
-            /*
-            We don't need a State here.
-            If we switch from this task to another, everything is pushed.
-            We don't want to jump into this before we jump out of it
-            (since this is considered the currently running task), so
-            we will push a full State before we pop one (right?).
-            */
-
-            task.last_stack_pointer = stack as usize;
+        Task {
+            tid: id,
+            status: ProcessStatus::Running,
+            sleep_ticks: 0,
+            last_stack_pointer: 0,
+            stack: 0xccddddcc as *mut Stack, // TODO: this is highly invalid, but we don't know where the stack starts or ends (yet)
+            ticks: 0,
+            is_idle: false,
         }
-        task
     }
 
     /// Creates a new task with the given status. Allocate stack for it with [`Task::allocate_stack`].
     pub fn new(id: Tid, status: ProcessStatus) -> Task {
         let layout = Layout::new::<Stack>();
         let stack = unsafe { alloc(layout) as *mut Stack };
+        debug!(
+            "allocated stack for task {} at {:p} (size={} align={})",
+            id,
+            stack,
+            layout.size(),
+            layout.align()
+        );
         if stack as usize == 0 {
             panic!(
                 "unable to allocate another kernel stack of size {} (allocation failure)",
@@ -118,6 +98,7 @@ impl Task {
             last_stack_pointer: 0,
             stack,
             ticks: 0,
+            is_idle: false,
         }
     }
 }
@@ -126,8 +107,10 @@ impl Drop for Task {
     fn drop(&mut self) {
         if unsafe { self.stack != &mut BOOT_STACK } {
             // deallocate stack
+            let stack_ptr = self.stack as *mut u8;
+            let layout = Layout::new::<Stack>();
             unsafe {
-                dealloc(self.stack as *mut u8, Layout::new::<Stack>());
+                dealloc(stack_ptr, layout);
             }
         }
     }

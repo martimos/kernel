@@ -26,6 +26,11 @@ struct Args {
     fullscreen: bool,
     #[clap(long, help = "Don't use a Qemu accelerator")]
     no_accel: bool,
+    #[clap(
+        long,
+        help = "Start a gdb server on tcp:1234 and wait until a client has connected"
+    )]
+    debug: bool,
 }
 
 fn main() {
@@ -66,7 +71,6 @@ fn main() {
             "--no-reboot",
             "-serial",
             "stdio",
-            "-s", // -gdb tcp::1234
             "-monitor",
             "telnet::45454,server,nowait",
             "-drive",
@@ -74,6 +78,10 @@ fn main() {
         ];
         if args.fullscreen {
             run_args.push("-full-screen");
+        }
+        if args.debug {
+            run_args.push("-s"); // -gdb tcp:1234
+            run_args.push("-S");
         }
         if args.no_accel {
             debug!("not using an accelerator");

@@ -26,14 +26,6 @@ const BLOCK_SIZES: &[usize] = &[
     Size4KiB::SIZE as usize,
 ];
 
-/// Choose an appropriate block size for the given layout.
-///
-/// Returns an index into the `BLOCK_SIZES` array.
-fn list_index(layout: &Layout) -> Option<usize> {
-    let required_block_size = layout.size().max(layout.align());
-    BLOCK_SIZES.iter().position(|&s| s >= required_block_size)
-}
-
 pub struct FixedSizeBlockAllocator {
     list_heads: [Option<&'static mut ListNode>; BLOCK_SIZES.len()],
     fallback_allocator: linked_list_allocator::Heap,
@@ -72,7 +64,9 @@ impl FixedSizeBlockAllocator {
 unsafe impl GlobalAlloc for Locked<FixedSizeBlockAllocator> {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
         let mut allocator = self.lock();
-        match list_index(&layout) {
+        let required_block_size = layout.size().max(layout.align());
+        let index = BLOCK_SIZES.iter().position(|&s| s >= required_block_size);
+        match index {
             Some(index) => {
                 match allocator.list_heads[index].take() {
                     Some(node) => {
@@ -95,7 +89,8 @@ unsafe impl GlobalAlloc for Locked<FixedSizeBlockAllocator> {
 
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
         let mut allocator = self.lock();
-        match list_index(&layout) {
+        let required_block_size = layout.size().max(layout.align());
+        match BLOCK_SIZES.iter().position(|&s| s >= required_block_size) {
             Some(index) => {
                 let new_node = ListNode {
                     next: allocator.list_heads[index].take(),

@@ -9,6 +9,8 @@ extern crate alloc;
 use core::panic::PanicInfo;
 
 use bootloader::{entry_point, BootInfo};
+use goblin::elf::Elf;
+use x86_64::instructions::hlt;
 
 use martim::driver::Peripherals;
 use martim::io::fs::vfs;
@@ -23,7 +25,7 @@ use martim::{
 /// This function is called on panic.
 #[cfg(not(test))]
 #[panic_handler]
-fn panic(info: &PanicInfo) -> ! {
+fn panic_handler(info: &PanicInfo) -> ! {
     martim::info!(
         "terminating task {}: {}",
         scheduler::get_current_tid(),
@@ -40,7 +42,7 @@ fn panic(info: &PanicInfo) -> ! {
 
 #[cfg(test)]
 #[panic_handler]
-fn panic(info: &PanicInfo) -> ! {
+fn panic_handler(info: &PanicInfo) -> ! {
     martim::test_panic_handler(info)
 }
 
@@ -97,12 +99,28 @@ fn main() {
 
     scheduler::spawn(just_panic).unwrap();
     scheduler::spawn(init_vfs).unwrap();
+    scheduler::spawn(elf_stuff).unwrap();
     scheduler::spawn(example_tasks).unwrap();
 
     debug!(
         "kernel task with tid {} is still running",
         scheduler::get_current_tid()
     );
+}
+
+extern "C" fn elf_stuff() {
+    let path = "/mnt/block_device0/executables/hello_world";
+    // wait for vfs to be initialized
+    let content = loop {
+        if let Ok(content) = vfs::read_file_node(&path) {
+            break content;
+        }
+        hlt();
+    };
+    let header = Elf::parse_header(&content).unwrap();
+    info!("parsed header");
+    let elf = Elf::lazy_parse(header).unwrap();
+    info!("{} is elf{}", path, if elf.is_64 { "64" } else { "32" });
 }
 
 async fn async_number() -> u32 {
