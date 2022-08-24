@@ -83,11 +83,9 @@ $$ | \_/ $$ |\$$$$$$$ |$$ |       \$$$$  |$$ |$$ | $$ | $$ |
 }
 
 fn main() {
-    vga_println!("Hello, {}!", "World");
-
     let boot_time = Peripherals::boot_time();
     info!(
-        "Boot time: {:02}{:02}-{:02}-{:02}, {:02}:{:02}:{:02}",
+        "boot time: {:02}{:02}-{:02}-{:02}, {:02}:{:02}:{:02}",
         boot_time.century.unwrap(),
         boot_time.year,
         boot_time.month,
@@ -97,8 +95,8 @@ fn main() {
         boot_time.seconds,
     );
 
-    scheduler::spawn(just_panic).unwrap();
     scheduler::spawn(init_vfs).unwrap();
+    scheduler::spawn(just_panic).unwrap();
     scheduler::spawn(elf_stuff).unwrap();
     scheduler::spawn(example_tasks).unwrap();
 
@@ -129,7 +127,7 @@ async fn async_number() -> u32 {
 
 async fn example_task() {
     let number = async_number().await;
-    vga_println!("async number: {}", number);
+    serial_println!("async number: {}", number);
 }
 
 extern "C" fn just_panic() {

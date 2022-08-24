@@ -14,8 +14,7 @@ use alloc::format;
 use alloc::string::ToString;
 
 pub extern "C" fn init_vfs() {
-    mount_devfs();
-    mount_memfs();
+    setup_vfs_base_structuce();
     mount_ide_drive_files();
 
     mount_ext2();
@@ -40,14 +39,12 @@ pub extern "C" fn init_vfs() {
     info!("vfs initialized");
 }
 
-fn mount_devfs() {
+fn setup_vfs_base_structuce() {
     let devfs = DevFs::new("dev".to_string());
     vfs::mount(&"/", devfs.root_inode()).unwrap();
-}
 
-fn mount_memfs() {
-    let memfs = MemFs::new("mnt".to_string());
-    vfs::mount(&"/", memfs.root_inode()).unwrap();
+    let mntfs = MemFs::new("mnt".to_string());
+    vfs::mount(&"/", mntfs.root_inode()).unwrap();
 }
 
 fn mount_ide_drive_files() {
