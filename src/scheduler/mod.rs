@@ -9,8 +9,7 @@ pub mod switch;
 pub mod task;
 pub mod tid;
 
-pub const NUM_PRIORITIES: usize = 32;
-pub const STACK_SIZE: usize = 0x8000;
+pub const STACK_SIZE: usize = 0x8000; // 32 KiB
 
 static mut SCHEDULER: Option<round_robin::RoundRobin> = None;
 static SCHEDULER_INIT: Once = Once::new();
@@ -26,11 +25,11 @@ pub struct Scheduler;
 
 impl Scheduler {
     /// Create a new kernel task
-    #[must_use = "spawning a task may fail"]
     pub fn spawn(func: extern "C" fn()) -> Result<Tid> {
         unsafe { SCHEDULER.as_mut().unwrap().spawn(func) }
     }
 
+    /// Puts the current task to sleep for **at least** the given duration.
     pub fn sleep(duration: Duration) {
         unsafe { SCHEDULER.as_mut().unwrap().sleep(duration) }
     }
@@ -45,6 +44,8 @@ impl Scheduler {
         }
     }
 
+    /// Returns the amount of cpu time that the current task has been run.
+    /// This is a function of [`Scheduler::total_ticks`].
     pub fn cpu_time() -> Duration {
         unsafe { SCHEDULER.as_mut().unwrap().cpu_time() }
     }
@@ -71,6 +72,7 @@ impl Scheduler {
         }
     }
 
+    /// Returns the amount of total ticks that the current task has been running.
     pub fn total_ticks() -> u64 {
         unsafe { SCHEDULER.as_ref().unwrap().total_ticks() }
     }

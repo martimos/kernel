@@ -6,14 +6,10 @@ use core::time::Duration;
 use x86_64::instructions::interrupts::without_interrupts;
 
 use crate::scheduler::switch::switch;
-use crate::{
-    debug, hlt_loop,
-    scheduler::{
-        task::{ProcessStatus, Task},
-        tid::Tid,
-    },
-    Result,
-};
+use crate::scheduler::task::{ProcessStatus, Task};
+use crate::scheduler::tid::Tid;
+use crate::syscall::Result;
+use crate::{debug, hlt_loop};
 use kstd::collections::deltaq::DeltaQueue;
 
 pub struct RoundRobin {
