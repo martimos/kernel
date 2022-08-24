@@ -22,52 +22,56 @@ pub fn init() {
     });
 }
 
-/// Create a new kernel task
-#[must_use = "spawning a task may fail"]
-pub fn spawn(func: extern "C" fn()) -> Result<Tid> {
-    unsafe { SCHEDULER.as_mut().unwrap().spawn(func) }
-}
+pub struct Scheduler;
 
-pub fn sleep(duration: Duration) {
-    unsafe { SCHEDULER.as_mut().unwrap().sleep(duration) }
-}
-
-/// Trigger the scheduler to switch to the next available task
-pub fn reschedule() {
-    unsafe {
-        if SCHEDULER.is_none() {
-            return;
-        }
-        SCHEDULER.as_mut().unwrap().reschedule()
+impl Scheduler {
+    /// Create a new kernel task
+    #[must_use = "spawning a task may fail"]
+    pub fn spawn(func: extern "C" fn()) -> Result<Tid> {
+        unsafe { SCHEDULER.as_mut().unwrap().spawn(func) }
     }
-}
 
-pub fn cpu_time() -> Duration {
-    unsafe { SCHEDULER.as_mut().unwrap().cpu_time() }
-}
-
-/// Terminate the current running task
-pub fn exit() -> ! {
-    unsafe {
-        SCHEDULER.as_mut().unwrap().exit();
+    pub fn sleep(duration: Duration) {
+        unsafe { SCHEDULER.as_mut().unwrap().sleep(duration) }
     }
-}
 
-/// Get the TID of the current running task
-pub fn get_current_tid() -> Tid {
-    unsafe { SCHEDULER.as_ref().unwrap().get_current_tid() }
-}
-
-/// Signal to the scheduler that a timer tick occurred.
-/// The tick is ignored if the scheduler is not initialized yet.
-pub fn timer_tick() {
-    unsafe {
-        if let Some(sched) = SCHEDULER.as_mut() {
-            sched.timer_tick()
+    /// Trigger the scheduler to switch to the next available task
+    pub fn reschedule() {
+        unsafe {
+            if SCHEDULER.is_none() {
+                return;
+            }
+            SCHEDULER.as_mut().unwrap().reschedule()
         }
     }
-}
 
-pub fn total_ticks() -> u64 {
-    unsafe { SCHEDULER.as_ref().unwrap().total_ticks() }
+    pub fn cpu_time() -> Duration {
+        unsafe { SCHEDULER.as_mut().unwrap().cpu_time() }
+    }
+
+    /// Terminate the current running task
+    pub fn exit() -> ! {
+        unsafe {
+            SCHEDULER.as_mut().unwrap().exit();
+        }
+    }
+
+    /// Get the TID of the current running task
+    pub fn get_current_tid() -> Tid {
+        unsafe { SCHEDULER.as_ref().unwrap().get_current_tid() }
+    }
+
+    /// Signal to the scheduler that a timer tick occurred.
+    /// The tick is ignored if the scheduler is not initialized yet.
+    pub fn timer_tick() {
+        unsafe {
+            if let Some(sched) = SCHEDULER.as_mut() {
+                sched.timer_tick()
+            }
+        }
+    }
+
+    pub fn total_ticks() -> u64 {
+        unsafe { SCHEDULER.as_ref().unwrap().total_ticks() }
+    }
 }

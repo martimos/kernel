@@ -14,6 +14,7 @@ use x86_64::instructions::hlt;
 
 use martim::driver::Peripherals;
 use martim::io::fs::vfs;
+use martim::scheduler::Scheduler;
 use martim::vfs_setup::init_vfs;
 use martim::{debug, hlt_loop, info};
 use martim::{
@@ -28,15 +29,15 @@ use martim::{
 fn panic_handler(info: &PanicInfo) -> ! {
     martim::info!(
         "terminating task {}: {}",
-        scheduler::get_current_tid(),
+        Scheduler::get_current_tid(),
         info
     );
 
-    if scheduler::get_current_tid().as_usize() == 0 {
+    if Scheduler::get_current_tid().as_usize() == 0 {
         serial_println!("kernel task panicked, halting...");
         hlt_loop()
     } else {
-        scheduler::exit()
+        Scheduler::exit()
     }
 }
 
@@ -95,14 +96,14 @@ fn main() {
         boot_time.seconds,
     );
 
-    scheduler::spawn(init_vfs).unwrap();
-    scheduler::spawn(just_panic).unwrap();
-    scheduler::spawn(elf_stuff).unwrap();
-    scheduler::spawn(example_tasks).unwrap();
+    Scheduler::spawn(init_vfs).unwrap();
+    Scheduler::spawn(just_panic).unwrap();
+    Scheduler::spawn(elf_stuff).unwrap();
+    Scheduler::spawn(example_tasks).unwrap();
 
     debug!(
         "kernel task with tid {} is still running",
-        scheduler::get_current_tid()
+        Scheduler::get_current_tid()
     );
 }
 
@@ -131,7 +132,7 @@ async fn example_task() {
 }
 
 extern "C" fn just_panic() {
-    serial_println!("Hi, my name is Tid {} and", scheduler::get_current_tid());
+    serial_println!("Hi, my name is Tid {} and", Scheduler::get_current_tid());
     panic!("Welcome to MartimOS");
 }
 

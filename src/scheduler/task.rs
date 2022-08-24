@@ -2,7 +2,7 @@ use crate::debug;
 use alloc::alloc::{alloc, dealloc};
 use core::{alloc::Layout, mem::size_of, ptr::write_bytes};
 
-use crate::scheduler::{exit, tid::Tid, STACK_SIZE};
+use crate::scheduler::{tid::Tid, Scheduler, STACK_SIZE};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum ProcessStatus {
@@ -139,7 +139,7 @@ struct State {
 }
 
 extern "C" fn leave_task() -> ! {
-    exit()
+    Scheduler::exit()
 }
 
 impl Task {

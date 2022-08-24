@@ -3,7 +3,8 @@ use lazy_static::lazy_static;
 use pic8259::ChainedPics;
 use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame, PageFaultErrorCode};
 
-use crate::{gdt, scheduler, serial_println, vga_println};
+use crate::scheduler::Scheduler;
+use crate::{gdt, serial_println, vga_println};
 
 // "Remapped" PICS chosen as 32 to 47
 pub const PIC_1_OFFSET: u8 = 32;
@@ -136,13 +137,13 @@ table[index]: {}[{}]
 }
 
 extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: InterruptStackFrame) {
-    scheduler::timer_tick();
+    Scheduler::timer_tick();
 
     unsafe {
         end_of_interrupt(InterruptIndex::Timer);
     }
 
-    scheduler::reschedule();
+    Scheduler::reschedule();
 }
 
 extern "x86-interrupt" fn page_fault_handler(
