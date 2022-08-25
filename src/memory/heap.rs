@@ -1,25 +1,14 @@
+use crate::memory::allocator::fixed_size_block::FixedSizeBlockAllocator;
 use kstd::sync::{Mutex, MutexGuard};
-use x86_64::{
-    structures::paging::{
-        mapper::MapToError, FrameAllocator, Mapper, Page, PageTableFlags, Size4KiB,
-    },
-    VirtAddr,
-};
-
-use crate::allocator::fixed_size_block::FixedSizeBlockAllocator;
-
-pub mod bump;
-pub mod fixed_size_block;
-pub mod linked_list;
+use x86_64::structures::paging::mapper::MapToError;
+use x86_64::structures::paging::{FrameAllocator, Mapper, Page, PageTableFlags, Size4KiB};
+use x86_64::VirtAddr;
 
 pub const HEAP_START: *mut u8 = 0x4444_4444_0000_usize as *mut u8;
 pub const HEAP_SIZE: usize = 1024 * 1024; // 1 MiB
 
 #[global_allocator]
 static ALLOCATOR: Locked<FixedSizeBlockAllocator> = Locked::new(FixedSizeBlockAllocator::new());
-// static ALLOCATOR: Locked<LinkedListAllocator> = Locked::new(LinkedListAllocator::new());
-// static ALLOCATOR: LockedHeap = LockedHeap::empty();
-// static ALLOCATOR: Locked<BumpAllocator> = Locked::new(BumpAllocator::new());
 
 pub fn init_heap(
     mapper: &mut impl Mapper<Size4KiB>,
@@ -63,11 +52,4 @@ impl<A> Locked<A> {
     pub fn lock(&self) -> MutexGuard<A> {
         self.inner.lock()
     }
-}
-
-/// Align the given address `addr` upwards to alignment `align`.
-///
-/// Requires that `align` is a power of two.
-fn align_up(addr: usize, align: usize) -> usize {
-    (addr + align - 1) & !(align - 1)
 }

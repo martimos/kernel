@@ -21,7 +21,6 @@ use bootloader::{entry_point, BootInfo};
 // re-export Result<T, E = syscall::error::Errno>
 pub use syscall::Result;
 
-pub mod allocator;
 pub mod driver;
 pub mod gdt;
 pub mod interrupts;

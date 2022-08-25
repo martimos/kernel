@@ -10,22 +10,20 @@ extern crate alloc;
 use core::panic::PanicInfo;
 
 use bootloader::{entry_point, BootInfo};
+use martim::memory;
+use martim::memory::heap;
+use martim::memory::physical::PhysicalFrameAllocator;
+use x86_64::VirtAddr;
 
 entry_point!(main);
 
 #[allow(clippy::empty_loop)]
 fn main(boot_info: &'static mut BootInfo) -> ! {
-    use martim::{
-        allocator,
-        memory::{self, BootInfoFrameAllocator},
-    };
-    use x86_64::VirtAddr;
-
     martim::init();
     let phys_mem_offset = VirtAddr::new(boot_info.physical_memory_offset.into_option().unwrap());
     let mut mapper = unsafe { memory::init(phys_mem_offset) };
-    let mut frame_allocator = unsafe { BootInfoFrameAllocator::init(&boot_info.memory_regions) };
-    allocator::init_heap(&mut mapper, &mut frame_allocator).expect("heap initialization failed");
+    let mut frame_allocator = unsafe { PhysicalFrameAllocator::init(&boot_info.memory_regions) };
+    heap::init_heap(&mut mapper, &mut frame_allocator).expect("heap initialization failed");
 
     test_main();
     loop {}
@@ -39,8 +37,7 @@ fn panic(info: &PanicInfo) -> ! {
 #[cfg(test)]
 mod tests {
     use alloc::{boxed::Box, collections::LinkedList, vec, vec::Vec};
-
-    use martim::allocator::HEAP_SIZE;
+    use martim::memory::heap::HEAP_SIZE;
 
     #[test_case]
     fn simple_allocation_box_syntax() {

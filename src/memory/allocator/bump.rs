@@ -1,9 +1,9 @@
+use crate::memory::allocator::align_up;
+use crate::memory::heap::Locked;
 use core::{
     alloc::{GlobalAlloc, Layout},
     ptr,
 };
-
-use super::{align_up, Locked};
 
 pub struct BumpAllocator {
     heap_start: usize,

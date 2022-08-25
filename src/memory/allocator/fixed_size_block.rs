@@ -1,9 +1,8 @@
 use alloc::alloc::GlobalAlloc;
 use core::{alloc::Layout, mem, ptr, ptr::NonNull};
 
+use crate::memory::heap::Locked;
 use x86_64::structures::paging::{PageSize, Size4KiB};
-
-use super::Locked;
 
 struct ListNode {
     next: Option<&'static mut ListNode>,

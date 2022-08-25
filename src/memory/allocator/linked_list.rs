@@ -1,9 +1,7 @@
+use crate::memory::allocator::align_up;
+use crate::memory::heap::Locked;
 use alloc::alloc::{GlobalAlloc, Layout};
 use core::{mem, ptr};
-
-use crate::allocator::align_up;
-
-use super::Locked;
 
 struct ListNode {
     size: usize,
