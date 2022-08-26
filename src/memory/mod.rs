@@ -11,6 +11,7 @@ use crate::vga_buffer;
 
 pub mod allocator;
 pub mod heap;
+pub mod kbuffer;
 pub mod manager;
 pub mod physical;
 pub mod size;
@@ -52,11 +53,12 @@ pub fn init_memory(boot_info: &'static mut BootInfo) {
         Optional::Some(addr) => addr,
         Optional::None => panic!("no boot info physical memory offset given"),
     };
-    let phys_mem_offset = VirtAddr::new(addr);
-    let mapper = unsafe { create_offset_page_table(phys_mem_offset) };
-    let frame_allocator = unsafe { PhysicalFrameAllocator::init(&boot_info.memory_regions) };
-    manager::init_memory_manager(mapper, frame_allocator);
-    heap::init_heap().expect("heap initialization failed");
+    manager::init_memory_manager(
+        unsafe { create_offset_page_table(VirtAddr::new(addr)) },
+        unsafe { PhysicalFrameAllocator::init(&boot_info.memory_regions) },
+    );
+    heap::init_heap().expect("kernel heap initialization failed");
+    kbuffer::init_kbuffer_heap().expect("kbuffer heap initialization failed");
 }
 
 /// Initialize a new OffsetPageTable.

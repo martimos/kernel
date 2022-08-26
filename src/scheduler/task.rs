@@ -1,5 +1,4 @@
-use crate::debug;
-use alloc::alloc::{alloc, dealloc};
+use crate::memory::kbuffer::KBuffer;
 use core::{alloc::Layout, mem::size_of, ptr::write_bytes};
 
 use crate::scheduler::{tid::Tid, Scheduler, STACK_SIZE};
@@ -50,7 +49,7 @@ pub struct Task {
     /// asm! block in the context switch function via pointer location.
     pub last_stack_pointer: usize,
     /// Stack of the task
-    pub stack: *mut Stack,
+    pub stack: KBuffer,
     /// The amount of timer ticks that this task has been
     /// executed on the cpu.
     pub ticks: u64,
@@ -67,7 +66,7 @@ impl Task {
             status: ProcessStatus::Running,
             sleep_ticks: 0,
             last_stack_pointer: 0,
-            stack: 0xccddddcc as *mut Stack, // TODO: this is highly invalid, but we don't know where the stack starts or ends (yet)
+            stack: KBuffer::empty(),
             ticks: 0,
             is_idle: false,
         }
@@ -76,20 +75,7 @@ impl Task {
     /// Creates a new task with the given status. Allocate stack for it with [`Task::allocate_stack`].
     pub fn new(id: Tid, status: ProcessStatus) -> Task {
         let layout = Layout::new::<Stack>();
-        let stack = unsafe { alloc(layout) as *mut Stack };
-        debug!(
-            "allocated stack for task {} at {:p} (size={} align={})",
-            id,
-            stack,
-            layout.size(),
-            layout.align()
-        );
-        if stack as usize == 0 {
-            panic!(
-                "unable to allocate another kernel stack of size {} (allocation failure)",
-                layout.size()
-            );
-        }
+        let stack = KBuffer::allocate_from_layout(layout);
 
         Task {
             tid: id,
@@ -99,19 +85,6 @@ impl Task {
             stack,
             ticks: 0,
             is_idle: false,
-        }
-    }
-}
-
-impl Drop for Task {
-    fn drop(&mut self) {
-        if unsafe { self.stack != &mut BOOT_STACK } {
-            // deallocate stack
-            let stack_ptr = self.stack as *mut u8;
-            let layout = Layout::new::<Stack>();
-            unsafe {
-                dealloc(stack_ptr, layout);
-            }
         }
     }
 }
@@ -146,10 +119,11 @@ impl Task {
     /// Allocates stack memory for this task. The given entry_point is the code that
     /// this task executes.
     pub fn allocate_stack(&mut self, entry_point: extern "C" fn()) {
+        let stack_ptr = self.stack.as_mut_ptr::<Stack>();
         unsafe {
-            let mut stack: *mut u64 = ((*self.stack).top()) as *mut u64; // "write" qwords
+            let mut stack: *mut u64 = ((*stack_ptr).top()) as *mut u64; // "write" qwords
 
-            write_bytes((*self.stack).bottom() as *mut u8, 0xCD, STACK_SIZE); // fill the stack with 0xCD
+            write_bytes((*stack_ptr).bottom() as *mut u8, 0xCD, STACK_SIZE); // fill the stack with 0xCD
 
             *stack = 0xCAFEBABEu64; // marker at stack bottom
             stack = (stack as usize - size_of::<u64>()) as *mut u64;

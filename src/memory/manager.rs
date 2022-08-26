@@ -4,7 +4,7 @@ use crate::memory::Result;
 use core::marker::PhantomData;
 use core::ptr;
 use kstd::sync::{Mutex, MutexGuard};
-use x86_64::structures::paging::page::PageRangeInclusive;
+use x86_64::structures::paging::page::PageRange;
 use x86_64::structures::paging::{
     FrameAllocator, FrameDeallocator, Mapper, OffsetPageTable, Page, PageSize, PageTableFlags,
     PhysFrame, Size4KiB,
@@ -98,10 +98,9 @@ where
     M: Mapper<S>,
     A: FrameAllocator<S> + FrameAllocator<Size4KiB>, // 4KiB required since page table mapping pages are 4KiB
 {
-    pub fn allocate_and_map_memory(
+    pub fn allocate_and_map_page_range(
         &mut self,
-        start_addr: VirtAddr,
-        page_count: usize,
+        range: PageRange<S>,
         memory_kind: MemoryKind,
         user_accessible: UserAccessible,
         zero_filled: ZeroFilled,
@@ -116,38 +115,9 @@ where
             MemoryKind::Executable => page_table_flags.remove(PageTableFlags::NO_EXECUTE),
         };
 
-        self.allocate_and_map_pages(start_addr, page_count, page_table_flags, zero_filled)
-    }
-
-    fn allocate_frame(&mut self) -> Result<PhysFrame<S>> {
-        self.physical_frame_allocator
-            .allocate_frame()
-            .ok_or(Error::FrameAllocationFailed)
-    }
-
-    fn allocate_and_map_pages(
-        &mut self,
-        start_addr: VirtAddr,
-        page_count: usize,
-        flags: PageTableFlags,
-        zero_filled: ZeroFilled,
-    ) -> Result<()> {
-        let start_page = Page::<S>::containing_address(start_addr);
-        let end_page = start_page + (page_count - 1) as u64;
-        let page_range = Page::range_inclusive(start_page, end_page);
-
-        self.allocate_and_map_page_range(page_range, flags, zero_filled)
-    }
-
-    fn allocate_and_map_page_range(
-        &mut self,
-        page_range: PageRangeInclusive<S>,
-        flags: PageTableFlags,
-        zero_filled: ZeroFilled,
-    ) -> Result<()> {
-        for page in page_range {
+        for page in range {
             let frame = self.allocate_frame()?;
-            self.map_frame_to_page(frame, page, flags)?;
+            self.map_frame_to_page(frame, page, page_table_flags)?;
             if zero_filled.into() {
                 unsafe {
                     ptr::write_bytes(
@@ -159,6 +129,12 @@ where
             }
         }
         Ok(())
+    }
+
+    fn allocate_frame(&mut self) -> Result<PhysFrame<S>> {
+        self.physical_frame_allocator
+            .allocate_frame()
+            .ok_or(Error::FrameAllocationFailed)
     }
 
     fn map_frame_to_page(

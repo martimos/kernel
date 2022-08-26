@@ -1,4 +1,6 @@
 use crate::memory::size::Size;
+use x86_64::structures::paging::page::PageRange;
+use x86_64::structures::paging::{Page, PageSize};
 use x86_64::VirtAddr;
 
 /*
@@ -12,6 +14,10 @@ pub const HEAP: MemorySpan = MemorySpan::new(
 );
 pub const KERNEL_STACK: MemorySpan = MemorySpan::new(
     VirtAddr::new_truncate(0x5555_5555_0000),
+    Size::MiB(1).bytes(),
+);
+pub const KBUFFER: MemorySpan = MemorySpan::new(
+    VirtAddr::new_truncate(0x6666_6666_0000),
     Size::MiB(1).bytes(),
 );
 
@@ -32,5 +38,12 @@ impl MemorySpan {
     #[allow(clippy::len_without_is_empty)] // since a span should never be empty, is_empty doesn't make sense
     pub const fn len(&self) -> usize {
         self.len
+    }
+
+    pub fn as_page_range<S: PageSize>(&self) -> PageRange<S> {
+        Page::range(
+            Page::<S>::containing_address(self.start),
+            Page::<S>::containing_address(self.start + self.len),
+        )
     }
 }
