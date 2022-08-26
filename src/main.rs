@@ -11,9 +11,11 @@ use core::panic::PanicInfo;
 use bootloader::{entry_point, BootInfo};
 use goblin::elf::Elf;
 use x86_64::instructions::hlt;
+use x86_64::VirtAddr;
 
 use martim::driver::Peripherals;
 use martim::io::fs::vfs;
+use martim::memory::manager::{MemoryKind, MemoryManager, UserAccessible, ZeroFilled};
 use martim::scheduler::Scheduler;
 use martim::vfs_setup::init_vfs;
 use martim::{debug, hlt_loop, info};
@@ -52,7 +54,7 @@ entry_point!(kernel_main);
 fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     serial_print!("init kernel...");
     martim::init();
-    martim::memory::init_heap(boot_info);
+    martim::memory::init_memory(boot_info);
     scheduler::init();
     let _ = Peripherals::boot_time(); // initialize boot time
     vfs::init();
@@ -100,11 +102,28 @@ fn main() {
     Scheduler::spawn(just_panic).unwrap();
     Scheduler::spawn(elf_stuff).unwrap();
     Scheduler::spawn(example_tasks).unwrap();
+    Scheduler::spawn(fancy_memory_stuff).unwrap();
 
     debug!(
         "kernel task with tid {} is still running",
         Scheduler::get_current_tid()
     );
+}
+
+extern "C" fn fancy_memory_stuff() {
+    let addr = VirtAddr::new_truncate(0x1_0000_0000);
+    MemoryManager::lock()
+        .allocate_and_map_memory(
+            addr,
+            1,
+            MemoryKind::Writable,
+            UserAccessible::No,
+            ZeroFilled::Yes,
+        )
+        .expect("allocation failed");
+
+    // if this page faults, then something is wrong in the mapping
+    unsafe { addr.as_mut_ptr::<u64>().write(0x1234_5678_1234_5678) };
 }
 
 extern "C" fn elf_stuff() {

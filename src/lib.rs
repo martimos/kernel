@@ -106,7 +106,7 @@ entry_point!(test_kernel_main);
 fn test_kernel_main(boot_info: &'static mut BootInfo) -> ! {
     serial_print!("init...");
     init();
-    memory::init_heap(boot_info);
+    memory::init_memory(boot_info);
     serial_println!("done");
 
     test_main();

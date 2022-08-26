@@ -22,7 +22,7 @@ entry_point!(main);
 #[allow(clippy::empty_loop)]
 fn main(boot_info: &'static mut BootInfo) -> ! {
     martim::init();
-    martim::memory::init_heap(boot_info);
+    martim::memory::init_memory(boot_info);
     scheduler::init();
     vfs::init();
     vfs_setup::init_vfs();
