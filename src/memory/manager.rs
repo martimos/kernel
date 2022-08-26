@@ -1,8 +1,10 @@
 use crate::memory::physical::PhysicalFrameAllocator;
+use crate::memory::Error;
+use crate::memory::Result;
 use core::marker::PhantomData;
 use core::ptr;
 use kstd::sync::{Mutex, MutexGuard};
-use x86_64::structures::paging::mapper::{MapToError, UnmapError};
+use x86_64::structures::paging::page::PageRangeInclusive;
 use x86_64::structures::paging::{
     FrameAllocator, FrameDeallocator, Mapper, OffsetPageTable, Page, PageSize, PageTableFlags,
     PhysFrame, Size4KiB,
@@ -13,7 +15,7 @@ static mut MEMORY_MANAGER: Option<
     Mutex<MemoryManager<Size4KiB, OffsetPageTable<'static>, PhysicalFrameAllocator<Size4KiB>>>,
 > = None;
 
-pub(in crate::memory) fn init_memory_manager(
+pub fn init_memory_manager(
     page_table: OffsetPageTable<'static>,
     physical_frame_allocator: PhysicalFrameAllocator<Size4KiB>,
 ) {
@@ -23,28 +25,6 @@ pub(in crate::memory) fn init_memory_manager(
         }
         let mm = MemoryManager::new(page_table, physical_frame_allocator);
         MEMORY_MANAGER = Some(Mutex::new(mm));
-    }
-}
-
-pub type Result<T> = core::result::Result<T, Error>;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Error {
-    PageMappingFailed,
-    PageUnmappingFailed,
-    FrameAllocationFailed,
-    OutOfMemory,
-}
-
-impl<S: PageSize> From<MapToError<S>> for Error {
-    fn from(_: MapToError<S>) -> Self {
-        Self::PageMappingFailed
-    }
-}
-
-impl From<UnmapError> for Error {
-    fn from(_: UnmapError) -> Self {
-        Self::PageUnmappingFailed
     }
 }
 
@@ -156,17 +136,26 @@ where
         let end_page = start_page + (page_count - 1) as u64;
         let page_range = Page::range_inclusive(start_page, end_page);
 
+        self.allocate_and_map_page_range(page_range, flags, zero_filled)
+    }
+
+    fn allocate_and_map_page_range(
+        &mut self,
+        page_range: PageRangeInclusive<S>,
+        flags: PageTableFlags,
+        zero_filled: ZeroFilled,
+    ) -> Result<()> {
         for page in page_range {
             let frame = self.allocate_frame()?;
             self.map_frame_to_page(frame, page, flags)?;
-        }
-        if zero_filled.into() {
-            unsafe {
-                ptr::write_bytes(
-                    start_page.start_address().as_mut_ptr::<u8>(),
-                    0,
-                    page_count * start_page.size() as usize,
-                );
+            if zero_filled.into() {
+                unsafe {
+                    ptr::write_bytes(
+                        page.start_address().as_mut_ptr::<u8>(),
+                        0,
+                        page.size() as usize,
+                    );
+                }
             }
         }
         Ok(())

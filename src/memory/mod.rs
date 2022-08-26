@@ -1,7 +1,8 @@
 use crate::memory::physical::PhysicalFrameAllocator;
 use bootloader::boot_info::Optional;
 use bootloader::BootInfo;
-use x86_64::structures::paging::{OffsetPageTable, PageTable};
+use x86_64::structures::paging::mapper::{MapToError, UnmapError};
+use x86_64::structures::paging::{OffsetPageTable, PageSize, PageTable};
 use x86_64::VirtAddr;
 
 #[cfg(test)]
@@ -12,6 +13,30 @@ pub mod allocator;
 pub mod heap;
 pub mod manager;
 pub mod physical;
+pub mod size;
+pub mod span;
+
+pub type Result<T> = core::result::Result<T, Error>;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Error {
+    PageMappingFailed,
+    PageUnmappingFailed,
+    FrameAllocationFailed,
+    OutOfMemory,
+}
+
+impl<S: PageSize> From<MapToError<S>> for Error {
+    fn from(_: MapToError<S>) -> Self {
+        Self::PageMappingFailed
+    }
+}
+
+impl From<UnmapError> for Error {
+    fn from(_: UnmapError) -> Self {
+        Self::PageUnmappingFailed
+    }
+}
 
 pub fn init_memory(boot_info: &'static mut BootInfo) {
     if let Some(framebuffer) = boot_info.framebuffer.as_mut() {
@@ -28,10 +53,10 @@ pub fn init_memory(boot_info: &'static mut BootInfo) {
         Optional::None => panic!("no boot info physical memory offset given"),
     };
     let phys_mem_offset = VirtAddr::new(addr);
-    let mut mapper = unsafe { create_offset_page_table(phys_mem_offset) };
-    let mut frame_allocator = unsafe { PhysicalFrameAllocator::init(&boot_info.memory_regions) };
-    heap::init_heap(&mut mapper, &mut frame_allocator).expect("heap initialization failed");
+    let mapper = unsafe { create_offset_page_table(phys_mem_offset) };
+    let frame_allocator = unsafe { PhysicalFrameAllocator::init(&boot_info.memory_regions) };
     manager::init_memory_manager(mapper, frame_allocator);
+    heap::init_heap().expect("heap initialization failed");
 }
 
 /// Initialize a new OffsetPageTable.
