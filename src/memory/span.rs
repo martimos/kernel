@@ -18,7 +18,7 @@ pub const KERNEL_STACK: MemorySpan = MemorySpan::new(
 );
 pub const KBUFFER: MemorySpan = MemorySpan::new(
     VirtAddr::new_truncate(0x6666_6666_0000),
-    Size::MiB(1).bytes(),
+    Size::MiB(2).bytes(),
 );
 
 pub struct MemorySpan {

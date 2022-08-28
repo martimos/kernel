@@ -2,7 +2,6 @@ use crate::memory::physical::PhysicalFrameAllocator;
 use crate::memory::Error;
 use crate::memory::Result;
 use core::marker::PhantomData;
-use core::ptr;
 use kstd::sync::{Mutex, MutexGuard};
 use x86_64::structures::paging::page::PageRange;
 use x86_64::structures::paging::{
@@ -25,18 +24,6 @@ pub fn init_memory_manager(
         }
         let mm = MemoryManager::new(page_table, physical_frame_allocator);
         MEMORY_MANAGER = Some(Mutex::new(mm));
-    }
-}
-
-#[derive(Copy, Clone, Eq, PartialEq, Debug)]
-pub enum ZeroFilled {
-    Yes,
-    No,
-}
-
-impl From<ZeroFilled> for bool {
-    fn from(x: ZeroFilled) -> Self {
-        x == ZeroFilled::Yes
     }
 }
 
@@ -103,7 +90,6 @@ where
         range: PageRange<S>,
         memory_kind: MemoryKind,
         user_accessible: UserAccessible,
-        zero_filled: ZeroFilled,
     ) -> Result<()> {
         let mut page_table_flags = PageTableFlags::PRESENT | PageTableFlags::NO_EXECUTE;
         if user_accessible.into() {
@@ -118,15 +104,6 @@ where
         for page in range {
             let frame = self.allocate_frame()?;
             self.map_frame_to_page(frame, page, page_table_flags)?;
-            if zero_filled.into() {
-                unsafe {
-                    ptr::write_bytes(
-                        page.start_address().as_mut_ptr::<u8>(),
-                        0,
-                        page.size() as usize,
-                    );
-                }
-            }
         }
         Ok(())
     }

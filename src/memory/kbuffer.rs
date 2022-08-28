@@ -1,6 +1,6 @@
 use crate::memory::allocator::bump::BumpAllocator;
 use crate::memory::heap::Locked;
-use crate::memory::manager::{MemoryKind, MemoryManager, UserAccessible, ZeroFilled};
+use crate::memory::manager::{MemoryKind, MemoryManager, UserAccessible};
 use crate::memory::span::KBUFFER;
 use crate::memory::Result;
 use core::alloc::{GlobalAlloc, Layout};
@@ -15,7 +15,6 @@ pub fn init_kbuffer_heap() -> Result<()> {
         page_range,
         MemoryKind::Writable,
         UserAccessible::No,
-        ZeroFilled::Yes,
     )?;
 
     unsafe {

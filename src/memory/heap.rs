@@ -1,5 +1,5 @@
 use crate::memory::allocator::fixed_size_block::FixedSizeBlockAllocator;
-use crate::memory::manager::{MemoryKind, MemoryManager, UserAccessible, ZeroFilled};
+use crate::memory::manager::{MemoryKind, MemoryManager, UserAccessible};
 use crate::memory::{span, Error};
 use kstd::sync::{Mutex, MutexGuard};
 use x86_64::structures::paging::Size4KiB;
@@ -17,7 +17,6 @@ pub fn init_heap() -> Result<(), Error> {
         page_range,
         MemoryKind::Writable,
         UserAccessible::No,
-        ZeroFilled::Yes,
     )?;
 
     unsafe {
