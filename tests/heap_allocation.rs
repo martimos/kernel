@@ -11,21 +11,13 @@ use core::panic::PanicInfo;
 
 use bootloader::{entry_point, BootInfo};
 use martim::memory;
-use martim::memory::heap;
-use martim::memory::manager;
-use martim::memory::physical::PhysicalFrameAllocator;
-use x86_64::VirtAddr;
 
 entry_point!(main);
 
 #[allow(clippy::empty_loop)]
 fn main(boot_info: &'static mut BootInfo) -> ! {
     martim::init();
-    let phys_mem_offset = VirtAddr::new(boot_info.physical_memory_offset.into_option().unwrap());
-    let mapper = unsafe { memory::create_offset_page_table(phys_mem_offset) };
-    let frame_allocator = unsafe { PhysicalFrameAllocator::init(&boot_info.memory_regions) };
-    manager::init_memory_manager(mapper, frame_allocator);
-    heap::init_heap().expect("heap initialization failed");
+    memory::init_memory(boot_info);
 
     test_main();
     loop {}

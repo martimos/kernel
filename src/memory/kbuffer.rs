@@ -8,14 +8,10 @@ use core::alloc::{GlobalAlloc, Layout};
 static mut KBUFFER_HEAP: Locked<BumpAllocator<LazyPageMappingBackend<DefaultPageSize, NoUnmap>>> =
     Locked::new(BumpAllocator::new(LazyPageMappingBackend::new()));
 
-pub fn init_kbuffer_heap() -> Result<()> {
-    // let page_range = KBUFFER.as_page_range::<Size4KiB>();
-    //
-    // MemoryManager::lock().allocate_and_map_page_range(
-    //     page_range,
-    //     MemoryKind::Writable,
-    //     UserAccessible::No,
-    // )?;
+pub(in crate::memory) fn init_kbuffer_heap() -> Result<()> {
+    /*
+    Since we use the LazyPageMappingBackend, we don't need to map any of the pages of the heap here.
+     */
 
     unsafe {
         KBUFFER_HEAP
@@ -28,17 +24,13 @@ pub fn init_kbuffer_heap() -> Result<()> {
 
 pub struct KBuffer {
     start: *mut u8,
+    len: usize,
     allocation_layout: Layout, // used for deallocation
-    empty: bool,
 }
 
 impl KBuffer {
     pub fn empty() -> Self {
-        Self {
-            start: core::ptr::null_mut::<u8>(),
-            allocation_layout: Layout::from_size_align(0, 1).unwrap(),
-            empty: true,
-        }
+        Self::allocate(0)
     }
 
     pub fn allocate(size: usize) -> Self {
@@ -50,8 +42,8 @@ impl KBuffer {
         let start = unsafe { KBUFFER_HEAP.alloc_zeroed(layout) };
         KBuffer {
             start,
+            len: layout.size(),
             allocation_layout: layout,
-            empty: false,
         }
     }
 
@@ -62,15 +54,32 @@ impl KBuffer {
     pub fn as_ptr<T>(&self) -> *const T {
         self.start as *const T
     }
+
+    pub fn len(&self) -> usize {
+        self.len
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len == 0
+    }
 }
 
 impl Drop for KBuffer {
     fn drop(&mut self) {
-        if self.empty {
-            return;
-        }
         unsafe {
             KBUFFER_HEAP.dealloc(self.start, self.allocation_layout);
         }
+    }
+}
+
+impl AsRef<[u8]> for KBuffer {
+    fn as_ref(&self) -> &[u8] {
+        unsafe { core::slice::from_raw_parts(self.start, self.len) }
+    }
+}
+
+impl AsMut<[u8]> for KBuffer {
+    fn as_mut(&mut self) -> &mut [u8] {
+        unsafe { core::slice::from_raw_parts_mut(self.start, self.len) }
     }
 }

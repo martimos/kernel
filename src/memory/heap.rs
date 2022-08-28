@@ -9,7 +9,7 @@ use x86_64::structures::paging::Size4KiB;
 static ALLOCATOR: Locked<FixedSizeBlockAllocator<MemoryAlreadyMappedBackend>> =
     Locked::new(FixedSizeBlockAllocator::new(MemoryAlreadyMappedBackend));
 
-pub fn init_heap() -> Result<(), Error> {
+pub(in crate::memory) fn init_heap() -> Result<(), Error> {
     const HEAP_START: *mut u8 = span::HEAP.as_mut_ptr::<u8>();
     const HEAP_SIZE: usize = span::HEAP.len();
 

@@ -14,7 +14,7 @@ static mut MEMORY_MANAGER: Option<
     Mutex<MemoryManager<Size4KiB, OffsetPageTable<'static>, PhysicalFrameAllocator<Size4KiB>>>,
 > = None;
 
-pub fn init_memory_manager(
+pub(in crate::memory) fn init_memory_manager(
     page_table: OffsetPageTable<'static>,
     physical_frame_allocator: PhysicalFrameAllocator<Size4KiB>,
 ) {
