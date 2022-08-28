@@ -1,25 +1,34 @@
 use crate::memory::allocator::align_up;
+use crate::memory::allocator::backend::MemoryBackend;
 use crate::memory::heap::Locked;
 use core::{
     alloc::{GlobalAlloc, Layout},
     ptr,
 };
 
-pub struct BumpAllocator {
+pub struct BumpAllocator<M>
+where
+    M: MemoryBackend,
+{
     heap_start: usize,
     heap_end: usize,
     next: usize,
     allocations: usize,
+    memory_backend: M,
 }
 
-impl BumpAllocator {
+impl<M> BumpAllocator<M>
+where
+    M: MemoryBackend,
+{
     /// Creates a new empty bump allocator.
-    pub const fn new() -> Self {
+    pub const fn new(memory_backend: M) -> Self {
         BumpAllocator {
             heap_start: 0,
             heap_end: 0,
             next: 0,
             allocations: 0,
+            memory_backend,
         }
     }
 
@@ -36,7 +45,10 @@ impl BumpAllocator {
     }
 }
 
-unsafe impl GlobalAlloc for Locked<BumpAllocator> {
+unsafe impl<M> GlobalAlloc for Locked<BumpAllocator<M>>
+where
+    M: MemoryBackend,
+{
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
         let mut bump = self.lock(); // get a mutable reference
 
@@ -51,11 +63,18 @@ unsafe impl GlobalAlloc for Locked<BumpAllocator> {
         } else {
             bump.next = alloc_end;
             bump.allocations += 1;
+            bump.memory_backend
+                .memory_allocated(alloc_start as *const u8, alloc_end - alloc_start)
+                .expect("memory allocation via backend failed");
             alloc_start as *mut u8
         }
     }
 
     unsafe fn dealloc(&self, _ptr: *mut u8, _layout: Layout) {
+        /*
+        Since we don't really deallocate, we don't need to deallocate via memory backend.
+         */
+
         let mut bump = self.lock(); // get a mutable reference
 
         bump.allocations -= 1;

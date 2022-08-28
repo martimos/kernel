@@ -1,3 +1,4 @@
+use crate::memory::allocator::backend::already_mapped::MemoryAlreadyMappedBackend;
 use crate::memory::allocator::fixed_size_block::FixedSizeBlockAllocator;
 use crate::memory::manager::{MemoryKind, MemoryManager, UserAccessible};
 use crate::memory::{span, Error};
@@ -5,7 +6,8 @@ use kstd::sync::{Mutex, MutexGuard};
 use x86_64::structures::paging::Size4KiB;
 
 #[global_allocator]
-static ALLOCATOR: Locked<FixedSizeBlockAllocator> = Locked::new(FixedSizeBlockAllocator::new());
+static ALLOCATOR: Locked<FixedSizeBlockAllocator<MemoryAlreadyMappedBackend>> =
+    Locked::new(FixedSizeBlockAllocator::new(MemoryAlreadyMappedBackend));
 
 pub fn init_heap() -> Result<(), Error> {
     const HEAP_START: *mut u8 = span::HEAP.as_mut_ptr::<u8>();

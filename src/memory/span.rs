@@ -8,18 +8,19 @@ use x86_64::VirtAddr;
  * and don't overlap.
  */
 
-pub const HEAP: MemorySpan = MemorySpan::new(
-    VirtAddr::new_truncate(0x4444_4444_0000),
-    Size::MiB(1).bytes(),
-);
-pub const KERNEL_STACK: MemorySpan = MemorySpan::new(
-    VirtAddr::new_truncate(0x5555_5555_0000),
-    Size::MiB(1).bytes(),
-);
-pub const KBUFFER: MemorySpan = MemorySpan::new(
-    VirtAddr::new_truncate(0x6666_6666_0000),
-    Size::MiB(2).bytes(),
-);
+macro_rules! span {
+    ($name:ident, $addr:expr, $size:expr) => {
+        pub const $name: MemorySpan = {
+            let sz: $crate::memory::size::Size = $size;
+            let addr: u64 = $addr;
+            let virt_addr: x86_64::VirtAddr = x86_64::VirtAddr::new_truncate(addr);
+            $crate::memory::span::MemorySpan::new(virt_addr, sz.bytes())
+        };
+    };
+}
+
+span!(HEAP, 0x4444_4444_0000, Size::MiB(1));
+span!(KBUFFER, 0x5555_5555_0000, Size::MiB(16));
 
 pub struct MemorySpan {
     start: VirtAddr,

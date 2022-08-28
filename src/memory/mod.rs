@@ -2,7 +2,7 @@ use crate::memory::physical::PhysicalFrameAllocator;
 use bootloader::boot_info::Optional;
 use bootloader::BootInfo;
 use x86_64::structures::paging::mapper::{MapToError, UnmapError};
-use x86_64::structures::paging::{OffsetPageTable, PageSize, PageTable};
+use x86_64::structures::paging::{OffsetPageTable, PageSize, PageTable, Size4KiB};
 use x86_64::VirtAddr;
 
 #[cfg(test)]
@@ -16,6 +16,9 @@ pub mod manager;
 pub mod physical;
 pub mod size;
 pub mod span;
+
+/// The default page size used by this kernel.
+pub type DefaultPageSize = Size4KiB;
 
 pub type Result<T> = core::result::Result<T, Error>;
 

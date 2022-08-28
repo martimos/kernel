@@ -1,8 +1,10 @@
 use alloc::alloc::GlobalAlloc;
 use core::{alloc::Layout, mem, ptr, ptr::NonNull};
 
-use crate::memory::heap::Locked;
 use x86_64::structures::paging::{PageSize, Size4KiB};
+
+use crate::memory::allocator::backend::MemoryBackend;
+use crate::memory::heap::Locked;
 
 struct ListNode {
     next: Option<&'static mut ListNode>,
@@ -25,18 +27,23 @@ const BLOCK_SIZES: &[usize] = &[
     Size4KiB::SIZE as usize,
 ];
 
-pub struct FixedSizeBlockAllocator {
+pub struct FixedSizeBlockAllocator<M> {
     list_heads: [Option<&'static mut ListNode>; BLOCK_SIZES.len()],
     fallback_allocator: linked_list_allocator::Heap,
+    memory_backend: M,
 }
 
-impl FixedSizeBlockAllocator {
+impl<M> FixedSizeBlockAllocator<M>
+where
+    M: MemoryBackend,
+{
     /// Creates an empty FixedSizeBlockAllocator.
-    pub const fn new() -> Self {
+    pub const fn new(memory_backend: M) -> Self {
         const EMPTY: Option<&'static mut ListNode> = None;
         FixedSizeBlockAllocator {
             list_heads: [EMPTY; BLOCK_SIZES.len()],
             fallback_allocator: linked_list_allocator::Heap::empty(),
+            memory_backend,
         }
     }
 
@@ -60,12 +67,15 @@ impl FixedSizeBlockAllocator {
     }
 }
 
-unsafe impl GlobalAlloc for Locked<FixedSizeBlockAllocator> {
+unsafe impl<M> GlobalAlloc for Locked<FixedSizeBlockAllocator<M>>
+where
+    M: MemoryBackend,
+{
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
         let mut allocator = self.lock();
         let required_block_size = layout.size().max(layout.align());
         let index = BLOCK_SIZES.iter().position(|&s| s >= required_block_size);
-        match index {
+        let pointer = match index {
             Some(index) => {
                 match allocator.list_heads[index].take() {
                     Some(node) => {
@@ -83,7 +93,12 @@ unsafe impl GlobalAlloc for Locked<FixedSizeBlockAllocator> {
                 }
             }
             None => allocator.fallback_alloc(layout),
-        }
+        };
+        allocator
+            .memory_backend
+            .memory_allocated(pointer as *const u8, required_block_size)
+            .expect("memory allocation via backend failed");
+        pointer
     }
 
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
@@ -106,6 +121,10 @@ unsafe impl GlobalAlloc for Locked<FixedSizeBlockAllocator> {
                     .unwrap_or_else(|| panic!("invalid pointer {:p} passed to deallocate", ptr));
                 allocator.fallback_allocator.deallocate(ptr, layout);
             }
-        }
+        };
+        allocator
+            .memory_backend
+            .memory_deallocated(ptr as *const u8, required_block_size)
+            .expect("memory deallocation via backend failed");
     }
 }

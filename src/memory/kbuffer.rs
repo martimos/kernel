@@ -1,21 +1,21 @@
+use crate::memory::allocator::backend::lazy_page::{LazyPageMappingBackend, NoUnmap};
 use crate::memory::allocator::bump::BumpAllocator;
 use crate::memory::heap::Locked;
-use crate::memory::manager::{MemoryKind, MemoryManager, UserAccessible};
 use crate::memory::span::KBUFFER;
-use crate::memory::Result;
+use crate::memory::{DefaultPageSize, Result};
 use core::alloc::{GlobalAlloc, Layout};
-use x86_64::structures::paging::Size4KiB;
 
-static mut KBUFFER_HEAP: Locked<BumpAllocator> = Locked::new(BumpAllocator::new());
+static mut KBUFFER_HEAP: Locked<BumpAllocator<LazyPageMappingBackend<DefaultPageSize, NoUnmap>>> =
+    Locked::new(BumpAllocator::new(LazyPageMappingBackend::new()));
 
 pub fn init_kbuffer_heap() -> Result<()> {
-    let page_range = KBUFFER.as_page_range::<Size4KiB>();
-
-    MemoryManager::lock().allocate_and_map_page_range(
-        page_range,
-        MemoryKind::Writable,
-        UserAccessible::No,
-    )?;
+    // let page_range = KBUFFER.as_page_range::<Size4KiB>();
+    //
+    // MemoryManager::lock().allocate_and_map_page_range(
+    //     page_range,
+    //     MemoryKind::Writable,
+    //     UserAccessible::No,
+    // )?;
 
     unsafe {
         KBUFFER_HEAP

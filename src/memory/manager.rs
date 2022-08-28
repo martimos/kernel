@@ -85,6 +85,40 @@ where
     M: Mapper<S>,
     A: FrameAllocator<S> + FrameAllocator<Size4KiB>, // 4KiB required since page table mapping pages are 4KiB
 {
+    pub fn ensure_is_mapped(
+        &mut self,
+        range: PageRange<S>,
+        memory_kind: MemoryKind,
+        user_accessible: UserAccessible,
+    ) -> Result<()> {
+        let page_table_flags = Self::translate_page_table_flags(memory_kind, user_accessible);
+
+        for page in range {
+            let translate_result = self.page_table.translate_page(page);
+            if matches!(translate_result, Err(_)) {
+                let frame = self.allocate_frame()?;
+                self.map_frame_to_page(frame, page, page_table_flags)?;
+            }
+        }
+        Ok(())
+    }
+
+    fn translate_page_table_flags(
+        memory_kind: MemoryKind,
+        user_accessible: UserAccessible,
+    ) -> PageTableFlags {
+        let mut page_table_flags = PageTableFlags::PRESENT | PageTableFlags::NO_EXECUTE;
+        if user_accessible.into() {
+            page_table_flags |= PageTableFlags::USER_ACCESSIBLE;
+        }
+        match memory_kind {
+            MemoryKind::ReadOnly => {}
+            MemoryKind::Writable => page_table_flags |= PageTableFlags::WRITABLE,
+            MemoryKind::Executable => page_table_flags.remove(PageTableFlags::NO_EXECUTE),
+        };
+        page_table_flags
+    }
+
     pub fn allocate_and_map_page_range(
         &mut self,
         range: PageRange<S>,
