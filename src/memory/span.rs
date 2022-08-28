@@ -14,6 +14,8 @@ macro_rules! span {
             let sz: $crate::memory::size::Size = $size;
             let addr: u64 = $addr;
             let virt_addr: x86_64::VirtAddr = x86_64::VirtAddr::new_truncate(addr);
+            let byte_size = sz.bytes();
+            assert!(byte_size > 0, "span size must be greater than 0");
             $crate::memory::span::MemorySpan::new(virt_addr, sz.bytes())
         };
     };
