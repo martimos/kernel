@@ -27,7 +27,9 @@ pub struct Scheduler;
 impl Scheduler {
     /// Create a new kernel task
     pub fn spawn_from_c_fn(func: extern "C" fn()) -> Result<Tid> {
-        Self::spawn_from_entry_point(NonNull::new(func as *const () as *mut usize).unwrap())
+        unsafe {
+            Self::spawn_from_entry_point(NonNull::new(func as *const () as *mut usize).unwrap())
+        }
     }
 
     /// Create a new kernel task with the given pointer as entry point.
