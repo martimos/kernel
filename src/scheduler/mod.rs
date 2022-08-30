@@ -1,3 +1,4 @@
+use core::ptr::NonNull;
 use core::time::Duration;
 
 use kstd::sync::Once;
@@ -25,8 +26,17 @@ pub struct Scheduler;
 
 impl Scheduler {
     /// Create a new kernel task
-    pub fn spawn(func: extern "C" fn()) -> Result<Tid> {
-        unsafe { SCHEDULER.as_mut().unwrap().spawn(func) }
+    pub fn spawn_from_c_fn(func: extern "C" fn()) -> Result<Tid> {
+        Self::spawn_from_entry_point(NonNull::new(func as *const () as *mut usize).unwrap())
+    }
+
+    /// Create a new kernel task with the given pointer as entry point.
+    ///
+    /// # Safety:
+    /// The caller must ensure that the given entry is a valid
+    /// pointer to executable code.
+    pub unsafe fn spawn_from_entry_point(entry: NonNull<usize>) -> Result<Tid> {
+        unsafe { SCHEDULER.as_mut().unwrap().spawn(entry) }
     }
 
     /// Puts the current task to sleep for **at least** the given duration.

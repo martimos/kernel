@@ -1,4 +1,5 @@
 use crate::memory::kbuffer::KBuffer;
+use core::ptr::NonNull;
 use core::{alloc::Layout, mem::size_of, ptr::write_bytes};
 
 use crate::scheduler::{tid::Tid, Scheduler, STACK_SIZE};
@@ -118,7 +119,7 @@ extern "C" fn leave_task() -> ! {
 impl Task {
     /// Allocates stack memory for this task. The given entry_point is the code that
     /// this task executes.
-    pub fn allocate_stack(&mut self, entry_point: extern "C" fn()) {
+    pub fn allocate_stack(&mut self, entry_point: NonNull<usize>) {
         let stack_ptr = self.stack.as_mut_ptr::<Stack>();
         unsafe {
             let mut stack: *mut u64 = ((*stack_ptr).top()) as *mut u64; // "write" qwords
@@ -140,7 +141,7 @@ impl Task {
             (*state).rsp = (stack as usize + size_of::<State>()) as u64; // stack pointer now points to the State
             (*state).rbp = (*state).rsp + size_of::<u64>() as u64; // base pointer is the stack pointer
 
-            (*state).rip = (entry_point as *const ()) as u64; // push the entry point as instruction pointer
+            (*state).rip = entry_point.as_ptr() as u64; // push the entry point as instruction pointer
             (*state).rflags = 0x1202u64;
 
             self.last_stack_pointer = stack as usize; // remember the stack in the TCB (Task)
