@@ -1,5 +1,6 @@
 use alloc::collections::VecDeque;
 use core::mem::swap;
+use core::ptr::NonNull;
 use core::sync::atomic::{AtomicU32, Ordering};
 use core::time::Duration;
 
@@ -41,7 +42,7 @@ impl RoundRobin {
         }
     }
 
-    pub fn spawn(&mut self, func: extern "C" fn()) -> Result<Tid> {
+    pub fn spawn(&mut self, func: NonNull<usize>) -> Result<Tid> {
         without_interrupts(|| {
             // Create the new task.
             let tid = Tid::new();
@@ -107,9 +108,7 @@ impl RoundRobin {
         let mut switch_args: Option<(*mut usize, *const usize)> = None;
 
         without_interrupts(|| {
-            while let Some(task) = self.finished_tasks.pop_front() {
-                drop(task);
-            }
+            // TODO: unwind and properly deallocate tasks from the finished queue
 
             // TODO: create tests for this
             let maybe_next_task = {
@@ -167,10 +166,9 @@ impl RoundRobin {
                 }
                 _ => panic!("unexpected process status: {:?}", old_task.status),
             };
-            let old_task_last_stack_pointer_ref = &mut task_ref.last_stack_pointer as *mut usize;
 
             switch_args = Some((
-                old_task_last_stack_pointer_ref,
+                &mut task_ref.last_stack_pointer as *mut usize,
                 new_stack_pointer as *const usize,
             ));
         });

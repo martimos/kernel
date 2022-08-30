@@ -96,10 +96,10 @@ fn main() {
         boot_time.seconds,
     );
 
-    Scheduler::spawn(init_vfs).unwrap();
-    Scheduler::spawn(just_panic).unwrap();
-    Scheduler::spawn(elf_stuff).unwrap();
-    Scheduler::spawn(example_tasks).unwrap();
+    Scheduler::spawn_from_c_fn(init_vfs).unwrap();
+    Scheduler::spawn_from_c_fn(just_panic).unwrap();
+    Scheduler::spawn_from_c_fn(elf_stuff).unwrap();
+    Scheduler::spawn_from_c_fn(example_tasks).unwrap();
 
     debug!(
         "kernel task with tid {} is still running",
@@ -116,10 +116,36 @@ extern "C" fn elf_stuff() {
         }
         hlt();
     };
-    let header = Elf::parse_header(&content).unwrap();
-    info!("parsed header");
-    let elf = Elf::lazy_parse(header).unwrap();
-    info!("{} is elf{}", path, if elf.is_64 { "64" } else { "32" });
+    let elf = Elf::parse(&content).unwrap();
+    exec_elf(elf).unwrap();
+    info!("executed elf");
+}
+
+fn exec_elf(elf: Elf) -> Result<(), ()> {
+    if !elf.is_64 {
+        return Err(());
+    }
+    if elf.header.e_type != ET_EXEC {
+        return Err(());
+    }
+    let base_addr = elf
+        .program_headers
+        .iter()
+        .map(|ph| ph.p_vaddr)
+        .min()
+        .ok_or(())?;
+    debug!("base addr: {:#x}", base_addr);
+    let required_mem = elf
+        .program_headers
+        .iter()
+        .map(|ph| ph.p_vaddr - base_addr + ph.p_memsz)
+        .max()
+        .ok_or(())?;
+    debug!("required mem: {:#x}", required_mem);
+
+    let elf_buffer = KBuffer::allocate(required_mem as usize);
+    debug!("allocated buffer at {:p}", elf_buffer.as_ptr::<usize>());
+    Ok(())
 }
 
 async fn async_number() -> u32 {
