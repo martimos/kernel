@@ -34,7 +34,7 @@ impl Scheduler {
 
     /// Create a new kernel task with the given pointer as entry point.
     ///
-    /// # Safety:
+    /// # Safety
     /// The caller must ensure that the given entry is a valid
     /// pointer to executable code.
     pub unsafe fn spawn_from_entry_point(entry: NonNull<usize>) -> Result<Tid> {
