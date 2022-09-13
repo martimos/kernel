@@ -8,7 +8,7 @@ use clap::Parser;
 use fern::colors::{Color, ColoredLevelConfig};
 use log::{debug, info};
 
-const TEST_TIMEOUT_SECS: u64 = 30;
+const TEST_TIMEOUT_SECS: u64 = 300; // 5 minutes
 const QEMU_COMMAND: &str = "qemu-system-x86_64";
 
 mod test;
