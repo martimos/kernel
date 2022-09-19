@@ -17,10 +17,7 @@ use bootloader::{entry_point, BootInfo};
 use kstd::io::block::BlockDevice;
 use kstd::io::ReadAt;
 use martim::driver::ide::drive::IDEDrive;
-use martim::driver::ide::IDEController;
-use martim::driver::pci;
-use martim::driver::pci::classes::{MassStorageSubClass, PCIDeviceClass};
-use martim::driver::pci::header::PCIStandardHeaderDevice;
+use martim::driver::Peripherals;
 use martim::scheduler;
 
 entry_point!(main);
@@ -40,34 +37,13 @@ fn panic(info: &PanicInfo) -> ! {
     martim::test_panic_handler(info);
 }
 
-fn get_ide_controller() -> IDEController {
-    pci::devices()
-        .iter()
-        .find(|dev| {
-            dev.class() == PCIDeviceClass::MassStorageController(MassStorageSubClass::IDEController)
-        })
-        .cloned()
-        .map(|d| PCIStandardHeaderDevice::new(d).unwrap())
-        .map(Into::<IDEController>::into)
-        .expect("need an IDE controller for this to work")
-}
-
-fn get_ide_drive(drive_num: usize) -> IDEDrive {
-    get_ide_controller()
-        .drives()
-        .into_iter()
-        .filter(|d| d.exists())
-        .nth(drive_num)
-        .expect("require one additional drive")
+fn get_ide_drive(drive_num: usize) -> &'static IDEDrive {
+    Peripherals::ide_drives()[drive_num]
 }
 
 #[test_case]
 fn test_find_drives() {
-    let drives = get_ide_controller()
-        .drives()
-        .into_iter()
-        .filter(|d| d.exists())
-        .count();
+    let drives = Peripherals::ide_drives().len();
 
     assert_eq!(2, drives); // (1) boot drive, (2) disk.img
 }

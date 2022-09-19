@@ -60,17 +60,13 @@ pub struct IDEController {
     secondary: Arc<Mutex<IDEChannel>>,
     interrupt_pin: InterruptPin,
     interrupt_line: Option<u8>,
+
+    drives: Vec<IDEDrive>,
 }
 
 impl IDEController {
-    pub fn drives(&self) -> Vec<IDEDrive> {
-        // FIXME: don't create new devices, instead store them and hand them out refcounted
-        vec![
-            IDEDrive::new(self.primary.clone(), 0xA0),
-            IDEDrive::new(self.primary.clone(), 0xB0),
-            IDEDrive::new(self.secondary.clone(), 0xA0),
-            IDEDrive::new(self.secondary.clone(), 0xB0),
-        ]
+    pub fn drives(&self) -> &Vec<IDEDrive> {
+        &self.drives
     }
 }
 
@@ -120,11 +116,20 @@ impl From<PCIStandardHeaderDevice> for IDEController {
             secondary_channels.disable_irq();
         }
 
+        let primary_channel = Arc::new(Mutex::new(primary_channels));
+        let secondary_channel = Arc::new(Mutex::new(secondary_channels));
+        let drives = vec![
+            IDEDrive::new(primary_channel.clone(), 0xA0),
+            IDEDrive::new(primary_channel.clone(), 0xB0),
+            IDEDrive::new(secondary_channel.clone(), 0xA0),
+            IDEDrive::new(secondary_channel.clone(), 0xB0),
+        ];
         IDEController {
-            primary: Arc::new(Mutex::new(primary_channels)),
-            secondary: Arc::new(Mutex::new(secondary_channels)),
+            primary: primary_channel,
+            secondary: secondary_channel,
             interrupt_pin: device.interrupt_pin(),
             interrupt_line: device.interrupt_line(),
+            drives,
         }
     }
 }

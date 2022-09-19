@@ -1,7 +1,4 @@
-use crate::driver::ide::IDEController;
-use crate::driver::pci;
-use crate::driver::pci::classes::{MassStorageSubClass, PCIDeviceClass};
-use crate::driver::pci::header::PCIStandardHeaderDevice;
+use crate::driver::Peripherals;
 use crate::io::fs::devfs::DevFs;
 use crate::io::fs::device::block::BlockDeviceFile;
 use crate::io::fs::device::FileBlockDevice;
@@ -48,22 +45,10 @@ fn setup_vfs_base_structuce() {
 }
 
 fn mount_ide_drive_files() {
-    let ide_controller = pci::devices()
-        .iter()
-        .find(|dev| {
-            dev.class() == PCIDeviceClass::MassStorageController(MassStorageSubClass::IDEController)
-        })
-        .cloned()
-        .map(|d| PCIStandardHeaderDevice::new(d).unwrap())
-        .map(Into::<IDEController>::into)
-        .expect("need an IDE controller for this to work");
+    let drives = Peripherals::ide_drives();
 
-    let drives = ide_controller.drives();
     let mut i = 0;
-    for drive in drives {
-        if !drive.exists() {
-            continue;
-        }
+    for &drive in drives {
         let display_string = format!("{}", drive);
         let block_device_file = BlockDeviceFile::new(drive, 0_u64.into(), format!("ide{}", i));
         i += 1;

@@ -171,7 +171,7 @@ impl IDEDrive {
     }
 }
 
-impl BlockDevice for IDEDrive {
+impl BlockDevice for &IDEDrive {
     fn block_size(&self) -> usize {
         512
     }
