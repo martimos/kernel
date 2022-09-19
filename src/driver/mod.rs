@@ -75,6 +75,6 @@ impl Peripherals {
             IDE_DRIVES.as_mut_ptr().write(ide_drives);
         });
 
-        unsafe { (&*IDE_DRIVES.as_ptr()).as_slice() }
+        unsafe { &*IDE_DRIVES.as_ptr() }
     }
 }

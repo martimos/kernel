@@ -47,11 +47,9 @@ fn setup_vfs_base_structuce() {
 fn mount_ide_drive_files() {
     let drives = Peripherals::ide_drives();
 
-    let mut i = 0;
-    for &drive in drives {
+    for (i, &drive) in drives.iter().enumerate() {
         let display_string = format!("{}", drive);
         let block_device_file = BlockDeviceFile::new(drive, 0_u64.into(), format!("ide{}", i));
-        i += 1;
         let block_device_node = INode::new_block_device_file(block_device_file);
         info!(
             "mount {} at /dev/{}",
