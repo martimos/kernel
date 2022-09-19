@@ -1,16 +1,16 @@
+use kstd::io::{Error, Result};
+use kstd::path::components::Component;
+use kstd::path::Path;
+use kstd::sync::{Mutex, Once};
+
 use alloc::borrow::ToOwned;
 use alloc::vec::Vec;
-
-use kstd::sync::{Mutex, Once};
 
 use crate::io::fs::rootdir::RootDir;
 #[cfg(debug_assertions)]
 use crate::io::fs::INodeBase;
 use crate::io::fs::{IBlockDeviceHandle, ICharacterDeviceHandle, IFileHandle, INode, Stat};
 use crate::{debug, info};
-use kstd::io::{Error, Result};
-use kstd::path::components::Component;
-use kstd::path::Path;
 
 static mut VFS: Option<Mutex<Vfs>> = None;
 static VFS_INIT: Once = Once::new();
@@ -114,10 +114,10 @@ impl Vfs {
         F: Fn(usize, INode),
     {
         let node = self.find_inode(p)?;
-        self.walk_node(0, node, &f)
+        Self::walk_node(0, node, &f)
     }
 
-    fn walk_node<F>(&self, current_depth: usize, node: INode, f: &F) -> Result<()>
+    fn walk_node<F>(current_depth: usize, node: INode, f: &F) -> Result<()>
     where
         F: Fn(usize, INode),
     {
@@ -127,7 +127,7 @@ impl Vfs {
             INode::CharacterDevice(_) => {}
             INode::Dir(dir) => {
                 for child in dir.read().children()?.into_iter() {
-                    self.walk_node(current_depth + 1, child.clone(), f)?;
+                    Self::walk_node(current_depth + 1, child.clone(), f)?;
                 }
             }
             INode::File(_) => {}
@@ -150,7 +150,7 @@ impl Vfs {
                 let guard = link.read();
                 let target_path = guard.target_path()?;
                 let symlink_target_node =
-                    self.find_inode_from(&target_path.as_path(), target_node)?;
+                    Self::find_inode_from(&target_path.as_path(), target_node)?;
                 if !matches!(symlink_target_node, INode::Dir(_)) {
                     return Err(Error::IsFile);
                 }
@@ -161,7 +161,7 @@ impl Vfs {
         guard.mount(node)
     }
 
-    fn find_inode_from(&self, p: &dyn AsRef<Path>, starting_point: INode) -> Result<INode> {
+    fn find_inode_from(p: &dyn AsRef<Path>, starting_point: INode) -> Result<INode> {
         let path = p.as_ref().to_owned(); // OwnedPaths are always canonical
         let components = path.components();
 
@@ -190,7 +190,7 @@ impl Vfs {
                             let target_path = guard.target_path()?;
                             debug!("symlink {} -> {:?}", current.name(), target_path);
                             let target_node =
-                                self.find_inode_from(&target_path.as_path(), current)?;
+                                Self::find_inode_from(&target_path.as_path(), current)?;
                             if !matches!(target_node, INode::Dir(_)) {
                                 return Err(Error::NotFound);
                             }
@@ -226,7 +226,7 @@ impl Vfs {
             return Err(Error::NotFound);
         }
 
-        self.find_inode_from(p, self.root.clone())
+        Self::find_inode_from(p, self.root.clone())
     }
 }
 
