@@ -398,6 +398,7 @@ dependencies = [
  "bootloader",
  "conquer-once",
  "crossbeam-queue",
+ "derive_more",
  "futures-util",
  "goblin",
  "kernel_constants",

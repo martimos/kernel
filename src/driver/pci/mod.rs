@@ -1,31 +1,41 @@
+use crate::driver::pci::device::PCIHeaderType;
 use alloc::vec::Vec;
 use core::mem::MaybeUninit;
-
-use kstd::sync::Once;
-
+use derive_more::Display;
 use device::PCIDevice;
-
-use crate::driver::pci::device::PCIHeaderType;
+use kstd::sync::Once;
 
 pub mod classes;
 pub mod device;
 pub mod header;
 mod raw;
 
-#[derive(Debug, Eq, PartialEq, Copy, Clone)]
+#[derive(Debug, Eq, PartialEq, Copy, Clone, Display)]
 pub enum Error {
+    #[display(fmt = "unknown header type {:#x?}", "_0")]
     UnknownHeaderType(u8),
+    #[display(fmt = "unknown pci device class {:#x?}", "_0")]
     UnknownPciDeviceClass(u16),
+    #[display(fmt = "unknown interrupt pin {}", "_0")]
     UnknownInterruptPin(u8),
+    #[display(fmt = "unknown display sub class {:#x?}", "_0")]
     UnknownDisplaySubClass(u8),
+    #[display(fmt = "unknown serial bus sub class {:#x?}", "_0")]
     UnknownSerialBusSubClass(u8),
+    #[display(fmt = "unknown mass storage sub class {:#x?}", "_0")]
     UnknownMassStorageSubClass(u8),
+    #[display(fmt = "unknown network sub class {:#x?}", "_0")]
     UnknownNetworkSubClass(u8),
+    #[display(fmt = "unknown bridge sub class {:#x?}", "_0")]
     UnknownBridgeSubClass(u8),
 
+    #[display(fmt = "not a standard header, but a {:?}", "_0")]
     NotStandardHeader(PCIHeaderType),
+    #[display(fmt = "not a pci2pci bridge, but a {:?}", "_0")]
     NotPCI2PCIBridge(PCIHeaderType),
 }
+
+impl core::error::Error for Error {}
 
 pub fn devices() -> &'static Devices {
     static mut DEVICES: MaybeUninit<Devices> = MaybeUninit::uninit();

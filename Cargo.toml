@@ -30,6 +30,7 @@ uart_16550 = "0.2.18"
 volatile = "0.4.5"
 x86_64 = "0.14.10"
 bitfield = "0.14.0"
+derive_more = "0.99.17"
 
 [dependencies.goblin]
 version = "0.5.4"

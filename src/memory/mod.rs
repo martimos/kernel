@@ -1,6 +1,7 @@
 use crate::memory::physical::PhysicalFrameAllocator;
 use bootloader::boot_info::Optional;
 use bootloader::BootInfo;
+use derive_more::Display;
 use x86_64::structures::paging::mapper::{MapToError, UnmapError};
 use x86_64::structures::paging::{OffsetPageTable, PageSize, PageTable, Size4KiB};
 use x86_64::VirtAddr;
@@ -22,11 +23,15 @@ pub type DefaultPageSize = Size4KiB;
 
 pub type Result<T> = core::result::Result<T, Error>;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Display)]
 pub enum Error {
+    #[display(fmt = "page mapping failed")]
     PageMappingFailed,
+    #[display(fmt = "page unmapping failed")]
     PageUnmappingFailed,
+    #[display(fmt = "frame allocation failed")]
     FrameAllocationFailed,
+    #[display(fmt = "out of memory")]
     OutOfMemory,
 }
 

@@ -1,7 +1,7 @@
 use alloc::sync::Arc;
 use alloc::vec;
 use alloc::vec::Vec;
-use core::fmt::{Debug, Formatter};
+use core::fmt::{Debug, Display, Formatter};
 
 use bitflags::bitflags;
 use kstd::sync::Mutex;
@@ -174,3 +174,11 @@ bitflags! {
         const BAD_BLOCK_DETECTED = 1 << 7;
     }
 }
+
+impl Display for Error {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        Debug::fmt(self, f)
+    }
+}
+
+impl core::error::Error for Error {}
