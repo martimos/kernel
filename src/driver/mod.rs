@@ -48,7 +48,6 @@ impl Peripherals {
 
         ONCE.call_once(|| unsafe {
             let ide_controllers = pci::devices()
-                .iter()
                 .filter(|dev| {
                     dev.class()
                         == PCIDeviceClass::MassStorageController(MassStorageSubClass::IDEController)

@@ -44,9 +44,6 @@ fn test_pci_devices_exist() {
         (1, MassStorageController(IDEController)),  // for the boot drive
                                                     // no display device since tests are booted with '-display none'
     ] {
-        assert_eq!(
-            count,
-            pci::devices().iter().filter(|d| d.class() == class).count()
-        );
+        assert_eq!(count, pci::devices().filter(|d| d.class() == class).count());
     }
 }

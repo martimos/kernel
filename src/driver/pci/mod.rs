@@ -37,7 +37,7 @@ pub enum Error {
 
 impl core::error::Error for Error {}
 
-pub fn devices() -> &'static Devices {
+pub fn devices() -> impl Iterator<Item = &'static PCIDevice> {
     static mut DEVICES: MaybeUninit<Devices> = MaybeUninit::uninit();
     static ONCE: Once = Once::new();
 
@@ -49,7 +49,8 @@ pub fn devices() -> &'static Devices {
         DEVICES.as_mut_ptr().write(Devices { devices })
     });
 
-    unsafe { &*DEVICES.as_ptr() }
+    let devices = unsafe { &*DEVICES.as_ptr() };
+    devices.iter()
 }
 
 pub struct Devices {
