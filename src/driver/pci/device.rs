@@ -1,4 +1,4 @@
-use alloc::rc::Rc;
+use alloc::sync::Arc;
 
 use bitflags::bitflags;
 use kstd::sync::RwLock;
@@ -59,7 +59,7 @@ impl TryFrom<u8> for PCIHeaderType {
 
 #[derive(Clone)]
 pub struct PCIDevice {
-    inner: Rc<RwLock<Inner>>,
+    inner: Arc<RwLock<Inner>>,
 }
 
 struct Inner {
@@ -102,7 +102,7 @@ impl PCIDevice {
             OFFSET_INTERRUPT_PIN,
         ))?;
         let d = PCIDevice {
-            inner: Rc::new(RwLock::new(Inner {
+            inner: Arc::new(RwLock::new(Inner {
                 bus,
                 slot,
                 function,

@@ -1,9 +1,8 @@
 use crate::driver::pci::device::PCIHeaderType;
 use alloc::vec::Vec;
-use core::mem::MaybeUninit;
+use conquer_once::spin::OnceCell;
 use derive_more::Display;
 use device::PCIDevice;
-use kstd::sync::Once;
 
 pub mod classes;
 pub mod device;
@@ -38,19 +37,17 @@ pub enum Error {
 impl core::error::Error for Error {}
 
 pub fn devices() -> impl Iterator<Item = &'static PCIDevice> {
-    static mut DEVICES: MaybeUninit<Devices> = MaybeUninit::uninit();
-    static ONCE: Once = Once::new();
+    static DEVICES: OnceCell<Devices> = OnceCell::uninit();
 
-    ONCE.call_once(|| unsafe {
-        let mut devices = Vec::new();
-        for bus in 0..=255 {
-            raw::iterate_bus(bus, &mut devices);
-        }
-        DEVICES.as_mut_ptr().write(Devices { devices })
-    });
-
-    let devices = unsafe { &*DEVICES.as_ptr() };
-    devices.iter()
+    DEVICES
+        .get_or_init(|| {
+            let mut devices = Vec::new();
+            for bus in 0..=255 {
+                unsafe { raw::iterate_bus(bus, &mut devices) };
+            }
+            Devices { devices }
+        })
+        .iter()
 }
 
 pub struct Devices {
