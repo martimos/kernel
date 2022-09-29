@@ -18,9 +18,7 @@ A <strike>experimental</strike> superior kernel written in Rust
 ### Requirements
 
 * QEMU
-* A Rust nightly build
-    * e.g. `rustup toolchain install nightly` as
-      per [this](https://doc.rust-lang.org/edition-guide/rust-2018/rustup-for-managing-rust-versions.html) page
+* [`rustup`](https://rustup.rs)
 
 ### Build and Run
 
