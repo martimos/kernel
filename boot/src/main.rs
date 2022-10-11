@@ -31,6 +31,11 @@ struct Args {
         help = "Start a gdb server on tcp:1234 and wait until a client has connected"
     )]
     debug: bool,
+    #[clap(
+        long,
+        help = "Additional arguments to pass to qemu, split at whitespaces, not considering quotes"
+    )]
+    qemu_args: Option<String>,
 }
 
 fn main() {
@@ -73,6 +78,8 @@ fn main() {
             "stdio",
             "-monitor",
             "telnet::45454,server,nowait",
+            "-d",
+            "guest_errors",
             "-drive",
             "file=disk/test_ext2.img,if=ide,format=raw",
         ];
@@ -103,6 +110,10 @@ fn main() {
                 debug!("neither HVF nor KVM available, not using an accelerator");
             }
         }
+        if let Some(x) = args.qemu_args.as_ref() {
+            x.split_whitespace().for_each(|x| run_args.push(x));
+        }
+
         run_cmd.args(run_args);
         debug!("{:?}\n", run_cmd);
 
@@ -174,7 +185,7 @@ pub fn create_disk_images(kernel_binary_path: &Path) -> PathBuf {
     build_cmd
         .arg("--kernel-manifest")
         .arg(&kernel_manifest_path);
-    build_cmd.arg("--kernel-binary").arg(&kernel_binary_path);
+    build_cmd.arg("--kernel-binary").arg(kernel_binary_path);
     build_cmd
         .arg("--target-dir")
         .arg(kernel_manifest_path.parent().unwrap().join("target"));

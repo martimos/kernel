@@ -7,7 +7,7 @@ use log::{debug, info};
 
 use crate::TEST_TIMEOUT_SECS;
 
-#[derive(Debug, PartialEq, serde_derive::Serialize, serde_derive::Deserialize)]
+#[derive(Debug, PartialEq, Eq, serde_derive::Serialize, serde_derive::Deserialize)]
 pub struct QemuConfig {
     all_tests: Vec<String>,
     tests: BTreeMap<String, Vec<String>>,
