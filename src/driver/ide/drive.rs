@@ -191,7 +191,7 @@ impl BlockDevice for &IDEDrive {
             channel
                 .ports
                 .drive_select
-                .write((0x40 + self.drive) | (((lba >> 24) & 0x0F) as u8) as u8);
+                .write((0x40 + self.drive) | ((lba >> 24) & 0x0F) as u8);
             channel.ports.features.write(0);
             channel.ports.sector_count.write(sector_count);
             channel.ports.lba_lo.write(lba as u8);
@@ -230,7 +230,7 @@ impl BlockDevice for &IDEDrive {
             channel
                 .ports
                 .drive_select
-                .write((0x40 + self.drive) | (((lba >> 24) & 0x0F) as u8) as u8);
+                .write((0x40 + self.drive) | ((lba >> 24) & 0x0F) as u8);
             channel.ports.features.write(0);
             channel.ports.sector_count.write(sector_count);
             channel.ports.lba_lo.write(lba as u8);
