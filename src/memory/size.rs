@@ -12,9 +12,9 @@ impl Size {
     pub const fn bytes(self) -> usize {
         match self {
             Size::KiB(x) => x * 1024,
-            Size::MiB(x) => x * 1024 * 1024,
-            Size::GiB(x) => x * 1024 * 1024 * 1024,
-            Size::TiB(x) => x * 1024 * 1024 * 1024 * 1024,
+            Size::MiB(x) => x * Size::KiB(1024).bytes(),
+            Size::GiB(x) => x * Size::MiB(1024).bytes(),
+            Size::TiB(x) => x * Size::GiB(1024).bytes(),
         }
     }
 }
