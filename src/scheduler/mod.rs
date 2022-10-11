@@ -3,6 +3,7 @@ use core::time::Duration;
 
 use kstd::sync::Once;
 
+use crate::memory::size::Size;
 use crate::{scheduler::tid::Tid, Result};
 
 pub mod round_robin;
@@ -10,7 +11,7 @@ pub mod switch;
 pub mod task;
 pub mod tid;
 
-pub const STACK_SIZE: usize = 0x8000; // 32 KiB
+pub const STACK_SIZE: usize = Size::KiB(32).bytes();
 
 static mut SCHEDULER: Option<round_robin::RoundRobin> = None;
 static SCHEDULER_INIT: Once = Once::new();
