@@ -1,7 +1,7 @@
 use core::fmt::{Display, Formatter};
-use core::sync::atomic::{AtomicU32, Ordering};
+use core::sync::atomic::{AtomicUsize, Ordering};
 
-static TID_COUNTER: AtomicU32 = AtomicU32::new(0);
+static TID_COUNTER: AtomicUsize = AtomicUsize::new(0);
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Clone, Copy)]
 pub struct Tid(usize);
@@ -15,12 +15,6 @@ impl Tid {
 
     pub fn as_usize(&self) -> usize {
         self.0
-    }
-}
-
-impl From<u32> for Tid {
-    fn from(v: u32) -> Self {
-        Self::from(v as usize)
     }
 }
 
