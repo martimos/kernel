@@ -51,6 +51,7 @@ mod tests {
 
     #[test_case]
     fn simple_linked_list() {
+        #[allow(clippy::box_default)] // intended here, used for test
         let mut l = Box::new(LinkedList::<&str>::new());
         l.push_back("hello");
         assert_eq!(1, l.len());
