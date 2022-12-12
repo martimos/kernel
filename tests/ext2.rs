@@ -96,7 +96,7 @@ fn test_filenames() {
 }
 
 fn filecontent_read_file(name: &str) -> kstd::io::Result<Vec<u8>> {
-    vfs::read_file_node(&format!("/mnt/block_device0/filecontent/{}", name).as_str())
+    vfs::read_file_node(&format!("/mnt/block_device0/filecontent/{name}").as_str())
 }
 
 #[test_case]

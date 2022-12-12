@@ -48,8 +48,8 @@ fn mount_ide_drive_files() {
     let drives = Peripherals::ide_drives();
 
     for (i, &drive) in drives.iter().enumerate() {
-        let display_string = format!("{}", drive);
-        let block_device_file = BlockDeviceFile::new(drive, 0_u64.into(), format!("ide{}", i));
+        let display_string = format!("{drive}");
+        let block_device_file = BlockDeviceFile::new(drive, 0_u64.into(), format!("ide{i}"));
         let block_device_node = INode::new_block_device_file(block_device_file);
         info!(
             "mount {} at /dev/{}",
@@ -82,7 +82,7 @@ fn mount_ext2() {
         .map(|(num, file)| {
             Ext2Fs::new_with_named_root(
                 FileBlockDevice::new(file),
-                format!("block_device{}", num).as_str(),
+                format!("block_device{num}").as_str(),
             )
         })
         .filter_map(|fs| fs.ok())

@@ -11,26 +11,26 @@ mod raw;
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone, Display)]
 pub enum Error {
-    #[display(fmt = "unknown header type {:#x?}", "_0")]
+    #[display(fmt = "unknown header type {_0:#x?}")]
     UnknownHeaderType(u8),
-    #[display(fmt = "unknown pci device class {:#x?}", "_0")]
+    #[display(fmt = "unknown pci device class {_0:#x?}")]
     UnknownPciDeviceClass(u16),
-    #[display(fmt = "unknown interrupt pin {}", "_0")]
+    #[display(fmt = "unknown interrupt pin {_0}")]
     UnknownInterruptPin(u8),
-    #[display(fmt = "unknown display sub class {:#x?}", "_0")]
+    #[display(fmt = "unknown display sub class {_0:#x?}")]
     UnknownDisplaySubClass(u8),
-    #[display(fmt = "unknown serial bus sub class {:#x?}", "_0")]
+    #[display(fmt = "unknown serial bus sub class {_0:#x?}")]
     UnknownSerialBusSubClass(u8),
-    #[display(fmt = "unknown mass storage sub class {:#x?}", "_0")]
+    #[display(fmt = "unknown mass storage sub class {_0:#x?}")]
     UnknownMassStorageSubClass(u8),
-    #[display(fmt = "unknown network sub class {:#x?}", "_0")]
+    #[display(fmt = "unknown network sub class {_0:#x?}")]
     UnknownNetworkSubClass(u8),
-    #[display(fmt = "unknown bridge sub class {:#x?}", "_0")]
+    #[display(fmt = "unknown bridge sub class {_0:#x?}")]
     UnknownBridgeSubClass(u8),
 
-    #[display(fmt = "not a standard header, but a {:?}", "_0")]
+    #[display(fmt = "not a standard header, but a {_0:?}")]
     NotStandardHeader(PCIHeaderType),
-    #[display(fmt = "not a pci2pci bridge, but a {:?}", "_0")]
+    #[display(fmt = "not a pci2pci bridge, but a {_0:?}")]
     NotPCI2PCIBridge(PCIHeaderType),
 }
 
