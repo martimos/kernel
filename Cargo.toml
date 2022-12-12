@@ -20,7 +20,7 @@ members = [
 
 [dependencies]
 bitflags = "1.3.2"
-bootloader = { git = "https://github.com/martimos/bootloader" }
+bootloader = "0.10.12"
 kernel_constants = { git = "https://github.com/martimos/kernel_constants" }
 kstd = "0.0.4"
 linked_list_allocator = "0.10.2"
