@@ -32,6 +32,7 @@ pub mod scheduler;
 pub mod serial;
 pub mod syscall;
 pub mod task;
+pub mod time;
 pub mod vfs_setup;
 pub mod vga_buffer;
 

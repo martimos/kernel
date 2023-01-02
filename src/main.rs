@@ -145,8 +145,8 @@ fn exec_elf(elf: Elf) -> Result<(), ()> {
         .ok_or(())?;
     debug!("required mem: {:#x}", required_mem);
 
-    let elf_buffer = KBuffer::allocate(required_mem as usize);
-    debug!("allocated buffer at {:p}", elf_buffer.as_ptr::<usize>());
+    let _elf_buffer = KBuffer::allocate(required_mem as usize);
+    debug!("allocated buffer at {:p}", _elf_buffer.as_ptr::<usize>());
     Ok(())
 }
 

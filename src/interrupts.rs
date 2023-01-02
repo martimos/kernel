@@ -4,7 +4,7 @@ use pic8259::ChainedPics;
 use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame, PageFaultErrorCode};
 
 use crate::scheduler::Scheduler;
-use crate::{gdt, serial_println, vga_println};
+use crate::{gdt, serial_println, time, vga_println};
 
 // "Remapped" PICS chosen as 32 to 47
 pub const PIC_1_OFFSET: u8 = 32;
@@ -137,6 +137,7 @@ table[index]: {}[{}]
 }
 
 extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: InterruptStackFrame) {
+    time::pit_interrupt_notify();
     Scheduler::timer_tick();
 
     unsafe {
