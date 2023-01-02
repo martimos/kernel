@@ -101,7 +101,7 @@ impl RoundRobin {
     }
 
     pub fn reschedule(&mut self) {
-        // If there are finished tasks waiting for deallocation, we do that first.
+        // TODO: If there are finished tasks waiting for deallocation, we should do that first.
         // One task cleanup per schedule should on average be enough (hopefully)
         // to not accumulate a whole pile of finished, not cleaned up, tasks.
 
