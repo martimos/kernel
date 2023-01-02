@@ -6,9 +6,9 @@ macro_rules! push_context {
             r#"
 			pushfq
 			push rax
+			push rbx
 			push rcx
 			push rdx
-			push rbx
 			sub  rsp, 8
 			push rbp
 			push rsi
@@ -42,9 +42,9 @@ macro_rules! pop_context {
 			pop rsi
 			add rsp, 8
 			pop rbp
-			pop rbx
 			pop rdx
 			pop rcx
+			pop rbx
 			pop rax
 			popfq
 			"#
