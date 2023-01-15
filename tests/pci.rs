@@ -11,15 +11,13 @@ use core::panic::PanicInfo;
 use bootloader::{entry_point, BootInfo};
 
 use martim::driver::pci;
-use martim::scheduler;
+use martim::kernel_init;
 
 entry_point!(main);
 
 #[allow(clippy::empty_loop)]
 fn main(boot_info: &'static mut BootInfo) -> ! {
-    martim::init();
-    martim::memory::init_memory(boot_info);
-    scheduler::init();
+    kernel_init(boot_info);
 
     test_main();
     loop {}

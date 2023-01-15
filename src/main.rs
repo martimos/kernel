@@ -18,9 +18,9 @@ use martim::io::fs::vfs;
 use martim::memory::kbuffer::KBuffer;
 use martim::scheduler::Scheduler;
 use martim::vfs_setup::init_vfs;
-use martim::{debug, hlt_loop, info};
+use martim::{debug, hlt_loop, info, kernel_init};
 use martim::{
-    scheduler, serial_print, serial_println,
+    serial_print, serial_println,
     task::{executor::Executor, keyboard, Task},
     vga_clear, vga_println,
 };
@@ -53,11 +53,7 @@ entry_point!(kernel_main);
 
 fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     serial_print!("init kernel...");
-    martim::init();
-    martim::memory::init_memory(boot_info);
-    scheduler::init();
-    let _ = Peripherals::boot_time(); // initialize boot time
-    vfs::init();
+    kernel_init(boot_info);
     serial_println!("done");
 
     vga_clear!();

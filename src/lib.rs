@@ -14,13 +14,17 @@
 
 extern crate alloc;
 
+use bootloader::BootInfo;
 use core::panic::PanicInfo;
 
 #[cfg(test)]
-use bootloader::{entry_point, BootInfo};
+use bootloader::entry_point;
 
 // re-export Result<T, E = syscall::error::Errno>
 pub use syscall::Result;
+
+use crate::driver::Peripherals;
+use crate::io::fs::vfs;
 
 pub mod driver;
 pub mod gdt;
@@ -36,11 +40,18 @@ pub mod time;
 pub mod vfs_setup;
 pub mod vga_buffer;
 
-pub fn init() {
+pub fn kernel_init(boot_info: &'static mut BootInfo) {
+    // low level
     gdt::init(); // init global descriptor table
     interrupts::init_idt(); // init interrupt handlers
     unsafe { interrupts::PICS.lock().initialize() };
     x86_64::instructions::interrupts::enable();
+
+    // high level
+    memory::init_memory(boot_info);
+    scheduler::init();
+    let _ = Peripherals::boot_time(); // initialize boot time
+    vfs::init();
 }
 
 #[alloc_error_handler]
@@ -107,8 +118,7 @@ entry_point!(test_kernel_main);
 #[cfg(test)]
 fn test_kernel_main(boot_info: &'static mut BootInfo) -> ! {
     serial_print!("init...");
-    init();
-    memory::init_memory(boot_info);
+    kernel_init(boot_info);
     serial_println!("done");
 
     test_main();

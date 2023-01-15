@@ -9,14 +9,13 @@ extern crate alloc;
 use core::panic::PanicInfo;
 
 use bootloader::{entry_point, BootInfo};
-use martim::memory;
+use martim::kernel_init;
 
 entry_point!(main);
 
 #[allow(clippy::empty_loop)]
 fn main(boot_info: &'static mut BootInfo) -> ! {
-    martim::init();
-    memory::init_memory(boot_info);
+    kernel_init(boot_info);
 
     test_main();
     loop {}

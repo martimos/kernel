@@ -17,15 +17,13 @@ use kstd::io::block::BlockDevice;
 use kstd::io::ReadAt;
 use martim::driver::ide::drive::IDEDrive;
 use martim::driver::Peripherals;
-use martim::scheduler;
+use martim::kernel_init;
 
 entry_point!(main);
 
 #[allow(clippy::empty_loop)]
 fn main(boot_info: &'static mut BootInfo) -> ! {
-    martim::init();
-    martim::memory::init_memory(boot_info);
-    scheduler::init();
+    kernel_init(boot_info);
 
     test_main();
     loop {}

@@ -14,16 +14,13 @@ use core::panic::PanicInfo;
 use bootloader::{entry_point, BootInfo};
 
 use martim::io::fs::{vfs, IDirHandle};
-use martim::{scheduler, vfs_setup};
+use martim::{kernel_init, vfs_setup};
 
 entry_point!(main);
 
 #[allow(clippy::empty_loop)]
 fn main(boot_info: &'static mut BootInfo) -> ! {
-    martim::init();
-    martim::memory::init_memory(boot_info);
-    scheduler::init();
-    vfs::init();
+    kernel_init(boot_info);
     vfs_setup::init_vfs();
 
     test_main();
