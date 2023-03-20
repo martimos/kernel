@@ -39,6 +39,7 @@ jobs:
           cargo t --no-run 2>&1 |       # only build tests, redirect the cargo output from stderr to stdout
           grep Executable |             # the last lines in the build output start with 'Executable' and list the built test executables
           sed -rn 's/.*\((.*)\)/\1/p' | # extract the executable files from the output
+          tee /dev/tty | # remove (server debugging)
           xargs -L1 cargo run -Zbuild-std --target=$RUST_HOST --package boot -- # this is the build command from '.cargo/config.toml'
 
       - name: Build and run all tests (release mode)
