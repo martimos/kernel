@@ -13,6 +13,8 @@ jobs:
 
     strategy:
       fail-fast: false
+      matrix:
+        mode: [ '', '--release' ]
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -39,18 +41,7 @@ jobs:
           cargo t --no-run 2>&1 |       # only build tests, redirect the cargo output from stderr to stdout
           grep Executable |             # the last lines in the build output start with 'Executable' and list the built test executables
           sed -rn 's/.*\((.*)\)/\1/p' | # extract the executable files from the output
-          xargs -L1 -I@ cargo run -Zbuild-std --target=$RUST_HOST --package boot -- @ # this is the build command from '.cargo/config.toml'
-
-      - name: Build and run all tests (release mode)
-        run: |
-          set -e
-          export RUST_HOST=$(rustc --version --verbose | grep 'host:' | awk '{ print $2 }')
-          echo "host: $RUST_HOST"
-          # maybe the `grep Executable` stops working with some rust version
-          cargo t --no-run 2>&1 |       # only build tests, redirect the cargo output from stderr to stdout
-          grep Executable |             # the last lines in the build output start with 'Executable' and list the built test executables
-          sed -rn 's/.*\((.*)\)/\1/p' | # extract the executable files from the output
-          xargs -L1 cargo run -Zbuild-std --target=$RUST_HOST --package boot --release -- # this is the build command from '.cargo/config.toml'
+          xargs -L1 cargo run -Zbuild-std --target=$RUST_HOST --package boot ${{ matrix.mode }} -- # this is the build command from '.cargo/config.toml'
 
   check-feature-compat:
     name: Check feature compatibility
